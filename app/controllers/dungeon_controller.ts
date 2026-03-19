@@ -1,0 +1,229 @@
+import type { HttpContext } from '@adonisjs/core/http'
+import Character from '#models/character'
+import DungeonFloor from '#models/dungeon_floor'
+import DungeonRun from '#models/dungeon_run'
+import Enemy from '#models/enemy'
+import InventoryItem from '#models/inventory_item'
+import PartyMember from '#models/party_member'
+import CombatService from '#services/combat_service'
+
+export default class DungeonController {
+  async index({ inertia, auth }: HttpContext) {
+    const character = await Character.query()
+      .where('userId', auth.user!.id)
+      .firstOrFail()
+
+    const floors = await DungeonFloor.query().orderBy('floorNumber', 'asc')
+
+    // Find active run: own or party
+    let activeRun = await DungeonRun.query()
+      .where('characterId', character.id)
+      .where('status', 'in_progress')
+      .first()
+
+    if (!activeRun) {
+      const membership = await PartyMember.query()
+        .where('characterId', character.id)
+        .whereHas('party', (q) => q.where('status', 'in_dungeon'))
+        .first()
+      if (membership) {
+        activeRun = await DungeonRun.query()
+          .where('partyId', membership.partyId)
+          .where('status', 'in_progress')
+          .first()
+      }
+    }
+
+    return inertia.render('dungeon/index', {
+      character: character.serialize(),
+      floors: floors.map((f) => f.serialize()),
+      activeRun: activeRun?.serialize() || null,
+    })
+  }
+
+  async enter({ params, auth, response, session }: HttpContext) {
+    const character = await Character.query()
+      .where('userId', auth.user!.id)
+      .firstOrFail()
+
+    try {
+      const { run } = await CombatService.startRun(character, params.floorId)
+      return response.redirect(`/dungeon/run/${run.id}`)
+    } catch (e: any) {
+      session.flash('errors', { message: e.message })
+      return response.redirect('/dungeon')
+    }
+  }
+
+  /** Helper: check if character can access this run (owner or party member) */
+  private async findAccessibleRun(character: Character, runId: number) {
+    // Try as owner first
+    let run = await DungeonRun.query()
+      .where('id', runId)
+      .where('characterId', character.id)
+      .preload('dungeonFloor')
+      .first()
+
+    if (!run) {
+      // Try as party member
+      run = await DungeonRun.query()
+        .where('id', runId)
+        .whereNotNull('partyId')
+        .preload('dungeonFloor')
+        .first()
+
+      if (run) {
+        const isMember = await PartyMember.query()
+          .where('partyId', run.partyId!)
+          .where('characterId', character.id)
+          .first()
+        if (!isMember) run = null
+      }
+    }
+
+    return run
+  }
+
+  async show({ params, inertia, auth }: HttpContext) {
+    const character = await Character.query()
+      .where('userId', auth.user!.id)
+      .firstOrFail()
+
+    const run = await this.findAccessibleRun(character, params.runId)
+    if (!run) throw new Error('Run introuvable')
+
+    let currentEnemy = null
+    if (run.currentEnemyId) {
+      currentEnemy = await Enemy.find(run.currentEnemyId)
+    }
+
+    const consumables = await InventoryItem.query()
+      .where('characterId', character.id)
+      .preload('item')
+      .whereHas('item', (q) => q.where('type', 'consumable'))
+
+    // Get combat skills
+    const skills = await CombatService.getAvailableSkills(character)
+    const cooldowns = JSON.parse(run.skillCooldowns || '{}')
+    const charCooldowns = cooldowns[character.id] || {}
+    const activeEffects = JSON.parse(run.activeEffects || '[]')
+
+    return inertia.render('dungeon/run', {
+      character: character.serialize(),
+      run: run.serialize(),
+      floor: run.dungeonFloor.serialize(),
+      currentEnemy: currentEnemy?.serialize() || null,
+      consumables: consumables.map((c) => ({ ...c.serialize(), item: c.item.serialize() })),
+      skills: skills.map((s) => ({
+        ...s.serialize(),
+        currentCooldown: charCooldowns[s.id] || 0,
+      })),
+      activeEffects,
+    })
+  }
+
+  async attack({ params, auth, response, session }: HttpContext) {
+    const character = await Character.query()
+      .where('userId', auth.user!.id)
+      .firstOrFail()
+
+    const result = await CombatService.attack(character, params.runId)
+    session.flash('combatLog', result.log)
+
+    return response.redirect(`/dungeon/run/${params.runId}`)
+  }
+
+  async useSkill({ params, request, auth, response, session }: HttpContext) {
+    const character = await Character.query()
+      .where('userId', auth.user!.id)
+      .firstOrFail()
+
+    try {
+      const skillId = Number(request.input('skillId'))
+      const result = await CombatService.useSkill(character, params.runId, skillId)
+      session.flash('combatLog', result.log)
+    } catch (e: any) {
+      session.flash('errors', { message: e.message })
+    }
+
+    return response.redirect(`/dungeon/run/${params.runId}`)
+  }
+
+  async useItem({ params, request, auth, response }: HttpContext) {
+    const character = await Character.query()
+      .where('userId', auth.user!.id)
+      .firstOrFail()
+
+    const inventoryItemId = request.input('inventoryItemId')
+    await CombatService.useConsumable(character, params.runId, inventoryItemId)
+
+    return response.redirect(`/dungeon/run/${params.runId}`)
+  }
+
+  async flee({ params, auth, response }: HttpContext) {
+    const character = await Character.query()
+      .where('userId', auth.user!.id)
+      .firstOrFail()
+
+    const result = await CombatService.flee(character, params.runId)
+    return response.redirect(result.run.partyId ? '/party' : '/dungeon')
+  }
+
+  /** JSON API: poll run state for party members */
+  async runState({ params, auth, response }: HttpContext) {
+    const character = await Character.query()
+      .where('userId', auth.user!.id)
+      .firstOrFail()
+
+    const run = await this.findAccessibleRun(character, params.runId)
+    if (!run) return response.notFound({ error: 'Run introuvable' })
+
+    // Handle auto-attack timeout for group runs
+    if (run.partyId && run.status === 'in_progress' && run.currentTurnId && run.turnDeadline) {
+      if (Date.now() > run.turnDeadline) {
+        const timedOutChar = await Character.findOrFail(run.currentTurnId)
+        await CombatService.performAutoAttackPublic(timedOutChar, run)
+      }
+    }
+
+    let currentEnemy = null
+    if (run.currentEnemyId) {
+      currentEnemy = await Enemy.find(run.currentEnemyId)
+    }
+
+    // Get party members info for turn display
+    let partyMembers: any[] = []
+    if (run.partyId) {
+      const members = await PartyMember.query()
+        .where('partyId', run.partyId)
+        .preload('character')
+      partyMembers = members.map((m) => ({
+        id: m.character.id,
+        name: m.character.name,
+        level: m.character.level,
+        hpCurrent: m.character.hpCurrent,
+        hpMax: m.character.hpMax,
+      }))
+    }
+
+    return response.json({
+      run: {
+        ...run.serialize(),
+        combatLog: JSON.parse(run.combatLog || '[]'),
+      },
+      currentEnemy: currentEnemy?.serialize() || null,
+      partyMembers,
+    })
+  }
+
+  async leaderboard({ inertia }: HttpContext) {
+    const topPlayers = await Character.query()
+      .orderBy('credits', 'desc')
+      .limit(50)
+      .select('id', 'name', 'credits', 'level', 'totalClicks')
+
+    return inertia.render('leaderboard/index', {
+      players: topPlayers.map((p) => p.serialize()),
+    })
+  }
+}

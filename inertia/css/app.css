@@ -1,0 +1,81 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-cyber-black: #0a0a0f;
+  --color-cyber-dark: #12121a;
+  --color-cyber-gray: #1a1a2e;
+  --color-cyber-blue: #00f0ff;
+  --color-cyber-pink: #ff00ff;
+  --color-cyber-yellow: #ffff00;
+  --color-cyber-green: #00ff41;
+  --color-cyber-red: #ff0040;
+  --color-cyber-purple: #b829dd;
+  --color-cyber-orange: #ff6600;
+}
+
+@layer base {
+  body {
+    @apply bg-cyber-black text-white font-mono antialiased;
+    background-image:
+      linear-gradient(rgba(0, 240, 255, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 240, 255, 0.03) 1px, transparent 1px);
+    background-size: 50px 50px;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #0a0a0f;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #00f0ff33;
+    border-radius: 3px;
+  }
+}
+
+@layer utilities {
+  .neon-text {
+    text-shadow: 0 0 7px #00f0ff, 0 0 10px #00f0ff, 0 0 21px #00f0ff;
+  }
+  .neon-text-pink {
+    text-shadow: 0 0 7px #ff00ff, 0 0 10px #ff00ff, 0 0 21px #ff00ff;
+  }
+  .neon-border {
+    box-shadow: 0 0 5px #00f0ff, inset 0 0 5px #00f0ff33;
+    border-color: #00f0ff;
+  }
+  .neon-border-pink {
+    box-shadow: 0 0 5px #ff00ff, inset 0 0 5px #ff00ff33;
+    border-color: #ff00ff;
+  }
+  .glitch {
+    animation: glitch 2s infinite;
+  }
+  .scanlines::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 0, 0, 0.1) 2px,
+      rgba(0, 0, 0, 0.1) 4px
+    );
+    pointer-events: none;
+  }
+}
+
+@keyframes glitch {
+  0%, 90%, 100% { transform: translate(0); }
+  92% { transform: translate(-2px, 1px); }
+  94% { transform: translate(2px, -1px); }
+  96% { transform: translate(-1px, -1px); }
+  98% { transform: translate(1px, 1px); }
+}
+
+@keyframes pulse-neon {
+  0%, 100% { box-shadow: 0 0 5px #00f0ff, 0 0 10px #00f0ff, 0 0 20px #00f0ff; }
+  50% { box-shadow: 0 0 10px #00f0ff, 0 0 20px #00f0ff, 0 0 40px #00f0ff; }
+}

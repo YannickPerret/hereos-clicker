@@ -1,0 +1,51 @@
+import { defineConfig } from '@adonisjs/inertia'
+import Character from '#models/character'
+import PartyMember from '#models/party_member'
+
+export default defineConfig({
+  rootView: 'inertia_layout',
+
+  sharedData: {
+    errors: (ctx) => ctx.session?.flashMessages.get('errors'),
+    combatLog: (ctx) => ctx.session?.flashMessages.get('combatLog'),
+    pvpResult: (ctx) => ctx.session?.flashMessages.get('pvpResult'),
+    success: (ctx) => ctx.session?.flashMessages.get('success'),
+    auth: async (ctx) => {
+      const user = ctx.auth?.user
+      if (user) {
+        await user.load('role')
+        return {
+          user: {
+            id: user.id,
+            username: user.username,
+            email: user.email,
+            role: user.role.name,
+            roleLabel: user.role.label,
+          },
+        }
+      }
+      return { user: null }
+    },
+    partyChannel: async (ctx) => {
+      const user = ctx.auth?.user
+      if (!user) return null
+      try {
+        const character = await Character.query().where('userId', user.id).first()
+        if (!character) return null
+        const membership = await PartyMember.query()
+          .where('characterId', character.id)
+          .whereHas('party', (q) => q.whereIn('status', ['waiting', 'countdown', 'in_dungeon']))
+          .preload('party')
+          .first()
+        if (!membership) return null
+        return `party-${membership.party.id}`
+      } catch {
+        return null
+      }
+    },
+  },
+
+  ssr: {
+    enabled: false,
+  },
+})

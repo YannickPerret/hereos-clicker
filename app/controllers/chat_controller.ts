@@ -1,0 +1,159 @@
+import type { HttpContext } from '@adonisjs/core/http'
+import Character from '#models/character'
+import ChatMessage from '#models/chat_message'
+import ChatChannel from '#models/chat_channel'
+import PartyMember from '#models/party_member'
+import transmit from '@adonisjs/transmit/services/main'
+
+export default class ChatController {
+  /** API: get channels list */
+  async channels({ response }: HttpContext) {
+    const channels = await ChatChannel.query()
+      .where('isPublic', true)
+      .orderBy('createdAt', 'asc')
+
+    return response.json(channels.map((c) => ({
+      id: c.id,
+      name: c.name,
+      label: c.label,
+      isPublic: c.isPublic,
+    })))
+  }
+
+  /** API: get messages for a channel */
+  async messages({ request, response }: HttpContext) {
+    const channel = request.input('channel', 'global')
+    const messages = await ChatMessage.query()
+      .where('channel', channel)
+      .orderBy('createdAt', 'desc')
+      .limit(50)
+
+    return response.json(messages.reverse().map((m) => m.serialize()))
+  }
+
+  /** API: send a message */
+  async send({ request, auth, response }: HttpContext) {
+    const character = await Character.query()
+      .where('userId', auth.user!.id)
+      .first()
+
+    const message = request.input('message', '').trim()
+    const channel = request.input('channel', 'global')
+
+    if (!message || message.length > 500) {
+      return response.badRequest({ error: 'Message invalide' })
+    }
+
+    // Verify channel exists
+    const ch = await ChatChannel.findBy('name', channel)
+    if (!ch) {
+      return response.badRequest({ error: 'Salon inconnu' })
+    }
+
+    // Check access for private channels
+    if (!ch.isPublic) {
+      // Party channels: check membership
+      if (ch.name.startsWith('party-')) {
+        const partyId = Number.parseInt(ch.name.replace('party-', ''), 10)
+        const character = await Character.query().where('userId', auth.user!.id).first()
+        const isMember = character
+          ? await PartyMember.query()
+              .where('characterId', character.id)
+              .where('partyId', partyId)
+              .first()
+          : null
+        if (!isMember) {
+          return response.forbidden({ error: 'Tu ne fais pas partie de ce groupe' })
+        }
+      } else {
+        const password = request.input('password', '')
+        if (ch.password && ch.password !== password) {
+          return response.forbidden({ error: 'Mot de passe incorrect' })
+        }
+      }
+    }
+
+    const senderName = character?.name || auth.user!.username
+
+    const chatMsg = await ChatMessage.create({
+      userId: auth.user!.id,
+      characterName: senderName,
+      channel,
+      message,
+    })
+
+    const payload = {
+      id: chatMsg.id,
+      characterName: senderName,
+      message: chatMsg.message,
+      channel,
+      createdAt: chatMsg.createdAt.toISO(),
+    }
+
+    // Broadcast via SSE
+    transmit.broadcast(`chat/${channel}`, payload)
+
+    return response.json(payload)
+  }
+
+  /** API: create a channel */
+  async createChannel({ request, auth, response }: HttpContext) {
+    const name = request.input('name', '').trim().toLowerCase().replace(/[^a-z0-9-_]/g, '')
+    const label = request.input('label', '').trim()
+    const isPublic = request.input('isPublic', true)
+    const password = request.input('password', '')
+
+    if (!name || name.length < 2 || name.length > 30) {
+      return response.badRequest({ error: 'Nom de salon invalide (2-30 caracteres, lettres/chiffres)' })
+    }
+
+    const existing = await ChatChannel.findBy('name', name)
+    if (existing) {
+      return response.badRequest({ error: 'Ce salon existe deja' })
+    }
+
+    const channel = await ChatChannel.create({
+      name,
+      label: label || name.toUpperCase(),
+      isPublic,
+      password: !isPublic && password ? password : null,
+      createdBy: auth.user!.id,
+    })
+
+    const payload = {
+      id: channel.id,
+      name: channel.name,
+      label: channel.label,
+      isPublic: channel.isPublic,
+    }
+
+    // Broadcast new channel to all clients
+    if (channel.isPublic) {
+      transmit.broadcast('chat/channels', { type: 'new_channel', channel: payload })
+    }
+
+    return response.json(payload)
+  }
+
+  /** API: join private channel */
+  async joinChannel({ request, response }: HttpContext) {
+    const name = request.input('name', '')
+    const password = request.input('password', '')
+
+    const channel = await ChatChannel.findBy('name', name)
+    if (!channel) {
+      return response.notFound({ error: 'Salon introuvable' })
+    }
+
+    if (!channel.isPublic && channel.password && channel.password !== password) {
+      return response.forbidden({ error: 'Mot de passe incorrect' })
+    }
+
+    return response.json({
+      id: channel.id,
+      name: channel.name,
+      label: channel.label,
+      isPublic: channel.isPublic,
+    })
+  }
+}
