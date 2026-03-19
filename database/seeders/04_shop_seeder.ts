@@ -1,34 +1,50 @@
 import { BaseSeeder } from '@adonisjs/lucid/seeders'
 import ShopListing from '#models/shop_listing'
+import Item from '#models/item'
 
 export default class extends BaseSeeder {
   async run() {
-    await ShopListing.createMany([
+    const listings = [
       // Weapons
-      { itemId: 1, priceOverride: null, stock: null, isActive: true },
-      { itemId: 2, priceOverride: null, stock: null, isActive: true },
-      { itemId: 3, priceOverride: null, stock: 5, isActive: true },
-      { itemId: 4, priceOverride: null, stock: 3, isActive: true },
-      { itemId: 5, priceOverride: null, stock: 1, isActive: true },
+      { itemName: 'Plasma Pistol MK-I', priceOverride: null, stock: null, isActive: true },
+      { itemName: 'Vibro-Blade', priceOverride: null, stock: null, isActive: true },
+      { itemName: 'Neural Disruptor', priceOverride: null, stock: 5, isActive: true },
+      { itemName: 'Railgun X-7', priceOverride: null, stock: 3, isActive: true },
+      { itemName: 'Void Cannon', priceOverride: null, stock: 1, isActive: true },
       // Armor
-      { itemId: 7, priceOverride: null, stock: null, isActive: true },
-      { itemId: 8, priceOverride: null, stock: 5, isActive: true },
-      { itemId: 9, priceOverride: null, stock: 3, isActive: true },
+      { itemName: 'Kevlar Vest', priceOverride: null, stock: null, isActive: true },
+      { itemName: 'Nanoweave Jacket', priceOverride: null, stock: 5, isActive: true },
+      { itemName: 'Titanium Exosuit', priceOverride: null, stock: 3, isActive: true },
       // Implants
-      { itemId: 12, priceOverride: null, stock: null, isActive: true },
-      { itemId: 13, priceOverride: null, stock: 5, isActive: true },
-      { itemId: 14, priceOverride: null, stock: 2, isActive: true },
+      { itemName: 'Reflex Booster v1', priceOverride: null, stock: null, isActive: true },
+      { itemName: 'Neural Accelerator', priceOverride: null, stock: 5, isActive: true },
+      { itemName: 'Synaptic Overdrive', priceOverride: null, stock: 2, isActive: true },
       // Consumables
-      { itemId: 17, priceOverride: null, stock: null, isActive: true },
-      { itemId: 18, priceOverride: null, stock: null, isActive: true },
-      { itemId: 19, priceOverride: null, stock: 10, isActive: true },
-      { itemId: 20, priceOverride: null, stock: null, isActive: true },
+      { itemName: 'Stim Pack', priceOverride: null, stock: null, isActive: true },
+      { itemName: 'MedGel Capsule', priceOverride: null, stock: null, isActive: true },
+      { itemName: 'Phoenix Serum', priceOverride: null, stock: 10, isActive: true },
+      { itemName: 'CyberBoost Energy', priceOverride: null, stock: null, isActive: true },
       // Upgrades
-      { itemId: 22, priceOverride: null, stock: null, isActive: true },
-      { itemId: 23, priceOverride: null, stock: null, isActive: true },
-      { itemId: 24, priceOverride: null, stock: 5, isActive: true },
+      { itemName: 'Finger Servos', priceOverride: null, stock: null, isActive: true },
+      { itemName: 'Haptic Amplifier', priceOverride: null, stock: null, isActive: true },
+      { itemName: 'Neural Click Matrix', priceOverride: null, stock: 5, isActive: true },
       // Respec
-      { itemId: 26, priceOverride: 50000, stock: null, isActive: true },
-    ])
+      { itemName: 'Neural Respec Chip', priceOverride: 50000, stock: null, isActive: true },
+    ] as const
+
+    for (const listing of listings) {
+      const item = await Item.findBy('name', listing.itemName)
+      if (!item) continue
+
+      await ShopListing.updateOrCreate(
+        { itemId: item.id },
+        {
+          itemId: item.id,
+          priceOverride: listing.priceOverride,
+          stock: listing.stock,
+          isActive: listing.isActive,
+        }
+      )
+    }
   }
 }

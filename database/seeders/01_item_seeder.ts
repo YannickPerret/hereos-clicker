@@ -3,7 +3,7 @@ import Item from '#models/item'
 
 export default class extends BaseSeeder {
   async run() {
-    await Item.createMany([
+    const items = [
       // WEAPONS
       { name: 'Plasma Pistol MK-I', description: 'Standard issue sidearm. Fires superheated plasma rounds.', type: 'weapon', rarity: 'common', icon: 'pistol', effectType: 'attack_boost', effectValue: 5, basePrice: 100 },
       { name: 'Vibro-Blade', description: 'Monomolecular edge that cuts through steel like butter.', type: 'weapon', rarity: 'common', icon: 'blade', effectType: 'attack_boost', effectValue: 8, basePrice: 200 },
@@ -41,6 +41,10 @@ export default class extends BaseSeeder {
 
       // RESPEC ITEM
       { name: 'Neural Respec Chip', description: 'Efface tes talents et libere tes points. Procedure douloureuse. Irreversible.', type: 'consumable', rarity: 'legendary', icon: 'respec', effectType: 'talent_respec', effectValue: 1, basePrice: 50000 },
-    ])
+    ] as const
+
+    for (const item of items) {
+      await Item.updateOrCreate({ name: item.name }, item)
+    }
   }
 }
