@@ -21,4 +21,4 @@ RUN npm ci --legacy-peer-deps --omit=dev
 
 EXPOSE 3333
 
-CMD ["sh", "-c", "node ace migration:run --force && node ace db:seed && node bin/server.js"]
+CMD ["sh", "-c", "node ace migration:run --force && node bin/server.js"]
