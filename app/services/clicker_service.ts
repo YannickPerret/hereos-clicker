@@ -20,10 +20,15 @@ interface ClickRecord {
 const clickRecords = new Map<number, ClickRecord>()
 
 const RATE_LIMIT_WINDOW = 1000     // 1 second window
-const MAX_REQUESTS_PER_WINDOW = 5  // Max 5 click requests per second
+const MAX_REQUESTS_PER_WINDOW = 8  // Max 8 click requests per second
 const PATTERN_HISTORY = 20         // Track last 20 requests
-const PENALTY_DURATION = 30_000    // 30 second penalty
-const MAX_WARNINGS = 3             // Warnings before penalty
+const PENALTY_DURATION = 8_000     // 8 second penalty
+const MAX_WARNINGS = 5             // Warnings before penalty
+const MIN_CLICK_COUNT_FOR_PATTERN_CHECK = 12
+const HUMAN_BATCH_INTERVAL = 500
+const HUMAN_BATCH_TOLERANCE = 120
+const BOT_TIMING_STDDEV_THRESHOLD = 12
+const BOT_INTERVAL_THRESHOLD = 380
 
 export default class ClickerService {
   /** Anti-cheat: check if user is rate-limited or showing bot patterns */
@@ -58,12 +63,18 @@ export default class ClickerService {
       if (record.warnings >= MAX_WARNINGS) {
         record.penaltyUntil = now + PENALTY_DURATION
         record.warnings = 0
-        return { allowed: false, reason: 'Trop de clics detectes. Penalite de 30 secondes.', penaltySeconds: 30 }
+        return {
+          allowed: false,
+          reason: 'Trop de requetes de clic. Petite pause imposee.',
+          penaltySeconds: Math.ceil(PENALTY_DURATION / 1000),
+        }
       }
       return { allowed: false, reason: 'Trop rapide. Ralentis un peu.' }
     }
 
-    // Pattern detection: check if last 10+ requests have identical click counts and near-identical timing
+    // Pattern detection:
+    // ignore regular 500ms client batches (space bar / manual spam),
+    // and flag only near-perfect, very fast automation patterns.
     if (record.timestamps.length >= 10) {
       const last10Counts = record.clickCounts.slice(-10)
       const last10Times = record.timestamps.slice(-10)
@@ -71,8 +82,7 @@ export default class ClickerService {
       // All same click count?
       const allSameCount = last10Counts.every((c) => c === last10Counts[0])
 
-      // Very regular timing? (std dev < 50ms)
-      if (allSameCount && last10Counts[0] > 5) {
+      if (allSameCount && last10Counts[0] >= MIN_CLICK_COUNT_FOR_PATTERN_CHECK) {
         const intervals: number[] = []
         for (let i = 1; i < last10Times.length; i++) {
           intervals.push(last10Times[i] - last10Times[i - 1])
@@ -80,14 +90,21 @@ export default class ClickerService {
         const avgInterval = intervals.reduce((a, b) => a + b, 0) / intervals.length
         const variance = intervals.reduce((sum, v) => sum + (v - avgInterval) ** 2, 0) / intervals.length
         const stdDev = Math.sqrt(variance)
+        const looksLikeClientBatchCadence =
+          Math.abs(avgInterval - HUMAN_BATCH_INTERVAL) <= HUMAN_BATCH_TOLERANCE && stdDev < 35
+        const looksLikeAutomation =
+          avgInterval < BOT_INTERVAL_THRESHOLD && stdDev < BOT_TIMING_STDDEV_THRESHOLD
 
-        if (stdDev < 30) {
-          // Nearly perfect timing = bot
-          record.warnings += 2
+        if (looksLikeAutomation && !looksLikeClientBatchCadence) {
+          record.warnings += 1
           if (record.warnings >= MAX_WARNINGS) {
             record.penaltyUntil = now + PENALTY_DURATION
             record.warnings = 0
-            return { allowed: false, reason: 'Pattern automatise detecte. Penalite de 30 secondes.', penaltySeconds: 30 }
+            return {
+              allowed: false,
+              reason: 'Pattern automatise detecte. Petite pause imposee.',
+              penaltySeconds: Math.ceil(PENALTY_DURATION / 1000),
+            }
           }
           return { allowed: false, reason: 'Pattern suspect detecte.' }
         }
