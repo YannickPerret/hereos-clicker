@@ -1,4 +1,4 @@
-.PHONY: dev build up down restart logs migrate seed fresh shell clean
+.PHONY: dev build up down restart logs migrate seed fresh shell clean prod prod-down prod-restart prod-logs prod-fresh setup
 
 # Local development
 dev:
@@ -17,7 +17,7 @@ fresh:
 	node ace migration:fresh
 	node ace db:seed
 
-# Docker
+# Docker (dev)
 up:
 	docker compose up -d --build
 
@@ -33,6 +33,23 @@ logs:
 shell:
 	docker compose exec app sh
 
+# Docker (production)
+prod:
+	docker compose -f docker-compose.prod.yml up -d --build
+
+prod-down:
+	docker compose -f docker-compose.prod.yml down
+
+prod-restart:
+	docker compose -f docker-compose.prod.yml restart
+
+prod-logs:
+	docker compose -f docker-compose.prod.yml logs -f app
+
+prod-fresh:
+	docker compose -f docker-compose.prod.yml down -v
+	docker compose -f docker-compose.prod.yml up -d --build
+
 # Clean
 clean:
 	docker compose down -v
@@ -45,7 +62,7 @@ setup:
 	node ace db:seed
 	@echo "Ready! Run 'make dev' or 'make up' for Docker (port 5080)"
 
-# Docker fresh reset
+# Docker fresh reset (dev)
 docker-fresh:
 	docker compose down -v
 	docker compose up -d --build
