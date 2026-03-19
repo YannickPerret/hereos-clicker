@@ -17,12 +17,29 @@ export default class HttpExceptionHandler extends ExceptionHandler {
   protected renderStatusPages = app.inProduction
 
   /**
+   * Render Inertia error pages when available, fallback to plain text
+   * when request did not pass through Inertia middleware (ex: static 404).
+   */
+  private renderErrorPage(
+    ctx: HttpContext,
+    page: string,
+    status: number,
+    fallbackMessage: string
+  ) {
+    if (ctx.inertia) {
+      return ctx.inertia.render(page)
+    }
+
+    return ctx.response.status(status).send(fallbackMessage)
+  }
+
+  /**
    * Status pages is a collection of error code range and a callback
    * to return the HTML contents to send as a response.
    */
   protected statusPages: Record<StatusPageRange, StatusPageRenderer> = {
-    '404': (error, { inertia }) => inertia.render('errors/not_found', { error }),
-    '500..599': (error, { inertia }) => inertia.render('errors/server_error', { error }),
+    '404': (_, ctx) => this.renderErrorPage(ctx, 'errors/not_found', 404, 'Not found'),
+    '500..599': (_, ctx) => this.renderErrorPage(ctx, 'errors/server_error', 500, 'Server error'),
   }
 
   /**
