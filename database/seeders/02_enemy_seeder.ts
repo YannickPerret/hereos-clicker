@@ -3,7 +3,7 @@ import Enemy from '#models/enemy'
 
 export default class extends BaseSeeder {
   async run() {
-    await Enemy.createMany([
+    const enemies = [
       // TIER 1 - Street Level (low crit)
       { name: 'Glitched Drone', description: 'A malfunctioning surveillance drone. Sparks fly from its cracked chassis.', hp: 30, attack: 5, defense: 2, xpReward: 10, creditsRewardMin: 5, creditsRewardMax: 15, icon: 'drone', tier: 1, critChance: 3, critDamage: 130 },
       { name: 'Neon Rat', description: 'Mutated sewer rat with bioluminescent fur. Bites through steel.', hp: 20, attack: 8, defense: 1, xpReward: 8, creditsRewardMin: 3, creditsRewardMax: 10, icon: 'rat', tier: 1, critChance: 5, critDamage: 140 },
@@ -23,6 +23,10 @@ export default class extends BaseSeeder {
       { name: 'ARCHON - Rogue Superintelligence', description: 'A god-level AI that escaped containment. Reality bends around it.', hp: 500, attack: 50, defense: 30, xpReward: 200, creditsRewardMin: 300, creditsRewardMax: 800, icon: 'archon', tier: 4, critChance: 12, critDamage: 200 },
       { name: 'Chrome Dragon', description: 'Experimental bioweapon. 50 tons of titanium scales and plasma breath.', hp: 800, attack: 60, defense: 40, xpReward: 350, creditsRewardMin: 500, creditsRewardMax: 1500, icon: 'dragon', tier: 4, critChance: 15, critDamage: 220 },
       { name: 'The Void King', description: 'Nobody knows what it is. Those who see it dont come back.', hp: 1200, attack: 80, defense: 50, xpReward: 500, creditsRewardMin: 1000, creditsRewardMax: 3000, icon: 'voidking', tier: 4, critChance: 20, critDamage: 250 },
-    ])
+    ] as const
+
+    for (const enemy of enemies) {
+      await Enemy.updateOrCreate({ name: enemy.name }, enemy)
+    }
   }
 }

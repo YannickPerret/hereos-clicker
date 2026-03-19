@@ -3,7 +3,7 @@ import Companion from '#models/companion'
 
 export default class extends BaseSeeder {
   async run() {
-    await Companion.createMany([
+    const companions = [
       // Common
       { name: 'Micro-Drone MK1', description: 'Un petit drone de surveillance reconverti. Ameliore tes revenus de hack.', rarity: 'common', bonusType: 'cpc_flat', bonusValue: 2, icon: '🤖', basePrice: 500 },
       { name: 'Rat Cybernétique', description: 'Un rat des egouts avec un implant neural. Genere des credits passivement.', rarity: 'common', bonusType: 'cps_flat', bonusValue: 1, icon: '🐀', basePrice: 800 },
@@ -26,6 +26,10 @@ export default class extends BaseSeeder {
       // Legendary
       { name: 'NEXUS - IA Rogue', description: 'Une intelligence artificielle rogue qui a choisi de te suivre. Booste tout.', rarity: 'legendary', bonusType: 'cpc_flat', bonusValue: 20, icon: '👁️', basePrice: 100000 },
       { name: 'Dragon Holographique', description: 'Un dragon fait de lumiere pure. Chance critique extreme.', rarity: 'legendary', bonusType: 'crit_chance', bonusValue: 15, icon: '🐉', basePrice: 150000 },
-    ])
+    ] as const
+
+    for (const companion of companions) {
+      await Companion.updateOrCreate({ name: companion.name }, companion)
+    }
   }
 }

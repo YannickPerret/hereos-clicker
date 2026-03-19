@@ -51,5 +51,9 @@ export function reloadSystemMessages() {
   startSystemMessages()
 }
 
-// Start after a short delay to let DB initialize
-setTimeout(startSystemMessages, 3000)
+const isAceProcess = process.argv.some((arg) => arg.includes('/ace') || arg.endsWith('ace'))
+
+// Start after a short delay to let DB initialize (HTTP server only)
+if (!isAceProcess) {
+  setTimeout(startSystemMessages, 3000)
+}

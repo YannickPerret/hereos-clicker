@@ -3,7 +3,7 @@ import CombatSkill from '#models/combat_skill'
 
 export default class extends BaseSeeder {
   async run() {
-    await CombatSkill.createMany([
+    const skills = [
       // ═══════════════════════════════════════════
       // HACKER — Offensive hacking programs
       // ═══════════════════════════════════════════
@@ -195,6 +195,10 @@ export default class extends BaseSeeder {
         cooldown: 6,
         icon: 'overcharge',
       },
-    ])
+    ] as const
+
+    for (const skill of skills) {
+      await CombatSkill.updateOrCreate({ name: skill.name, spec: skill.spec }, skill as any)
+    }
   }
 }

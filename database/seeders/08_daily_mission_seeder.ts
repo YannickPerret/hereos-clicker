@@ -3,7 +3,7 @@ import DailyMission from '#models/daily_mission'
 
 export default class extends BaseSeeder {
   async run() {
-    await DailyMission.createMany([
+    const missions = [
       // Click missions
       { name: 'Routine de hack', description: 'Effectue 100 clics', type: 'click', targetValue: 100, rewardType: 'credits', rewardValue: 200, icon: 'click' },
       { name: 'Hack intensif', description: 'Effectue 500 clics', type: 'click', targetValue: 500, rewardType: 'credits', rewardValue: 1000, icon: 'click' },
@@ -25,6 +25,10 @@ export default class extends BaseSeeder {
       // PvP
       { name: 'Gladiateur', description: 'Gagne 1 combat PvP', type: 'pvp_win', targetValue: 1, rewardType: 'credits', rewardValue: 1000, icon: 'pvp' },
       { name: 'Champion de l\'arene', description: 'Gagne 3 combats PvP', type: 'pvp_win', targetValue: 3, rewardType: 'credits', rewardValue: 5000, icon: 'pvp' },
-    ])
+    ] as const
+
+    for (const mission of missions) {
+      await DailyMission.updateOrCreate({ name: mission.name }, mission)
+    }
   }
 }
