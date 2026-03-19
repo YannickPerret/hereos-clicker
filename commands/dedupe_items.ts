@@ -75,11 +75,26 @@ export default class DedupeItems extends BaseCommand {
 
   private async remapReferences(fromItemId: number, toItemId: number) {
     let total = 0
-    total += await ShopListing.query().where('itemId', fromItemId).update({ itemId: toItemId })
-    total += await InventoryItem.query().where('itemId', fromItemId).update({ itemId: toItemId })
-    total += await EnemyLootTable.query().where('itemId', fromItemId).update({ itemId: toItemId })
-    total += await DailyMission.query().where('rewardItemId', fromItemId).update({ rewardItemId: toItemId })
+    const shopUpdated = await ShopListing.query().where('itemId', fromItemId).update({ itemId: toItemId })
+    const inventoryUpdated = await InventoryItem.query()
+      .where('itemId', fromItemId)
+      .update({ itemId: toItemId })
+    const lootUpdated = await EnemyLootTable.query().where('itemId', fromItemId).update({ itemId: toItemId })
+    const missionUpdated = await DailyMission.query()
+      .where('rewardItemId', fromItemId)
+      .update({ rewardItemId: toItemId })
+
+    total += this.toAffectedCount(shopUpdated)
+    total += this.toAffectedCount(inventoryUpdated)
+    total += this.toAffectedCount(lootUpdated)
+    total += this.toAffectedCount(missionUpdated)
     return total
+  }
+
+  private toAffectedCount(result: unknown): number {
+    if (typeof result === 'number') return result
+    if (Array.isArray(result)) return result.length
+    return 0
   }
 
   private async mergeShopListings(itemId: number) {
