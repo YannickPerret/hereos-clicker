@@ -42,7 +42,7 @@ export default class extends BaseSeeder {
     ]
 
     for (const talent of talents) {
-      await Talent.updateOrCreate({ id: talent.id }, talent)
+      await Talent.updateOrCreate({ id: talent.id }, talent as any)
     }
   }
 }
