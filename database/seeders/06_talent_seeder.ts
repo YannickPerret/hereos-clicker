@@ -3,7 +3,7 @@ import Talent from '#models/talent'
 
 export default class extends BaseSeeder {
   async run() {
-    await Talent.createMany([
+    const talents = [
       // ═══════════════════════════════════════════
       // HACKER - Click power & burst damage
       // ═══════════════════════════════════════════
@@ -39,6 +39,10 @@ export default class extends BaseSeeder {
       { id: 18, name: 'Black Market Access', description: 'Contacts au marche noir. -20% prix shop.', spec: 'chrome_dealer', tier: 3, icon: 'market', effectType: 'shop_discount', effectValue: 20, cost: 2, requiresTalentId: 17, requiresLevel: 5 },
       { id: 19, name: 'Bounty Hunter', description: 'Credits bonus des ennemis. +50% credits donjon.', spec: 'chrome_dealer', tier: 4, icon: 'bounty', effectType: 'dungeon_credits', effectValue: 50, cost: 2, requiresTalentId: 18, requiresLevel: 8 },
       { id: 20, name: 'Corporate Insider', description: 'Tu connais les secrets. Loot x2, prix -30%.', spec: 'chrome_dealer', tier: 5, icon: 'insider', effectType: 'loot_bonus', effectValue: 100, cost: 3, requiresTalentId: 19, requiresLevel: 12 },
-    ])
+    ]
+
+    for (const talent of talents) {
+      await Talent.updateOrCreate({ id: talent.id }, talent)
+    }
   }
 }
