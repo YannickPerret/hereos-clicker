@@ -79,9 +79,9 @@ export default function GameLayout({ children }: { children: ReactNode }) {
         </div>
       )}
 
-      <nav className="border-b border-cyber-blue/30 bg-cyber-dark/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
+      <header className="sticky top-0 z-50 border-b border-cyber-blue/30 bg-cyber-dark/80 backdrop-blur-sm">
+        <div className="mx-auto flex h-14 max-w-[96rem] items-center justify-between gap-3 px-4">
+          <div className="flex min-w-0 items-center gap-3">
             <button
               type="button"
               aria-label={mobileMenuOpen ? 'Fermer le menu' : 'Ouvrir le menu'}
@@ -101,27 +101,7 @@ export default function GameLayout({ children }: { children: ReactNode }) {
             </Link>
           </div>
 
-          <div className="hidden md:flex items-center gap-1">
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="px-3 py-1.5 text-xs uppercase tracking-wider text-gray-400 hover:text-cyber-blue hover:bg-cyber-blue/10 rounded transition-all border border-transparent hover:border-cyber-blue/30"
-              >
-                {link.label}
-              </Link>
-            ))}
-            {isStaff && (
-              <Link
-                href="/admin"
-                className="px-3 py-1.5 text-xs uppercase tracking-wider text-cyber-red hover:text-cyber-red hover:bg-cyber-red/10 rounded transition-all border border-transparent hover:border-cyber-red/30"
-              >
-                ADMIN
-              </Link>
-            )}
-          </div>
-
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex shrink-0 items-center gap-3">
             {auth?.user && (
               <>
                 <div className="text-right hidden sm:block">
@@ -140,16 +120,54 @@ export default function GameLayout({ children }: { children: ReactNode }) {
             )}
           </div>
         </div>
+      </header>
 
-        {mobileMenuOpen && (
-          <div className="md:hidden border-t border-cyber-blue/20 bg-cyber-dark/95 px-4 py-3">
-            <div className="flex flex-col items-start gap-2">
+      <div className="mx-auto flex max-w-[96rem]">
+        <aside className="sticky top-14 hidden h-[calc(100vh-3.5rem)] w-72 shrink-0 border-r border-cyber-blue/20 bg-cyber-dark/40 px-4 py-5 md:block">
+          <div className="mb-4 text-[10px] uppercase tracking-[0.32em] text-gray-500">Navigation</div>
+          <nav className="flex flex-col gap-2">
+            {navLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="rounded border border-cyber-blue/15 px-3 py-2.5 text-xs uppercase tracking-[0.22em] text-gray-300 transition-all hover:border-cyber-blue/35 hover:bg-cyber-blue/10 hover:text-cyber-blue"
+              >
+                {link.label}
+              </Link>
+            ))}
+            {isStaff && (
+              <Link
+                href="/admin"
+                className="rounded border border-cyber-red/20 px-3 py-2.5 text-xs uppercase tracking-[0.22em] text-cyber-red transition-all hover:border-cyber-red/40 hover:bg-cyber-red/10"
+              >
+                ADMIN
+              </Link>
+            )}
+          </nav>
+        </aside>
+
+        <main className="min-w-0 flex-1 px-4 py-6 md:px-6">
+          {children}
+        </main>
+      </div>
+
+      {mobileMenuOpen && (
+        <>
+          <button
+            type="button"
+            aria-label="Fermer le menu"
+            onClick={() => setMobileMenuOpen(false)}
+            className="fixed inset-0 z-[55] bg-cyber-black/70 md:hidden"
+          />
+          <aside className="fixed left-0 top-14 z-[60] h-[calc(100vh-3.5rem)] w-72 border-r border-cyber-blue/20 bg-cyber-dark/95 px-4 py-5 shadow-2xl md:hidden">
+            <div className="mb-4 text-[10px] uppercase tracking-[0.32em] text-gray-500">Navigation</div>
+            <nav className="flex flex-col gap-2">
               {navLinks.map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
                   onClick={() => setMobileMenuOpen(false)}
-                  className="w-full rounded border border-cyber-blue/20 px-3 py-2 text-left text-xs uppercase tracking-wider text-gray-300 hover:border-cyber-blue/40 hover:bg-cyber-blue/10 hover:text-cyber-blue transition-all"
+                  className="rounded border border-cyber-blue/20 px-3 py-2.5 text-left text-xs uppercase tracking-[0.22em] text-gray-300 transition-all hover:border-cyber-blue/40 hover:bg-cyber-blue/10 hover:text-cyber-blue"
                 >
                   {link.label}
                 </Link>
@@ -158,19 +176,15 @@ export default function GameLayout({ children }: { children: ReactNode }) {
                 <Link
                   href="/admin"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="w-full rounded border border-cyber-red/20 px-3 py-2 text-left text-xs uppercase tracking-wider text-cyber-red hover:border-cyber-red/40 hover:bg-cyber-red/10 transition-all"
+                  className="rounded border border-cyber-red/20 px-3 py-2.5 text-left text-xs uppercase tracking-[0.22em] text-cyber-red transition-all hover:border-cyber-red/40 hover:bg-cyber-red/10"
                 >
                   ADMIN
                 </Link>
               )}
-            </div>
-          </div>
-        )}
-      </nav>
-
-      <main className="max-w-7xl mx-auto px-4 py-6">
-        {children}
-      </main>
+            </nav>
+          </aside>
+        </>
+      )}
 
       <NotificationCenter />
       <FloatingChat />
