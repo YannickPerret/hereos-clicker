@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react'
-import { type ReactNode, useState } from 'react'
+import { type ReactNode, useEffect, useState } from 'react'
 import FloatingChat from '~/components/floating_chat'
 import NotificationCenter from '~/components/notification_center'
 
@@ -10,8 +10,9 @@ const ROLE_COLORS: Record<string, string> = {
 }
 
 export default function GameLayout({ children }: { children: ReactNode }) {
-  const { auth, blackMarket } = usePage().props as any
+  const { auth, blackMarket, success, errors } = usePage().props as any
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [toast, setToast] = useState<null | { type: 'success' | 'error'; message: string }>(null)
   const isStaff = auth?.user?.role === 'admin' || auth?.user?.role === 'moderator'
   const roleColor = ROLE_COLORS[auth?.user?.role] || ROLE_COLORS.user
   const roleLabel = auth?.user?.roleLabel || 'RUNNER'
@@ -31,8 +32,52 @@ export default function GameLayout({ children }: { children: ReactNode }) {
     { href: '/leaderboard', label: 'CLASSEMENT' },
   ]
 
+  useEffect(() => {
+    if (success) {
+      setToast({ type: 'success', message: success })
+      return
+    }
+
+    if (errors?.message) {
+      setToast({ type: 'error', message: errors.message })
+    }
+  }, [errors?.message, success])
+
+  useEffect(() => {
+    if (!toast) return
+
+    const timer = window.setTimeout(() => setToast(null), 3500)
+    return () => window.clearTimeout(timer)
+  }, [toast])
+
   return (
     <div className="min-h-screen bg-cyber-black">
+      {toast && (
+        <div className="pointer-events-none fixed right-4 top-[4.5rem] z-[70] w-full max-w-sm">
+          <div
+            className={`pointer-events-auto rounded-lg border px-4 py-3 shadow-2xl backdrop-blur ${
+              toast.type === 'success'
+                ? 'border-cyber-green/40 bg-cyber-green/12 text-cyber-green'
+                : 'border-cyber-red/40 bg-cyber-red/12 text-cyber-red'
+            }`}
+          >
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 text-[10px] font-bold uppercase tracking-[0.24em]">
+                {toast.type === 'success' ? 'Succes' : 'Erreur'}
+              </div>
+              <div className="flex-1 text-sm text-white">{toast.message}</div>
+              <button
+                type="button"
+                onClick={() => setToast(null)}
+                className="text-xs text-gray-500 transition hover:text-white"
+              >
+                FERMER
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <nav className="border-b border-cyber-blue/30 bg-cyber-dark/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
