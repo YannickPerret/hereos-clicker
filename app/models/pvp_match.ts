@@ -73,6 +73,6 @@ export default class PvpMatch extends BaseModel {
   @belongsTo(() => Character, { foreignKey: 'defenderId' })
   declare defender: BelongsTo<typeof Character>
 
-  @hasMany(() => PvpMatchParticipant)
+  @hasMany(() => PvpMatchParticipant, { foreignKey: 'matchId' })
   declare participants: HasMany<typeof PvpMatchParticipant>
 }
