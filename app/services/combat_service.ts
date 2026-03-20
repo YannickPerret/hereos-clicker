@@ -10,6 +10,7 @@ import CharacterTalent from '#models/character_talent'
 import ClickerService from '#services/clicker_service'
 import TalentService from '#services/talent_service'
 import DailyMissionService from '#services/daily_mission_service'
+import QuestService from '#services/quest_service'
 import transmit from '@adonisjs/transmit/services/main'
 import { DateTime } from 'luxon'
 
@@ -75,6 +76,19 @@ export default class CombatService {
 
   private static setAfkPenalties(run: DungeonRun, penalties: Record<string, number>) {
     run.afkPenalties = JSON.stringify(penalties)
+  }
+
+  private static async trackDungeonFloorClearQuest(run: DungeonRun, fallbackCharacter: Character) {
+    if (!run.partyId) {
+      await QuestService.trackObjectiveProgress(fallbackCharacter, 'dungeon_floor_clear', 1).catch(() => {})
+      return
+    }
+
+    const members = await PartyMember.query().where('partyId', run.partyId).preload('character')
+
+    for (const member of members) {
+      await QuestService.trackObjectiveProgress(member.character, 'dungeon_floor_clear', 1).catch(() => {})
+    }
   }
 
   private static markCharacterAfk(run: DungeonRun, characterId: number): number {
@@ -531,6 +545,7 @@ export default class CombatService {
           run.endedAt = DateTime.now()
           log.push({ action: 'victory' })
           DailyMissionService.trackProgress(character.id, 'dungeon_clear').catch(() => {})
+          await this.trackDungeonFloorClearQuest(run, character)
           transmit.broadcast('game/notifications', {
             type: 'dungeon',
             message: `${character.name} a termine un donjon!`,
@@ -1187,6 +1202,7 @@ export default class CombatService {
         run.endedAt = DateTime.now()
         log.push({ action: 'victory' })
         DailyMissionService.trackProgress(character.id, 'dungeon_clear').catch(() => {})
+        await this.trackDungeonFloorClearQuest(run, character)
         transmit.broadcast('game/notifications', {
           type: 'dungeon',
           message: `${character.name} a termine un donjon!`,

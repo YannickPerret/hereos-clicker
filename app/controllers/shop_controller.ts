@@ -3,6 +3,7 @@ import Character from '#models/character'
 import ShopListing from '#models/shop_listing'
 import InventoryItem from '#models/inventory_item'
 import Item from '#models/item'
+import QuestService from '#services/quest_service'
 
 export default class ShopController {
   private getNextUpgradeName(itemName: string) {
@@ -110,6 +111,8 @@ export default class ShopController {
     const successMessage = unlockedUpgradeName
       ? `Purchased ${quantity}x ${listing.item.name}. ${unlockedUpgradeName} unlocked in shop`
       : `Purchased ${quantity}x ${listing.item.name}`
+
+    await QuestService.trackObjectiveProgress(character, 'shop_purchase', quantity).catch(() => {})
 
     session.flash('success', successMessage)
     return response.redirect('/shop')

@@ -5,6 +5,7 @@ import PartyMember from '#models/party_member'
 import PvpMatch from '#models/pvp_match'
 import PvpMatchParticipant from '#models/pvp_match_participant'
 import ClickerService from '#services/clicker_service'
+import QuestService from '#services/quest_service'
 import SeasonService from '#services/season_service'
 import transmit from '@adonisjs/transmit/services/main'
 
@@ -1118,6 +1119,10 @@ export default class PvpService {
       participant.character.pvpRating = updatedRating
       participant.character.pvpLosses += 1
       await participant.character.save()
+    }
+
+    for (const participant of loadedParticipants) {
+      await QuestService.trackObjectiveProgress(participant.character, 'pvp_match', 1).catch(() => {})
     }
 
     match.ratingChange = ratingChange

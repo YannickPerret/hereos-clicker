@@ -2,6 +2,13 @@ import { router, usePage } from '@inertiajs/react'
 import { useState } from 'react'
 import GameLayout from '~/components/layout'
 
+interface QuestReward {
+  type: 'credits' | 'xp' | 'talent_points' | 'item'
+  value: number
+  itemId: number | null
+  itemName: string | null
+}
+
 interface QuestRecord {
   id: number
   key: string
@@ -16,12 +23,11 @@ interface QuestRecord {
   title: string
   summary: string
   narrative: string | null
-  objectiveType: 'hack_clicks' | 'hack_credits' | 'reach_level'
+  objectiveType: string
   targetValue: number
-  rewardType: 'credits' | 'xp' | 'talent_points'
-  rewardValue: number
   icon: string
   sortOrder: number
+  rewards: QuestReward[]
 }
 
 interface QuestOption {
@@ -39,6 +45,11 @@ interface SeasonOption {
   status: string
 }
 
+interface ItemOption {
+  id: number
+  name: string
+}
+
 interface Choice {
   value: string
   label: string
@@ -48,9 +59,16 @@ interface Props {
   quests: QuestRecord[]
   questOptions: QuestOption[]
   seasons: SeasonOption[]
+  items: ItemOption[]
   questTypes: Choice[]
   objectiveTypes: Choice[]
   rewardTypes: Choice[]
+}
+
+type QuestFormReward = {
+  type: string
+  value: number
+  itemId: string
 }
 
 type QuestFormState = {
@@ -66,11 +84,16 @@ type QuestFormState = {
   narrative: string
   objectiveType: string
   targetValue: number
-  rewardType: string
-  rewardValue: number
   icon: string
   sortOrder: number
+  rewards: QuestFormReward[]
 }
+
+const emptyReward = (): QuestFormReward => ({
+  type: 'credits',
+  value: 100,
+  itemId: '',
+})
 
 const emptyForm: QuestFormState = {
   key: '',
@@ -85,10 +108,9 @@ const emptyForm: QuestFormState = {
   narrative: '',
   objectiveType: 'hack_clicks',
   targetValue: 50,
-  rewardType: 'credits',
-  rewardValue: 500,
   icon: 'terminal',
   sortOrder: 1,
+  rewards: [],
 }
 
 function serializeQuestToForm(quest: QuestRecord): QuestFormState {
@@ -105,17 +127,33 @@ function serializeQuestToForm(quest: QuestRecord): QuestFormState {
     narrative: quest.narrative || '',
     objectiveType: quest.objectiveType,
     targetValue: quest.targetValue,
-    rewardType: quest.rewardType,
-    rewardValue: quest.rewardValue,
     icon: quest.icon,
     sortOrder: quest.sortOrder,
+    rewards: quest.rewards.map((reward) => ({
+      type: reward.type,
+      value: reward.value,
+      itemId: reward.itemId ? String(reward.itemId) : '',
+    })),
   }
+}
+
+function rewardPreview(rewards: QuestReward[]) {
+  if (rewards.length === 0) return 'Aucune'
+
+  return rewards
+    .map((reward) => {
+      if (reward.type === 'item') return `${reward.value}x ${reward.itemName || `item #${reward.itemId}`}`
+      if (reward.type === 'talent_points') return `+${reward.value} talent`
+      return `+${reward.value} ${reward.type}`
+    })
+    .join(' • ')
 }
 
 export default function AdminQuests({
   quests,
   questOptions,
   seasons,
+  items,
   questTypes,
   objectiveTypes,
   rewardTypes,
@@ -125,13 +163,20 @@ export default function AdminQuests({
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editForm, setEditForm] = useState<QuestFormState>(emptyForm)
 
-  const updateCreate = (field: keyof QuestFormState, value: string | number) => {
+  const updateCreate = (field: keyof QuestFormState, value: string | number | QuestFormReward[]) => {
     setCreateForm((prev) => ({ ...prev, [field]: value }))
   }
 
-  const updateEdit = (field: keyof QuestFormState, value: string | number) => {
+  const updateEdit = (field: keyof QuestFormState, value: string | number | QuestFormReward[]) => {
     setEditForm((prev) => ({ ...prev, [field]: value }))
   }
+
+  const updateReward = (
+    rewards: QuestFormReward[],
+    index: number,
+    field: keyof QuestFormReward,
+    value: string | number
+  ) => rewards.map((reward, rewardIndex) => (rewardIndex === index ? { ...reward, [field]: value } : reward))
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault()
@@ -155,9 +200,102 @@ export default function AdminQuests({
       return true
     })
 
+  const renderRewardsEditor = (
+    form: QuestFormState,
+    setForm: (field: keyof QuestFormState, value: string | number | QuestFormReward[]) => void
+  ) => (
+    <div className="md:col-span-2 rounded-lg border border-gray-800 bg-cyber-black/30 p-3">
+      <div className="flex items-center justify-between gap-3 mb-3">
+        <div>
+          <div className="text-[10px] uppercase tracking-widest text-gray-500">Recompenses</div>
+          <div className="text-xs text-gray-600">Zero, une ou plusieurs recompenses.</div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setForm('rewards', [...form.rewards, emptyReward()])}
+          className="rounded border border-cyber-yellow/30 px-3 py-1.5 text-[10px] uppercase tracking-widest text-cyber-yellow hover:bg-cyber-yellow/10"
+        >
+          Ajouter
+        </button>
+      </div>
+
+      {form.rewards.length === 0 ? (
+        <div className="text-xs text-gray-600">Aucune recompense configuree.</div>
+      ) : (
+        <div className="space-y-3">
+          {form.rewards.map((reward, index) => (
+            <div key={index} className="grid grid-cols-1 md:grid-cols-[1fr_1fr_1fr_auto] gap-2 items-end">
+              <div>
+                <label className="mb-1 block text-[10px] uppercase text-gray-500">Type</label>
+                <select
+                  value={reward.type}
+                  onChange={(e) => {
+                    const nextRewards = updateReward(form.rewards, index, 'type', e.target.value)
+                    const normalized = nextRewards.map((entry, entryIndex) =>
+                      entryIndex === index && e.target.value !== 'item'
+                        ? { ...entry, itemId: '' }
+                        : entry
+                    )
+                    setForm('rewards', normalized)
+                  }}
+                  className="w-full rounded border border-gray-800 bg-cyber-black px-3 py-2 text-sm text-white focus:border-cyber-blue/50 focus:outline-none"
+                >
+                  {rewardTypes.map((choice) => (
+                    <option key={choice.value} value={choice.value}>
+                      {choice.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-[10px] uppercase text-gray-500">
+                  {reward.type === 'item' ? 'Quantite' : 'Valeur'}
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  value={reward.value}
+                  onChange={(e) =>
+                    setForm('rewards', updateReward(form.rewards, index, 'value', Number(e.target.value)))
+                  }
+                  className="w-full rounded border border-gray-800 bg-cyber-black px-3 py-2 text-sm text-white focus:border-cyber-blue/50 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-[10px] uppercase text-gray-500">Item</label>
+                <select
+                  value={reward.itemId}
+                  disabled={reward.type !== 'item'}
+                  onChange={(e) =>
+                    setForm('rewards', updateReward(form.rewards, index, 'itemId', e.target.value))
+                  }
+                  className="w-full rounded border border-gray-800 bg-cyber-black px-3 py-2 text-sm text-white disabled:opacity-40 focus:border-cyber-blue/50 focus:outline-none"
+                >
+                  <option value="">Aucun</option>
+                  {items.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <button
+                type="button"
+                onClick={() => setForm('rewards', form.rewards.filter((_, rewardIndex) => rewardIndex !== index))}
+                className="rounded border border-cyber-red/30 px-3 py-2 text-[10px] uppercase tracking-widest text-cyber-red hover:bg-cyber-red/10"
+              >
+                Retirer
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+
   const renderForm = (
     form: QuestFormState,
-    update: (field: keyof QuestFormState, value: string | number) => void,
+    update: (field: keyof QuestFormState, value: string | number | QuestFormReward[]) => void,
     currentQuestId?: number
   ) => (
     <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -176,9 +314,7 @@ export default function AdminQuests({
           onChange={(e) => {
             const nextType = e.target.value as 'main' | 'seasonal'
             update('questType', nextType)
-            if (nextType === 'main') {
-              update('seasonId', '')
-            }
+            if (nextType === 'main') update('seasonId', '')
             update('parentQuestId', '')
           }}
           className="w-full rounded border border-gray-800 bg-cyber-black px-3 py-2 text-sm text-white focus:border-cyber-blue/50 focus:outline-none"
@@ -301,30 +437,6 @@ export default function AdminQuests({
         />
       </div>
       <div>
-        <label className="mb-1 block text-[10px] uppercase text-gray-500">Recompense</label>
-        <select
-          value={form.rewardType}
-          onChange={(e) => update('rewardType', e.target.value)}
-          className="w-full rounded border border-gray-800 bg-cyber-black px-3 py-2 text-sm text-white focus:border-cyber-blue/50 focus:outline-none"
-        >
-          {rewardTypes.map((choice) => (
-            <option key={choice.value} value={choice.value}>
-              {choice.label}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div>
-        <label className="mb-1 block text-[10px] uppercase text-gray-500">Valeur recompense</label>
-        <input
-          type="number"
-          min={0}
-          value={form.rewardValue}
-          onChange={(e) => update('rewardValue', Number(e.target.value))}
-          className="w-full rounded border border-gray-800 bg-cyber-black px-3 py-2 text-sm text-white focus:border-cyber-blue/50 focus:outline-none"
-        />
-      </div>
-      <div>
         <label className="mb-1 block text-[10px] uppercase text-gray-500">Icone</label>
         <input
           value={form.icon}
@@ -342,6 +454,8 @@ export default function AdminQuests({
           className="w-full rounded border border-gray-800 bg-cyber-black px-3 py-2 text-sm text-white focus:border-cyber-blue/50 focus:outline-none"
         />
       </div>
+
+      {renderRewardsEditor(form, update)}
     </div>
   )
 
@@ -368,11 +482,9 @@ export default function AdminQuests({
 
         <div className="mb-6 rounded-lg border border-cyber-blue/30 bg-cyber-dark p-4">
           <div className="mb-4">
-            <h2 className="text-sm font-bold uppercase tracking-widest text-cyber-blue">
-              Creer une quete
-            </h2>
+            <h2 className="text-sm font-bold uppercase tracking-widest text-cyber-blue">Creer une quete</h2>
             <p className="mt-1 text-xs text-gray-500">
-              Une quete peut etre principale ou rattachee a une saison. Les suites passent maintenant par un parent direct.
+              Principale ou saisonniere, avec parent direct, et aucune ou plusieurs recompenses.
             </p>
           </div>
 
@@ -401,9 +513,7 @@ export default function AdminQuests({
                   <div className="space-y-4">
                     <div className="flex items-center justify-between gap-3">
                       <div>
-                        <div className="text-[10px] uppercase tracking-widest text-gray-500">
-                          Edition
-                        </div>
+                        <div className="text-[10px] uppercase tracking-widest text-gray-500">Edition</div>
                         <div className="text-sm font-bold text-cyber-blue">{quest.title}</div>
                       </div>
                       <div className="flex gap-2">
@@ -452,7 +562,7 @@ export default function AdminQuests({
                       <div className="mt-1 text-xs text-gray-400">{quest.summary}</div>
                       <div className="mt-3 grid grid-cols-1 gap-2 text-[11px] text-gray-500 sm:grid-cols-2">
                         <div>Objectif: {quest.objectiveType} / {quest.targetValue}</div>
-                        <div>Recompense: {quest.rewardType} / {quest.rewardValue}</div>
+                        <div>Recompenses: {rewardPreview(quest.rewards)}</div>
                         <div>Donneur: {quest.giverName || 'Aucun'}</div>
                         <div>Parent: {quest.parentQuestTitle || 'Aucun'}</div>
                         <div>Saison: {quest.seasonName || 'Aucune'}</div>

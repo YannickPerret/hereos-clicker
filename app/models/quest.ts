@@ -51,6 +51,9 @@ export default class Quest extends BaseModel {
   declare rewardValue: number
 
   @column()
+  declare rewardsJson: string | null
+
+  @column()
   declare icon: string
 
   @column()

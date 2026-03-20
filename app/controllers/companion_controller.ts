@@ -4,6 +4,7 @@ import Companion from '#models/companion'
 import CharacterCompanion from '#models/character_companion'
 import { DateTime } from 'luxon'
 import transmit from '@adonisjs/transmit/services/main'
+import QuestService from '#services/quest_service'
 
 export default class CompanionController {
   async index({ inertia, auth }: HttpContext) {
@@ -76,6 +77,8 @@ export default class CompanionController {
       acquiredAt: DateTime.now(),
     })
 
+    await QuestService.trackObjectiveProgress(character, 'companion_purchase', 1).catch(() => {})
+
     transmit.broadcast('game/notifications', {
       type: 'companion',
       message: `${character.name} a obtenu le compagnon ${companion.icon} ${companion.name}!`,
@@ -90,6 +93,11 @@ export default class CompanionController {
       .where('userId', auth.user!.id)
       .firstOrFail()
 
+    const currentlyActive = await CharacterCompanion.query()
+      .where('characterId', character.id)
+      .where('isActive', true)
+      .first()
+
     // Deactivate all
     await CharacterCompanion.query()
       .where('characterId', character.id)
@@ -103,6 +111,10 @@ export default class CompanionController {
 
     cc.isActive = true
     await cc.save()
+
+    if (!currentlyActive || currentlyActive.id !== cc.id) {
+      await QuestService.trackObjectiveProgress(character, 'companion_activate', 1).catch(() => {})
+    }
 
     await cc.load('companion')
     session.flash('success', `${cc.companion.name} est maintenant actif!`)

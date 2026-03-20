@@ -17,6 +17,13 @@ import Quest from '#models/quest'
 import BlackMarketService from '#services/black_market_service'
 import SeasonService from '#services/season_service'
 
+type AdminQuestReward = {
+  type: 'credits' | 'xp' | 'talent_points' | 'item'
+  value: number
+  itemId: number | null
+  itemName: string | null
+}
+
 export default class AdminController {
   private normalizeQuestInput(request: HttpContext['request'], fallback: Partial<Quest> = {}) {
     const key = String(request.input('key', fallback.key || '')).trim().toLowerCase().replace(/\s+/g, '_')
@@ -39,8 +46,6 @@ export default class AdminController {
     const narrative = String(request.input('narrative', fallback.narrative || '')).trim()
     const objectiveType = String(request.input('objectiveType', fallback.objectiveType || 'hack_clicks')).trim()
     const targetValue = Math.max(1, Number(request.input('targetValue', fallback.targetValue || 1)) || 1)
-    const rewardType = String(request.input('rewardType', fallback.rewardType || 'credits')).trim()
-    const rewardValue = Math.max(0, Number(request.input('rewardValue', fallback.rewardValue || 0)) || 0)
     const icon = String(request.input('icon', fallback.icon || 'terminal')).trim()
     const sortOrder = Math.max(1, Number(request.input('sortOrder', fallback.sortOrder || 1)) || 1)
 
@@ -57,23 +62,95 @@ export default class AdminController {
       narrative: narrative || null,
       objectiveType,
       targetValue,
-      rewardType,
-      rewardValue,
       icon,
       sortOrder,
       requiredQuestKey: fallback.requiredQuestKey || null,
     }
   }
 
+  private getQuestRewards(quest: Quest): AdminQuestReward[] {
+    if (quest.rewardsJson) {
+      try {
+        const parsed = JSON.parse(quest.rewardsJson)
+        if (Array.isArray(parsed)) {
+          return parsed.map((reward) => ({
+            type: reward.type,
+            value: Math.max(0, Number(reward.value || 0)),
+            itemId: reward.itemId ? Number(reward.itemId) : null,
+            itemName: reward.itemName ? String(reward.itemName) : null,
+          }))
+        }
+      } catch {}
+    }
+
+    if ((quest.rewardValue || 0) > 0) {
+      return [{
+        type: quest.rewardType as AdminQuestReward['type'],
+        value: quest.rewardValue,
+        itemId: null,
+        itemName: null,
+      }]
+    }
+
+    return []
+  }
+
+  private async normalizeQuestRewards(request: HttpContext['request']) {
+    const rawRewards = request.input('rewards', [])
+    const rewards = Array.isArray(rawRewards) ? rawRewards : []
+    const normalized: AdminQuestReward[] = []
+
+    for (const rawReward of rewards) {
+      const type = String(rawReward?.type || '').trim() as AdminQuestReward['type']
+      const value = Math.max(0, Number(rawReward?.value || 0) || 0)
+
+      if (!type) {
+        continue
+      }
+
+      if (type === 'item') {
+        const itemId = Number(rawReward?.itemId || 0) || 0
+        const item = itemId > 0 ? await Item.find(itemId) : null
+
+        normalized.push({
+          type,
+          value: Math.max(1, value || 1),
+          itemId: item?.id || null,
+          itemName: item?.name || null,
+        })
+        continue
+      }
+
+      normalized.push({
+        type,
+        value,
+        itemId: null,
+        itemName: null,
+      })
+    }
+
+    return normalized.filter((reward) => reward.type === 'item' || reward.value > 0)
+  }
+
   private async validateQuestPayload(
     payload: ReturnType<AdminController['normalizeQuestInput']>,
+    rewards: AdminQuestReward[],
     currentQuestId?: number
   ) {
     if (!payload.key || !payload.arcKey || !payload.arcTitle || !payload.title || !payload.summary) {
       return 'Les champs cle, arc, titre et resume sont obligatoires'
     }
 
-    const allowedObjectives = ['hack_clicks', 'hack_credits', 'reach_level']
+    const allowedObjectives = [
+      'hack_clicks',
+      'hack_credits',
+      'reach_level',
+      'shop_purchase',
+      'companion_purchase',
+      'companion_activate',
+      'pvp_match',
+      'dungeon_floor_clear',
+    ]
     if (!allowedObjectives.includes(payload.objectiveType)) {
       return 'Type d objectif invalide'
     }
@@ -83,9 +160,15 @@ export default class AdminController {
       return 'Type de quete invalide'
     }
 
-    const allowedRewards = ['credits', 'xp', 'talent_points']
-    if (!allowedRewards.includes(payload.rewardType)) {
-      return 'Type de recompense invalide'
+    const allowedRewards = ['credits', 'xp', 'talent_points', 'item']
+    for (const reward of rewards) {
+      if (!allowedRewards.includes(reward.type)) {
+        return 'Type de recompense invalide'
+      }
+
+      if (reward.type === 'item' && !reward.itemId) {
+        return 'Choisis un item pour une recompense item'
+      }
     }
 
     let season: Season | null = null
@@ -935,7 +1018,7 @@ export default class AdminController {
   // ── Quests ──
 
   async quests({ inertia }: HttpContext) {
-    const [quests, seasons] = await Promise.all([
+    const [quests, seasons, items] = await Promise.all([
       Quest.query()
         .preload('season')
         .preload('parentQuest')
@@ -944,6 +1027,7 @@ export default class AdminController {
         .orderBy('sortOrder', 'asc')
         .orderBy('id', 'asc'),
       Season.query().orderBy('sortOrder', 'desc').orderBy('name', 'asc'),
+      Item.query().orderBy('name', 'asc'),
     ])
 
     return inertia.render('admin/quests', {
@@ -951,6 +1035,7 @@ export default class AdminController {
         ...quest.serialize(),
         seasonName: quest.season?.name || null,
         parentQuestTitle: quest.parentQuest?.title || null,
+        rewards: this.getQuestRewards(quest),
       })),
       questOptions: quests.map((quest) => ({
         id: quest.id,
@@ -973,18 +1058,26 @@ export default class AdminController {
         { value: 'hack_clicks', label: 'Clicks de hack' },
         { value: 'hack_credits', label: 'Credits siphonnes' },
         { value: 'reach_level', label: 'Niveau atteint' },
+        { value: 'shop_purchase', label: 'Achats shop' },
+        { value: 'companion_purchase', label: 'Achat de drone' },
+        { value: 'companion_activate', label: 'Installation de drone' },
+        { value: 'pvp_match', label: 'Combat PvP termine' },
+        { value: 'dungeon_floor_clear', label: 'Floor terminee' },
       ],
       rewardTypes: [
         { value: 'credits', label: 'Credits' },
         { value: 'xp', label: 'XP' },
         { value: 'talent_points', label: 'Points de talent' },
+        { value: 'item', label: 'Item' },
       ],
+      items: items.map((item) => item.serialize()),
     })
   }
 
   async createQuest({ request, response, session }: HttpContext) {
     const payload = this.normalizeQuestInput(request)
-    const validationError = await this.validateQuestPayload(payload)
+    const rewards = await this.normalizeQuestRewards(request)
+    const validationError = await this.validateQuestPayload(payload, rewards)
 
     if (validationError) {
       session.flash('errors', { message: validationError })
@@ -996,6 +1089,9 @@ export default class AdminController {
     await Quest.create({
       ...payload,
       seasonId: payload.questType === 'seasonal' ? payload.seasonId : null,
+      rewardsJson: JSON.stringify(rewards),
+      rewardType: rewards[0]?.type || 'credits',
+      rewardValue: rewards[0]?.value || 0,
       requiredQuestKey: parentQuest?.key || null,
     })
 
@@ -1006,7 +1102,8 @@ export default class AdminController {
   async updateQuest({ params, request, response, session }: HttpContext) {
     const quest = await Quest.findOrFail(params.id)
     const payload = this.normalizeQuestInput(request, quest)
-    const validationError = await this.validateQuestPayload(payload, quest.id)
+    const rewards = await this.normalizeQuestRewards(request)
+    const validationError = await this.validateQuestPayload(payload, rewards, quest.id)
 
     if (validationError) {
       session.flash('errors', { message: validationError })
@@ -1018,6 +1115,9 @@ export default class AdminController {
     quest.merge({
       ...payload,
       seasonId: payload.questType === 'seasonal' ? payload.seasonId : null,
+      rewardsJson: JSON.stringify(rewards),
+      rewardType: rewards[0]?.type || 'credits',
+      rewardValue: rewards[0]?.value || 0,
       requiredQuestKey: parentQuest?.key || null,
     })
     await quest.save()

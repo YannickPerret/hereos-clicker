@@ -1,6 +1,7 @@
 import { DateTime } from 'luxon'
 import Character from '#models/character'
 import CharacterQuest from '#models/character_quest'
+import InventoryItem from '#models/inventory_item'
 import Quest from '#models/quest'
 import Season from '#models/season'
 import SeasonService from '#services/season_service'
@@ -9,12 +10,24 @@ type HackProgressPayload = {
   clicks: number
   creditsEarned: number
   level: number
+  shopPurchases?: number
+  companionPurchases?: number
+  companionActivations?: number
+  pvpMatches?: number
+  dungeonFloorClears?: number
 }
 
 type QuestEvent = {
   type: 'completed' | 'unlocked'
   title: string
   rewardLabel?: string
+}
+
+type QuestReward = {
+  type: 'credits' | 'xp' | 'talent_points' | 'item'
+  value: number
+  itemId?: number | null
+  itemName?: string | null
 }
 
 type QuestTrackSummary = {
@@ -113,6 +126,31 @@ export default class QuestService {
       summary: await this.buildSummary(character.id, activeSeason),
       events,
     }
+  }
+
+  static async trackObjectiveProgress(
+    character: Character,
+    objectiveType:
+      | 'shop_purchase'
+      | 'companion_purchase'
+      | 'companion_activate'
+      | 'pvp_match'
+      | 'dungeon_floor_clear',
+    amount: number = 1
+  ) {
+    const payload: HackProgressPayload = {
+      clicks: 0,
+      creditsEarned: 0,
+      level: character.level,
+    }
+
+    if (objectiveType === 'shop_purchase') payload.shopPurchases = amount
+    if (objectiveType === 'companion_purchase') payload.companionPurchases = amount
+    if (objectiveType === 'companion_activate') payload.companionActivations = amount
+    if (objectiveType === 'pvp_match') payload.pvpMatches = amount
+    if (objectiveType === 'dungeon_floor_clear') payload.dungeonFloorClears = amount
+
+    return this.trackHackProgress(character, payload)
   }
 
   private static async getEligibleQuests(activeSeason: Season | null) {
@@ -235,6 +273,26 @@ export default class QuestService {
       return Math.min(quest.targetValue, Math.max(currentProgress, Math.max(1, payload.level)))
     }
 
+    if (quest.objectiveType === 'shop_purchase') {
+      return Math.min(quest.targetValue, currentProgress + Math.max(0, payload.shopPurchases || 0))
+    }
+
+    if (quest.objectiveType === 'companion_purchase') {
+      return Math.min(quest.targetValue, currentProgress + Math.max(0, payload.companionPurchases || 0))
+    }
+
+    if (quest.objectiveType === 'companion_activate') {
+      return Math.min(quest.targetValue, currentProgress + Math.max(0, payload.companionActivations || 0))
+    }
+
+    if (quest.objectiveType === 'pvp_match') {
+      return Math.min(quest.targetValue, currentProgress + Math.max(0, payload.pvpMatches || 0))
+    }
+
+    if (quest.objectiveType === 'dungeon_floor_clear') {
+      return Math.min(quest.targetValue, currentProgress + Math.max(0, payload.dungeonFloorClears || 0))
+    }
+
     return currentProgress
   }
 
@@ -253,15 +311,45 @@ export default class QuestService {
   }
 
   private static async grantReward(character: Character, quest: Quest) {
-    if (quest.rewardType === 'credits') {
-      character.credits += quest.rewardValue
-    } else if (quest.rewardType === 'xp') {
-      character.xp += quest.rewardValue
-      while (character.xp >= character.level * 100) {
-        character.levelUp()
+    const rewards = this.parseRewards(quest)
+
+    for (const reward of rewards) {
+      if (reward.type === 'credits') {
+        character.credits += reward.value
+        continue
       }
-    } else if (quest.rewardType === 'talent_points') {
-      character.talentPoints += quest.rewardValue
+
+      if (reward.type === 'xp') {
+        character.xp += reward.value
+        while (character.xp >= character.level * 100) {
+          character.levelUp()
+        }
+        continue
+      }
+
+      if (reward.type === 'talent_points') {
+        character.talentPoints += reward.value
+        continue
+      }
+
+      if (reward.type === 'item' && reward.itemId) {
+        const existing = await InventoryItem.query()
+          .where('characterId', character.id)
+          .where('itemId', reward.itemId)
+          .first()
+
+        if (existing) {
+          existing.quantity += reward.value
+          await existing.save()
+        } else {
+          await InventoryItem.create({
+            characterId: character.id,
+            itemId: reward.itemId,
+            quantity: reward.value,
+            isEquipped: false,
+          })
+        }
+      }
     }
 
     await character.save()
@@ -445,22 +533,85 @@ export default class QuestService {
       return `Atteindre le niveau ${quest.targetValue}`
     }
 
+    if (quest.objectiveType === 'shop_purchase') {
+      return `Acheter ${quest.targetValue.toLocaleString('fr-FR')} item${quest.targetValue > 1 ? 's' : ''} au shop`
+    }
+
+    if (quest.objectiveType === 'companion_purchase') {
+      return `Acheter ${quest.targetValue.toLocaleString('fr-FR')} drone${quest.targetValue > 1 ? 's' : ''}`
+    }
+
+    if (quest.objectiveType === 'companion_activate') {
+      return `Installer ${quest.targetValue.toLocaleString('fr-FR')} drone${quest.targetValue > 1 ? 's' : ''}`
+    }
+
+    if (quest.objectiveType === 'pvp_match') {
+      return `Terminer ${quest.targetValue.toLocaleString('fr-FR')} combat${quest.targetValue > 1 ? 's' : ''} PvP`
+    }
+
+    if (quest.objectiveType === 'dungeon_floor_clear') {
+      return `Terminer ${quest.targetValue.toLocaleString('fr-FR')} floor${quest.targetValue > 1 ? 's' : ''}`
+    }
+
     return `Objectif ${quest.targetValue}`
   }
 
   private static getRewardLabel(quest: Quest) {
-    if (quest.rewardType === 'credits') {
-      return `+${quest.rewardValue.toLocaleString('fr-FR')} credits`
+    const rewards = this.parseRewards(quest)
+    if (rewards.length === 0) {
+      return 'Aucune recompense'
     }
 
-    if (quest.rewardType === 'xp') {
-      return `+${quest.rewardValue.toLocaleString('fr-FR')} XP`
+    return rewards
+      .map((reward) => {
+        if (reward.type === 'credits') {
+          return `+${reward.value.toLocaleString('fr-FR')} credits`
+        }
+
+        if (reward.type === 'xp') {
+          return `+${reward.value.toLocaleString('fr-FR')} XP`
+        }
+
+        if (reward.type === 'talent_points') {
+          return `+${reward.value} point${reward.value > 1 ? 's' : ''} de talent`
+        }
+
+        if (reward.type === 'item') {
+          return `${reward.value}x ${reward.itemName || `item #${reward.itemId ?? '?'}`}`
+        }
+
+        return `+${reward.value}`
+      })
+      .join(' • ')
+  }
+
+  private static parseRewards(quest: Quest): QuestReward[] {
+    if (quest.rewardsJson) {
+      try {
+        const parsed = JSON.parse(quest.rewardsJson)
+        if (Array.isArray(parsed)) {
+          return parsed
+            .filter((reward) => reward && typeof reward === 'object')
+            .map((reward) => ({
+              type: reward.type,
+              value: Math.max(0, Number(reward.value || 0)),
+              itemId: reward.itemId ? Number(reward.itemId) : null,
+              itemName: reward.itemName ? String(reward.itemName) : null,
+            }))
+            .filter((reward) => reward.value > 0 || reward.type === 'item')
+        }
+      } catch {}
     }
 
-    if (quest.rewardType === 'talent_points') {
-      return `+${quest.rewardValue} point${quest.rewardValue > 1 ? 's' : ''} de talent`
+    if ((quest.rewardValue || 0) <= 0) {
+      return []
     }
 
-    return `+${quest.rewardValue}`
+    return [{
+      type: quest.rewardType as QuestReward['type'],
+      value: quest.rewardValue,
+      itemId: null,
+      itemName: null,
+    }]
   }
 }
