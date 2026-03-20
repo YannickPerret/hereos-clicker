@@ -50,10 +50,10 @@ export default class extends BaseSeeder {
       { name: 'XP Chip', description: 'Downloadable experience. Instant knowledge.', type: 'consumable', rarity: 'rare', icon: 'xpchip', effectType: 'xp_boost', effectValue: 500, basePrice: 400 },
 
       // UPGRADES (permanent click power)
-      { name: 'Finger Servos', description: 'Mechanical finger enhancement. Click harder.', type: 'upgrade', rarity: 'common', icon: 'servo', effectType: 'permanent_click', effectValue: 1, basePrice: 50 },
-      { name: 'Haptic Amplifier', description: 'Every touch generates more credits.', type: 'upgrade', rarity: 'uncommon', icon: 'amp', effectType: 'permanent_click', effectValue: 3, basePrice: 250 },
-      { name: 'Neural Click Matrix', description: 'Your brain clicks for you. Subconsciously.', type: 'upgrade', rarity: 'rare', icon: 'matrix', effectType: 'permanent_click', effectValue: 10, basePrice: 1000 },
-      { name: 'Quantum Tap Interface', description: 'Each click resonates across quantum states.', type: 'upgrade', rarity: 'epic', icon: 'qtap', effectType: 'permanent_click', effectValue: 25, basePrice: 5000 },
+      { name: 'Finger Servos', description: 'Mechanical finger enhancement. Grants a modest permanent CPC boost.', type: 'upgrade', rarity: 'common', icon: 'servo', effectType: 'permanent_click', effectValue: 1, basePrice: 5000 },
+      { name: 'Haptic Amplifier', description: 'Feedback loops amplify every contact. Limited stock, bigger permanent CPC gain.', type: 'upgrade', rarity: 'uncommon', icon: 'amp', effectType: 'permanent_click', effectValue: 3, basePrice: 50000 },
+      { name: 'Neural Click Matrix', description: 'A high-end matrix that permanently lifts click throughput once unlocked.', type: 'upgrade', rarity: 'rare', icon: 'matrix', effectType: 'permanent_click', effectValue: 5, basePrice: 500000 },
+      { name: 'Quantum Tap Interface', description: 'Late-game tap resonance hardware. Expensive, scarce, and permanent.', type: 'upgrade', rarity: 'epic', icon: 'qtap', effectType: 'permanent_click', effectValue: 8, basePrice: 5000000 },
 
       // RESPEC ITEM
       { name: 'Neural Respec Chip', description: 'Efface tes talents et libere tes points. Procedure douloureuse. Irreversible.', type: 'consumable', rarity: 'legendary', icon: 'respec', effectType: 'talent_respec', effectValue: 1, basePrice: 50000 },

@@ -41,9 +41,10 @@ export default class extends BaseSeeder {
       { itemName: 'Phoenix Serum', priceOverride: null, stock: 10, isActive: true },
       { itemName: 'CyberBoost Energy', priceOverride: null, stock: null, isActive: true },
       // Upgrades
-      { itemName: 'Finger Servos', priceOverride: null, stock: null, isActive: true },
-      { itemName: 'Haptic Amplifier', priceOverride: null, stock: null, isActive: true },
-      { itemName: 'Neural Click Matrix', priceOverride: null, stock: 5, isActive: true },
+      { itemName: 'Finger Servos', priceOverride: 5000, stock: 10, isActive: true },
+      { itemName: 'Haptic Amplifier', priceOverride: 50000, stock: 10, isActive: true },
+      { itemName: 'Neural Click Matrix', priceOverride: 500000, stock: 10, isActive: false },
+      { itemName: 'Quantum Tap Interface', priceOverride: 5000000, stock: 10, isActive: false },
       // Respec
       { itemName: 'Neural Respec Chip', priceOverride: 50000, stock: null, isActive: true },
     ] as const

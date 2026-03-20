@@ -2,8 +2,19 @@ import type { HttpContext } from '@adonisjs/core/http'
 import Character from '#models/character'
 import ShopListing from '#models/shop_listing'
 import InventoryItem from '#models/inventory_item'
+import Item from '#models/item'
 
 export default class ShopController {
+  private getNextUpgradeName(itemName: string) {
+    const nextByName: Record<string, string | undefined> = {
+      'Finger Servos': 'Haptic Amplifier',
+      'Haptic Amplifier': 'Neural Click Matrix',
+      'Neural Click Matrix': 'Quantum Tap Interface',
+    }
+
+    return nextByName[itemName] || null
+  }
+
   async index({ inertia, auth }: HttpContext) {
     const character = await Character.query()
       .where('userId', auth.user!.id)
@@ -52,11 +63,28 @@ export default class ShopController {
     character.credits -= totalPrice
     await character.save()
 
+    let unlockedUpgradeName: string | null = null
+
     // Reduce stock
     if (listing.stock !== null) {
       listing.stock -= quantity
       if (listing.stock <= 0) {
         listing.isActive = false
+
+        if (listing.item.type === 'upgrade') {
+          const nextUpgradeName = this.getNextUpgradeName(listing.item.name)
+          if (nextUpgradeName) {
+            const nextItem = await Item.findBy('name', nextUpgradeName)
+            if (nextItem) {
+              const nextListing = await ShopListing.findBy('itemId', nextItem.id)
+              if (nextListing && !nextListing.isActive && (nextListing.stock === null || nextListing.stock > 0)) {
+                nextListing.isActive = true
+                await nextListing.save()
+                unlockedUpgradeName = nextUpgradeName
+              }
+            }
+          }
+        }
       }
       await listing.save()
     }
@@ -79,7 +107,11 @@ export default class ShopController {
       })
     }
 
-    session.flash('success', `Purchased ${quantity}x ${listing.item.name}`)
+    const successMessage = unlockedUpgradeName
+      ? `Purchased ${quantity}x ${listing.item.name}. ${unlockedUpgradeName} unlocked in shop`
+      : `Purchased ${quantity}x ${listing.item.name}`
+
+    session.flash('success', successMessage)
     return response.redirect('/shop')
   }
 }
