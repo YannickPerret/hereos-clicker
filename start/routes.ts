@@ -119,6 +119,7 @@ router
     router.get('/reports', [BugReportController, 'myReports'])
 
     // Leaderboard
+    router.get('/leaderboard/state', [DungeonController, 'leaderboardState'])
     router.get('/leaderboard', [DungeonController, 'leaderboard'])
   })
   .use(middleware.auth())

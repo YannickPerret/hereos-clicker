@@ -8,8 +8,46 @@ import PartyMember from '#models/party_member'
 import CombatService from '#services/combat_service'
 
 export default class DungeonController {
+  private leaderboardPageSize = 25
+
   private isRunAccessError(error: unknown) {
     return error instanceof Error && error.message === 'Invalid run'
+  }
+
+  private async getGlobalLeaderboardPage(offset: number, limit: number) {
+    const rows = await Character.query()
+      .orderBy('credits', 'desc')
+      .orderBy('id', 'asc')
+      .offset(offset)
+      .limit(limit + 1)
+      .select('id', 'name', 'credits', 'level', 'totalClicks')
+
+    const hasMore = rows.length > limit
+    const items = rows.slice(0, limit).map((player) => player.serialize())
+
+    return {
+      items,
+      hasMore,
+      nextOffset: offset + items.length,
+    }
+  }
+
+  private async getPvpLeaderboardPage(offset: number, limit: number) {
+    const rows = await Character.query()
+      .orderBy('pvpRating', 'desc')
+      .orderBy('id', 'asc')
+      .offset(offset)
+      .limit(limit + 1)
+      .select('id', 'name', 'pvpRating', 'pvpWins', 'pvpLosses', 'level')
+
+    const hasMore = rows.length > limit
+    const items = rows.slice(0, limit).map((player) => player.serialize())
+
+    return {
+      items,
+      hasMore,
+      nextOffset: offset + items.length,
+    }
   }
 
   private async redirectAfterRunError(
@@ -267,19 +305,28 @@ export default class DungeonController {
   }
 
   async leaderboard({ inertia }: HttpContext) {
-    const topPlayers = await Character.query()
-      .orderBy('credits', 'desc')
-      .limit(50)
-      .select('id', 'name', 'credits', 'level', 'totalClicks')
-
-    const pvpRankings = await Character.query()
-      .orderBy('pvpRating', 'desc')
-      .limit(20)
-      .select('id', 'name', 'pvpRating', 'pvpWins', 'pvpLosses', 'level')
+    const globalLeaderboard = await this.getGlobalLeaderboardPage(0, this.leaderboardPageSize)
+    const pvpLeaderboard = await this.getPvpLeaderboardPage(0, this.leaderboardPageSize)
 
     return inertia.render('leaderboard/index', {
-      players: topPlayers.map((p) => p.serialize()),
-      pvpRankings: pvpRankings.map((player) => player.serialize()),
+      players: globalLeaderboard.items,
+      playersHasMore: globalLeaderboard.hasMore,
+      playersNextOffset: globalLeaderboard.nextOffset,
+      pvpRankings: pvpLeaderboard.items,
+      pvpHasMore: pvpLeaderboard.hasMore,
+      pvpNextOffset: pvpLeaderboard.nextOffset,
     })
+  }
+
+  async leaderboardState({ request, response }: HttpContext) {
+    const board = request.input('board', 'global')
+    const offset = Math.max(0, Number(request.input('offset', 0)) || 0)
+    const limit = Math.max(1, Math.min(100, Number(request.input('limit', this.leaderboardPageSize)) || this.leaderboardPageSize))
+
+    if (board === 'pvp') {
+      return response.json(await this.getPvpLeaderboardPage(offset, limit))
+    }
+
+    return response.json(await this.getGlobalLeaderboardPage(offset, limit))
   }
 }
