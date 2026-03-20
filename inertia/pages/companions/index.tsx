@@ -156,9 +156,6 @@ export default function Companions({ character, owned, shop }: Props) {
                         </button>
                       </div>
                     </div>
-                    <div className="mt-3 text-[10px] text-cyber-yellow">
-                      Progression dure: le prix du prochain niveau augmente de facon exponentielle.
-                    </div>
                   </div>
                 ))
               )}

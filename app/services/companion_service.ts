@@ -15,7 +15,9 @@ export default class CompanionService {
   private static readonly UPGRADE_GROWTH = 2.35
 
   static getScaledBonusValue(baseValue: number, level: number) {
-    return Math.max(0, Math.floor(baseValue * Math.max(1, level)))
+    const safeLevel = Math.max(1, level)
+    const perLevelGain = baseValue >= 10 ? 2 : 1
+    return Math.max(0, Math.floor(baseValue + (safeLevel - 1) * perLevelGain))
   }
 
   static getUpgradePrice(basePrice: number, level: number) {
