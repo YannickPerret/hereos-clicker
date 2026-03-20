@@ -1,5 +1,6 @@
 import { router, usePage } from '@inertiajs/react'
 import { useState, useEffect, useRef } from 'react'
+import CombatSkillTooltip from '~/components/combat_skill_tooltip'
 import GameLayout from '~/components/layout'
 
 interface Props {
@@ -437,7 +438,9 @@ export default function DungeonRun({
                 )}
               </div>
               <div className="text-[10px] text-gray-500">LVL {m.level}</div>
-              <div className={`text-[10px] ${m.hpCurrent <= 0 ? 'text-cyber-red' : 'text-cyber-green'}`}>
+              <div
+                className={`text-[10px] ${m.hpCurrent <= 0 ? 'text-cyber-red' : 'text-cyber-green'}`}
+              >
                 {m.hpCurrent}/{m.hpMax} HP
               </div>
             </div>
@@ -502,7 +505,9 @@ export default function DungeonRun({
                 <div className="h-4 bg-cyber-black rounded-full overflow-hidden border border-cyber-green/20">
                   <div
                     className="h-full bg-gradient-to-r from-cyber-green to-cyber-blue transition-all duration-500"
-                    style={{ width: `${(playerCharacter.hpCurrent / playerCharacter.hpMax) * 100}%` }}
+                    style={{
+                      width: `${(playerCharacter.hpCurrent / playerCharacter.hpMax) * 100}%`,
+                    }}
                   />
                 </div>
               </div>
@@ -572,32 +577,32 @@ export default function DungeonRun({
                       const onCooldown = skill.currentCooldown > 0
                       const disabled = onCooldown || (isGroupRun && !isMyTurn) || isCharacterKo
                       return (
-                        <button
-                          key={skill.id}
-                          onClick={() =>
-                            !disabled &&
-                            router.post(`/dungeon/run/${run.id}/skill`, { skillId: skill.id })
-                          }
-                          disabled={disabled}
-                          title={skill.description}
-                          className={`w-full py-2 border rounded text-xs transition-all relative ${
-                            disabled
-                              ? 'bg-gray-900/50 border-gray-800 text-gray-700 cursor-not-allowed'
-                              : 'bg-cyber-purple/10 border-cyber-purple/30 text-cyber-purple hover:bg-cyber-purple/20'
-                          }`}
-                        >
-                          <span className="font-bold">{skill.name}</span>
-                          {onCooldown && (
-                            <span className="ml-2 text-[10px] text-gray-600">
-                              ({skill.currentCooldown} tours)
-                            </span>
-                          )}
-                          {!onCooldown && (
-                            <span className="ml-1 text-[10px] text-gray-600">
-                              CD:{skill.cooldown}
-                            </span>
-                          )}
-                        </button>
+                        <CombatSkillTooltip key={skill.id} skill={skill}>
+                          <button
+                            onClick={() =>
+                              !disabled &&
+                              router.post(`/dungeon/run/${run.id}/skill`, { skillId: skill.id })
+                            }
+                            disabled={disabled}
+                            className={`w-full py-2 border rounded text-xs transition-all relative ${
+                              disabled
+                                ? 'bg-gray-900/50 border-gray-800 text-gray-700 cursor-not-allowed'
+                                : 'bg-cyber-purple/10 border-cyber-purple/30 text-cyber-purple hover:bg-cyber-purple/20'
+                            }`}
+                          >
+                            <span className="font-bold">{skill.name}</span>
+                            {onCooldown && (
+                              <span className="ml-2 text-[10px] text-gray-600">
+                                ({skill.currentCooldown} tours)
+                              </span>
+                            )}
+                            {!onCooldown && (
+                              <span className="ml-1 text-[10px] text-gray-600">
+                                CD:{skill.cooldown}
+                              </span>
+                            )}
+                          </button>
+                        </CombatSkillTooltip>
                       )
                     })}
                   </div>
@@ -761,8 +766,10 @@ export default function DungeonRun({
                     {m.id === run.currentTurnId && (
                       <span className="text-cyber-yellow animate-pulse">▶</span>
                     )}
-                      <span
-                      className={m.id === playerCharacter.id ? 'text-cyber-blue font-bold' : 'text-white'}
+                    <span
+                      className={
+                        m.id === playerCharacter.id ? 'text-cyber-blue font-bold' : 'text-white'
+                      }
                     >
                       {m.name}
                     </span>

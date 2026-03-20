@@ -1,5 +1,6 @@
 import { router, usePage } from '@inertiajs/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import CombatSkillTooltip from '~/components/combat_skill_tooltip'
 import GameLayout from '~/components/layout'
 
 interface Fighter {
@@ -512,7 +513,9 @@ export default function PvpMatch({
                       <h3 className="text-sm font-bold uppercase tracking-widest text-cyber-blue">
                         Equipe Alpha
                       </h3>
-                      <div className="text-[10px] text-gray-500">ELO moy. {myTeam.averageRating}</div>
+                      <div className="text-[10px] text-gray-500">
+                        ELO moy. {myTeam.averageRating}
+                      </div>
                     </div>
                     <div className="space-y-2">
                       {myTeam.members.map((fighter) => (
@@ -620,25 +623,25 @@ export default function PvpMatch({
                               (needsTarget && !selectedTargetId)
 
                             return (
-                              <button
-                                key={skill.id}
-                                type="button"
-                                onClick={() => !disabled && handleSkill(skill.id, needsTarget)}
-                                disabled={disabled}
-                                title={skill.description}
-                                className={`w-full rounded border px-2 py-2 text-xs transition-all ${
-                                  disabled
-                                    ? 'cursor-not-allowed border-gray-800 bg-gray-900/50 text-gray-700'
-                                    : 'border-cyber-purple/30 bg-cyber-purple/10 text-cyber-purple hover:bg-cyber-purple/20'
-                                }`}
-                              >
-                                <span className="font-bold">{skill.name}</span>
-                                <span className="ml-1 text-[10px] text-gray-600">
-                                  {onCooldown
-                                    ? `(${skill.currentCooldown} tours)`
-                                    : `CD:${skill.cooldown}`}
-                                </span>
-                              </button>
+                              <CombatSkillTooltip key={skill.id} skill={skill}>
+                                <button
+                                  type="button"
+                                  onClick={() => !disabled && handleSkill(skill.id, needsTarget)}
+                                  disabled={disabled}
+                                  className={`w-full rounded border px-2 py-2 text-xs transition-all ${
+                                    disabled
+                                      ? 'cursor-not-allowed border-gray-800 bg-gray-900/50 text-gray-700'
+                                      : 'border-cyber-purple/30 bg-cyber-purple/10 text-cyber-purple hover:bg-cyber-purple/20'
+                                  }`}
+                                >
+                                  <span className="font-bold">{skill.name}</span>
+                                  <span className="ml-1 text-[10px] text-gray-600">
+                                    {onCooldown
+                                      ? `(${skill.currentCooldown} tours)`
+                                      : `CD:${skill.cooldown}`}
+                                  </span>
+                                </button>
+                              </CombatSkillTooltip>
                             )
                           })}
                         </div>
