@@ -281,7 +281,7 @@ export default function Play({ characters, activeCharacter, leaderboard, bonuses
                   style={{ boxShadow: '0 0 40px #00f0ff, 0 0 80px #00f0ff33' }}
                 />
                 <span className="relative z-10 neon-text">HACK</span>
-                <div className="absolute bottom-8 left-0 right-0 text-xs text-gray-500 relative z-10">
+                <div className="absolute inset-x-0 bottom-7 z-10 text-center text-xs font-bold uppercase tracking-[0.25em] text-cyber-yellow">
                   +{effectiveCpc} credits
                 </div>
               </button>

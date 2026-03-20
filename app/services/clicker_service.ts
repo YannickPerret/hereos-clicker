@@ -19,16 +19,16 @@ interface ClickRecord {
 
 const clickRecords = new Map<number, ClickRecord>()
 
-const RATE_LIMIT_WINDOW = 1000     // 1 second window
-const MAX_REQUESTS_PER_WINDOW = 8  // Max 8 click requests per second
+const RATE_LIMIT_WINDOW = 1000      // 1 second window
+const MAX_REQUESTS_PER_WINDOW = 14  // Mobile users can legitimately burst more often
 const PATTERN_HISTORY = 20         // Track last 20 requests
 const PENALTY_DURATION = 8_000     // 8 second penalty
 const MAX_WARNINGS = 5             // Warnings before penalty
-const MIN_CLICK_COUNT_FOR_PATTERN_CHECK = 12
+const MIN_CLICK_COUNT_FOR_PATTERN_CHECK = 18
 const HUMAN_BATCH_INTERVAL = 500
-const HUMAN_BATCH_TOLERANCE = 120
-const BOT_TIMING_STDDEV_THRESHOLD = 12
-const BOT_INTERVAL_THRESHOLD = 380
+const HUMAN_BATCH_TOLERANCE = 160
+const BOT_TIMING_STDDEV_THRESHOLD = 8
+const BOT_INTERVAL_THRESHOLD = 300
 
 export default class ClickerService {
   /** Anti-cheat: check if user is rate-limited or showing bot patterns */
