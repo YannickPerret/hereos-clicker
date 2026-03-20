@@ -80,7 +80,7 @@ export default function GameLayout({ children }: { children: ReactNode }) {
       )}
 
       <header className="sticky top-0 z-50 border-b border-cyber-blue/30 bg-cyber-dark/80 backdrop-blur-sm">
-        <div className="mx-auto flex h-14 max-w-[96rem] items-center justify-between gap-3 px-4">
+        <div className="flex h-14 items-center justify-between gap-3 px-4">
           <div className="flex min-w-0 items-center gap-3">
             <button
               type="button"
@@ -122,7 +122,7 @@ export default function GameLayout({ children }: { children: ReactNode }) {
         </div>
       </header>
 
-      <div className="mx-auto flex max-w-[96rem]">
+      <div className="flex">
         <aside className="sticky top-14 hidden h-[calc(100vh-3.5rem)] w-72 shrink-0 border-r border-cyber-blue/20 bg-cyber-dark/40 px-4 py-5 md:block">
           <div className="mb-4 text-[10px] uppercase tracking-[0.32em] text-gray-500">Navigation</div>
           <nav className="flex flex-col gap-2">
@@ -145,9 +145,10 @@ export default function GameLayout({ children }: { children: ReactNode }) {
             )}
           </nav>
         </aside>
-
         <main className="min-w-0 flex-1 px-4 py-6 md:px-6">
-          {children}
+          <div className="mx-auto max-w-[calc(96rem-18rem)]">
+            {children}
+          </div>
         </main>
       </div>
 
