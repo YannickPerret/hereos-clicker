@@ -421,6 +421,8 @@ export default class PvpService {
       skillCooldowns: '{}',
       activeEffects: '[]',
       ratingChange: 0,
+      createdAt: Date.now(),
+      updatedAt: null,
     })
 
     await this.createParticipants(match.id, 1, queueTeam.members)
