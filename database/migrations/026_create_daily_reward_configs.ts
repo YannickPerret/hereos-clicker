@@ -2,7 +2,7 @@ import { BaseSchema } from '@adonisjs/lucid/schema'
 
 export default class extends BaseSchema {
   async up() {
-    this.schema.createTable('daily_reward_configs', (table) => {
+    await this.schema.createTable('daily_reward_configs', (table) => {
       table.increments('id').notNullable()
       table.integer('day_number').notNullable().unique()
       table.string('reward_type').notNullable()
