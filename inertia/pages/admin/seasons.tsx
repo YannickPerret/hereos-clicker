@@ -361,6 +361,22 @@ export default function AdminSeasons({ seasons, activeSeason }: Props) {
                   )}
                 </div>
                 <div className="flex gap-2">
+                  {season.status !== 'active' && (
+                    <button
+                      onClick={() => router.post(`/admin/seasons/${season.id}/activate`)}
+                      className="rounded border border-cyber-green/30 px-3 py-1.5 text-[10px] uppercase text-cyber-green hover:bg-cyber-green/10"
+                    >
+                      Activer
+                    </button>
+                  )}
+                  {season.status === 'active' && (
+                    <button
+                      onClick={() => router.post(`/admin/seasons/${season.id}/complete`)}
+                      className="rounded border border-cyber-yellow/30 px-3 py-1.5 text-[10px] uppercase text-cyber-yellow hover:bg-cyber-yellow/10"
+                    >
+                      Cloturer
+                    </button>
+                  )}
                   <button
                     onClick={() => startEdit(season)}
                     className="rounded border border-cyber-blue/30 px-3 py-1.5 text-[10px] uppercase text-cyber-blue hover:bg-cyber-blue/10"

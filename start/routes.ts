@@ -88,6 +88,7 @@ router
     router.get('/pvp', [PvpController, 'index'])
     router.post('/pvp/queue', [PvpController, 'queue'])
     router.post('/pvp/leave-queue', [PvpController, 'leaveQueue'])
+    router.post('/pvp/seasons/:statId/claim', [PvpController, 'claimSeasonReward'])
     router.get('/pvp/match/:matchId', [PvpController, 'show'])
     router.get('/pvp/match/:matchId/state', [PvpController, 'state'])
     router.post('/pvp/match/:matchId/attack', [PvpController, 'attack'])
@@ -150,6 +151,8 @@ router
     router.post('/admin/seasons/create', [AdminController, 'createSeason'])
     router.post('/admin/seasons/:id/update', [AdminController, 'updateSeason'])
     router.post('/admin/seasons/:id/delete', [AdminController, 'deleteSeason'])
+    router.post('/admin/seasons/:id/activate', [AdminController, 'activateSeason'])
+    router.post('/admin/seasons/:id/complete', [AdminController, 'completeSeason'])
 
     // Bug Reports (admin)
     router.get('/admin/reports', [BugReportController, 'adminIndex'])

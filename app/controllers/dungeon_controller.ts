@@ -6,6 +6,8 @@ import Enemy from '#models/enemy'
 import InventoryItem from '#models/inventory_item'
 import PartyMember from '#models/party_member'
 import CombatService from '#services/combat_service'
+import CharacterPvpSeasonStat from '#models/character_pvp_season_stat'
+import SeasonService from '#services/season_service'
 
 export default class DungeonController {
   private leaderboardPageSize = 25
@@ -33,15 +35,45 @@ export default class DungeonController {
   }
 
   private async getPvpLeaderboardPage(offset: number, limit: number) {
-    const rows = await Character.query()
-      .orderBy('pvpRating', 'desc')
-      .orderBy('id', 'asc')
+    const activeSeason = await SeasonService.getCurrentRankedSeason()
+
+    if (!activeSeason) {
+      const rows = await Character.query()
+        .orderBy('pvpRating', 'desc')
+        .orderBy('id', 'asc')
+        .offset(offset)
+        .limit(limit + 1)
+        .select('id', 'name', 'pvpRating', 'pvpWins', 'pvpLosses', 'level')
+
+      const hasMore = rows.length > limit
+      const items = rows.slice(0, limit).map((player) => player.serialize())
+
+      return {
+        items,
+        hasMore,
+        nextOffset: offset + items.length,
+      }
+    }
+
+    const rows = await CharacterPvpSeasonStat.query()
+      .where('seasonId', activeSeason.id)
+      .preload('character')
+      .orderBy('rating', 'desc')
+      .orderBy('peakRating', 'desc')
+      .orderBy('wins', 'desc')
+      .orderBy('characterId', 'asc')
       .offset(offset)
       .limit(limit + 1)
-      .select('id', 'name', 'pvpRating', 'pvpWins', 'pvpLosses', 'level')
 
     const hasMore = rows.length > limit
-    const items = rows.slice(0, limit).map((player) => player.serialize())
+    const items = rows.slice(0, limit).map((entry) => ({
+      id: entry.character.id,
+      name: entry.character.name,
+      pvpRating: entry.rating,
+      pvpWins: entry.wins,
+      pvpLosses: entry.losses,
+      level: entry.character.level,
+    }))
 
     return {
       items,

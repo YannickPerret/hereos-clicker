@@ -5,6 +5,7 @@ import PartyMember from '#models/party_member'
 import PvpMatch from '#models/pvp_match'
 import PvpMatchParticipant from '#models/pvp_match_participant'
 import ClickerService from '#services/clicker_service'
+import SeasonService from '#services/season_service'
 import transmit from '@adonisjs/transmit/services/main'
 
 type QueueMode = 'solo' | 'duo' | 'trio'
@@ -211,6 +212,19 @@ export default class PvpService {
     return total / participants.length
   }
 
+  private static async syncQueueMembersWithSeason(members: Character[]) {
+    const activeSeason = await SeasonService.getCurrentRankedSeason()
+    if (!activeSeason) {
+      return null
+    }
+
+    for (const member of members) {
+      await SeasonService.syncCharacterWithActiveSeason(member)
+    }
+
+    return activeSeason
+  }
+
   private static async getQueueTeam(character: Character, mode: QueueMode): Promise<QueueTeam> {
     const teamSize = this.modeSize(mode)
     if (teamSize === 1) {
@@ -313,6 +327,7 @@ export default class PvpService {
   }
 
   static async getQueueOverview(character: Character) {
+    const activeSeason = await SeasonService.getCurrentRankedSeason()
     const waitingMatches = await PvpMatch.query()
       .where('status', 'waiting')
       .select('queueMode')
@@ -337,6 +352,10 @@ export default class PvpService {
 
       try {
         await this.getQueueTeam(character, mode)
+        if (activeSeason && !activeSeason.isRankedPvpEnabled) {
+          canQueue = false
+          reason = 'Le PvP classe est desactive pour la saison active'
+        }
       } catch (error) {
         canQueue = false
         reason = error instanceof Error ? error.message : 'Mode indisponible'
@@ -361,6 +380,10 @@ export default class PvpService {
   static async joinQueue(character: Character, requestedMode: string): Promise<PvpMatch> {
     const mode = requestedMode === 'duo' || requestedMode === 'trio' ? requestedMode : 'solo'
     const queueTeam = await this.getQueueTeam(character, mode)
+    const activeSeason = await this.syncQueueMembersWithSeason(queueTeam.members)
+    if (activeSeason && !activeSeason.isRankedPvpEnabled) {
+      throw new Error('Le PvP classe est desactive pour la saison active')
+    }
     const active = await this.findActiveMatchForCharacters(queueTeam.members.map((member) => member.id))
 
     if (active) return active
@@ -1058,20 +1081,41 @@ export default class PvpService {
     this.setLog(match, log)
     this.syncLegacyHpFields(match, loadedParticipants)
 
+    const activeSeason = await SeasonService.getCurrentRankedSeason()
     const kFactor = 32
     const expectedWinner = 1 / (1 + Math.pow(10, (this.averageRating(losers) - this.averageRating(winners)) / 400))
     const ratingChange = Math.round(kFactor * (1 - expectedWinner))
     const creditReward = Math.floor(100 + ratingChange * 10)
 
     for (const participant of winners) {
-      participant.character.pvpRating += ratingChange
+      let updatedRating = participant.character.pvpRating + ratingChange
+      if (activeSeason) {
+        const seasonStat = await SeasonService.getOrCreatePvpSeasonStat(participant.character, activeSeason)
+        seasonStat.rating = updatedRating
+        seasonStat.peakRating = Math.max(seasonStat.peakRating, seasonStat.rating)
+        seasonStat.wins += 1
+        seasonStat.gamesPlayed += 1
+        await seasonStat.save()
+      }
+
+      participant.character.pvpRating = updatedRating
       participant.character.pvpWins += 1
       participant.character.credits += creditReward
       await participant.character.save()
     }
 
     for (const participant of losers) {
-      participant.character.pvpRating = Math.max(0, participant.character.pvpRating - ratingChange)
+      const updatedRating = Math.max(0, participant.character.pvpRating - ratingChange)
+      if (activeSeason) {
+        const seasonStat = await SeasonService.getOrCreatePvpSeasonStat(participant.character, activeSeason)
+        seasonStat.rating = updatedRating
+        seasonStat.peakRating = Math.max(seasonStat.peakRating, updatedRating)
+        seasonStat.losses += 1
+        seasonStat.gamesPlayed += 1
+        await seasonStat.save()
+      }
+
+      participant.character.pvpRating = updatedRating
       participant.character.pvpLosses += 1
       await participant.character.save()
     }

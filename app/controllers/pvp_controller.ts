@@ -4,8 +4,35 @@ import PvpMatchParticipant from '#models/pvp_match_participant'
 import CombatService from '#services/combat_service'
 import PvpService from '#services/pvp_service'
 import DailyMissionService from '#services/daily_mission_service'
+import SeasonService from '#services/season_service'
+import CharacterPvpSeasonStat from '#models/character_pvp_season_stat'
 
 export default class PvpController {
+  private async getSeasonRank(stat: CharacterPvpSeasonStat) {
+    const ahead = await CharacterPvpSeasonStat.query()
+      .where('seasonId', stat.seasonId)
+      .where((query) => {
+        query
+          .where('rating', '>', stat.rating)
+          .orWhere((subquery) => {
+            subquery.where('rating', stat.rating).where('peakRating', '>', stat.peakRating)
+          })
+          .orWhere((subquery) => {
+            subquery.where('rating', stat.rating).where('peakRating', stat.peakRating).where('wins', '>', stat.wins)
+          })
+          .orWhere((subquery) => {
+            subquery
+              .where('rating', stat.rating)
+              .where('peakRating', stat.peakRating)
+              .where('wins', stat.wins)
+              .where('characterId', '<', stat.characterId)
+          })
+      })
+      .count('* as total')
+
+    return Number(ahead[0]?.$extras.total || 0) + 1
+  }
+
   private async buildMatchPayload(character: Character, matchId: number) {
     const state = await PvpService.getMatchState(matchId)
     const skills = await CombatService.getAvailableSkills(character)
@@ -25,6 +52,17 @@ export default class PvpController {
     const character = await Character.query()
       .where('userId', auth.user!.id)
       .firstOrFail()
+
+    const activeSeason = await SeasonService.getCurrentRankedSeason()
+    const currentSeasonStat = activeSeason
+      ? await SeasonService.getOrCreatePvpSeasonStat(character, activeSeason)
+      : null
+    const currentSeasonRank = currentSeasonStat ? await this.getSeasonRank(currentSeasonStat) : null
+
+    if (currentSeasonStat && character.pvpRating !== currentSeasonStat.rating) {
+      character.pvpRating = currentSeasonStat.rating
+      await character.save()
+    }
 
     const activeParticipant = await PvpMatchParticipant.query()
       .where('characterId', character.id)
@@ -65,6 +103,11 @@ export default class PvpController {
     }
 
     const queueOverview = await PvpService.getQueueOverview(character)
+    const seasonHistory = await CharacterPvpSeasonStat.query()
+      .where('characterId', character.id)
+      .preload('season')
+      .orderBy('id', 'desc')
+      .limit(8)
 
     return inertia.render('pvp/index', {
       character: character.serialize(),
@@ -78,6 +121,34 @@ export default class PvpController {
         : null,
       recentMatches: matchData,
       queueOverview,
+      currentSeason: currentSeasonStat && activeSeason
+        ? {
+            id: currentSeasonStat.id,
+            seasonId: activeSeason.id,
+            seasonName: activeSeason.name,
+            rating: currentSeasonStat.rating,
+            peakRating: currentSeasonStat.peakRating,
+            wins: currentSeasonStat.wins,
+            losses: currentSeasonStat.losses,
+            gamesPlayed: currentSeasonStat.gamesPlayed,
+            rank: currentSeasonRank,
+          }
+        : null,
+      seasonHistory: seasonHistory.map((entry) => ({
+        id: entry.id,
+        seasonId: entry.seasonId,
+        seasonName: entry.season.name,
+        seasonStatus: entry.season.status,
+        rating: entry.rating,
+        peakRating: entry.peakRating,
+        wins: entry.wins,
+        losses: entry.losses,
+        gamesPlayed: entry.gamesPlayed,
+        finalRank: entry.finalRank,
+        rewardCredits: entry.rewardCredits,
+        rewardTier: entry.rewardTier,
+        rewardClaimed: entry.rewardClaimed,
+      })),
     })
   }
 
@@ -114,6 +185,23 @@ export default class PvpController {
       session.flash('errors', { message: error instanceof Error ? error.message : 'Impossible de rejoindre la file PvP' })
       return response.redirect('/pvp')
     }
+  }
+
+  async claimSeasonReward({ params, auth, response, session }: HttpContext) {
+    const character = await Character.query()
+      .where('userId', auth.user!.id)
+      .firstOrFail()
+
+    try {
+      const stat = await SeasonService.claimSeasonReward(character, Number(params.statId))
+      session.flash('success', `Recompense de saison recuperee: +${stat.rewardCredits} credits`)
+    } catch (error) {
+      session.flash('errors', {
+        message: error instanceof Error ? error.message : 'Impossible de recuperer la recompense',
+      })
+    }
+
+    return response.redirect('/pvp')
   }
 
   async leaveQueue({ auth, response }: HttpContext) {

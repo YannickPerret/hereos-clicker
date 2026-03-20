@@ -343,6 +343,34 @@ export default class AdminController {
     return response.redirect('/admin/seasons')
   }
 
+  async activateSeason({ params, response, session }: HttpContext) {
+    try {
+      const season = await Season.findOrFail(params.id)
+      await SeasonService.activateSeason(season)
+      session.flash('success', `Saison "${season.name}" activee et ladder reinitialise`)
+    } catch (error) {
+      session.flash('errors', {
+        message: error instanceof Error ? error.message : 'Impossible d\'activer la saison',
+      })
+    }
+
+    return response.redirect('/admin/seasons')
+  }
+
+  async completeSeason({ params, response, session }: HttpContext) {
+    try {
+      const season = await Season.findOrFail(params.id)
+      await SeasonService.completeSeason(season)
+      session.flash('success', `Saison "${season.name}" cloturee et recompenses preparees`)
+    } catch (error) {
+      session.flash('errors', {
+        message: error instanceof Error ? error.message : 'Impossible de cloturer la saison',
+      })
+    }
+
+    return response.redirect('/admin/seasons')
+  }
+
   async updateSeason({ params, request, response, session }: HttpContext) {
     const season = await Season.findOrFail(params.id)
     const payload = SeasonService.normalizePayload(

@@ -43,6 +43,32 @@ interface Props {
   } | null
   recentMatches: Match[]
   queueOverview: QueueCard[]
+  currentSeason: {
+    id: number
+    seasonId: number
+    seasonName: string
+    rating: number
+    peakRating: number
+    wins: number
+    losses: number
+    gamesPlayed: number
+    rank: number | null
+  } | null
+  seasonHistory: {
+    id: number
+    seasonId: number
+    seasonName: string
+    seasonStatus: string
+    rating: number
+    peakRating: number
+    wins: number
+    losses: number
+    gamesPlayed: number
+    finalRank: number | null
+    rewardCredits: number
+    rewardTier: string | null
+    rewardClaimed: boolean
+  }[]
 }
 
 const formatEta = (seconds: number) => {
@@ -50,7 +76,14 @@ const formatEta = (seconds: number) => {
   return `~${Math.ceil(seconds / 60)} min`
 }
 
-export default function PvpArena({ character, activeMatch, recentMatches, queueOverview }: Props) {
+export default function PvpArena({
+  character,
+  activeMatch,
+  recentMatches,
+  queueOverview,
+  currentSeason,
+  seasonHistory,
+}: Props) {
   const { props } = usePage<{
     errors?: { message?: string }
     success?: string
@@ -211,6 +244,40 @@ export default function PvpArena({ character, activeMatch, recentMatches, queueO
                 ))}
               </div>
             </div>
+
+            {currentSeason && (
+              <div className="rounded-lg border border-cyber-yellow/20 bg-cyber-dark p-4">
+                <h3 className="mb-2 text-xs uppercase tracking-widest text-cyber-yellow">
+                  Saison PvP
+                </h3>
+                <div className="space-y-1 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Nom</span>
+                    <span className="text-white">{currentSeason.seasonName}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">ELO saison</span>
+                    <span className="text-cyber-yellow">{currentSeason.rating}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Peak</span>
+                    <span className="text-cyber-yellow">{currentSeason.peakRating}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Record</span>
+                    <span className="text-white">{currentSeason.wins}W / {currentSeason.losses}L</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Matchs</span>
+                    <span className="text-white">{currentSeason.gamesPlayed}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Rang</span>
+                    <span className="text-cyber-blue">{currentSeason.rank ? `#${currentSeason.rank}` : 'NC'}</span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="space-y-4 lg:col-span-1">
@@ -270,6 +337,56 @@ export default function PvpArena({ character, activeMatch, recentMatches, queueO
                         </span>
                       </div>
                       <div className="mt-1 text-[9px] uppercase tracking-widest text-gray-600">{match.queueMode}</div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-gray-800 bg-cyber-dark p-4">
+              <h3 className="mb-3 text-sm uppercase tracking-widest text-gray-400">Saisons</h3>
+              <div className="space-y-2">
+                {seasonHistory.length === 0 ? (
+                  <div className="py-4 text-center text-xs italic text-gray-700">Aucune saison jouee</div>
+                ) : (
+                  seasonHistory.map((entry) => (
+                    <div key={entry.id} className="rounded border border-gray-800 bg-cyber-black/30 p-3 text-xs">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="font-bold text-white">{entry.seasonName}</div>
+                          <div className="mt-1 text-[10px] uppercase tracking-widest text-gray-600">
+                            {entry.seasonStatus} • {entry.wins}W / {entry.losses}L • peak {entry.peakRating}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-bold text-cyber-yellow">{entry.rating} ELO</div>
+                          <div className="text-[10px] text-gray-500">
+                            {entry.finalRank ? `#${entry.finalRank}` : 'sans classement'}
+                          </div>
+                        </div>
+                      </div>
+                      {(entry.rewardCredits > 0 || entry.rewardTier) && (
+                        <div className="mt-3 flex items-center justify-between gap-3 rounded border border-cyber-yellow/20 bg-cyber-yellow/5 px-3 py-2">
+                          <div>
+                            <div className="text-[10px] uppercase tracking-widest text-cyber-yellow">
+                              {entry.rewardTier || 'Reward'}
+                            </div>
+                            <div className="text-xs text-white">{entry.rewardCredits} credits</div>
+                          </div>
+                          {!entry.rewardClaimed && entry.seasonStatus === 'ended' ? (
+                            <button
+                              onClick={() => router.post(`/pvp/seasons/${entry.id}/claim`)}
+                              className="rounded border border-cyber-green/30 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-cyber-green hover:bg-cyber-green/10"
+                            >
+                              Claim
+                            </button>
+                          ) : (
+                            <div className="text-[10px] uppercase tracking-widest text-gray-500">
+                              {entry.rewardClaimed ? 'Recuperee' : 'En attente'}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))
                 )}

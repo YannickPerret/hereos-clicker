@@ -1,5 +1,7 @@
 import { DateTime } from 'luxon'
-import { BaseModel, column } from '@adonisjs/lucid/orm'
+import { BaseModel, column, hasMany } from '@adonisjs/lucid/orm'
+import type { HasMany } from '@adonisjs/lucid/types/relations'
+import CharacterPvpSeasonStat from '#models/character_pvp_season_stat'
 
 export default class Season extends BaseModel {
   @column({ isPrimary: true })
@@ -64,4 +66,7 @@ export default class Season extends BaseModel {
 
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime
+
+  @hasMany(() => CharacterPvpSeasonStat)
+  declare pvpStats: HasMany<typeof CharacterPvpSeasonStat>
 }

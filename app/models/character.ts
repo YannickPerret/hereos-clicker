@@ -6,6 +6,7 @@ import InventoryItem from '#models/inventory_item'
 import CharacterTalent from '#models/character_talent'
 import CharacterCompanion from '#models/character_companion'
 import CharacterDailyMission from '#models/character_daily_mission'
+import CharacterPvpSeasonStat from '#models/character_pvp_season_stat'
 
 export default class Character extends BaseModel {
   @column({ isPrimary: true })
@@ -91,6 +92,9 @@ export default class Character extends BaseModel {
 
   @hasMany(() => CharacterDailyMission)
   declare dailyMissions: HasMany<typeof CharacterDailyMission>
+
+  @hasMany(() => CharacterPvpSeasonStat)
+  declare pvpSeasonStats: HasMany<typeof CharacterPvpSeasonStat>
 
   /** Apply level up bonuses — RPG style scaling */
   levelUp() {
