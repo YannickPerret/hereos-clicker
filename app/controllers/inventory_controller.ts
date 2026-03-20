@@ -3,12 +3,11 @@ import Character from '#models/character'
 import InventoryItem from '#models/inventory_item'
 import TalentService from '#services/talent_service'
 import ClickerService from '#services/clicker_service'
+import CompanionService from '#services/companion_service'
 
 export default class InventoryController {
   async index({ inertia, auth }: HttpContext) {
-    const character = await Character.query()
-      .where('userId', auth.user!.id)
-      .firstOrFail()
+    const character = await Character.query().where('userId', auth.user!.id).firstOrFail()
 
     const inventory = await InventoryItem.query()
       .where('characterId', character.id)
@@ -19,7 +18,10 @@ export default class InventoryController {
     const talentBonuses = await TalentService.getCharacterBonuses(character.id)
 
     return inertia.render('inventory/index', {
-      character: character.serialize(),
+      character: {
+        ...character.serialize(),
+        hpMax: character.hpMax + equipBonuses.hpBonus,
+      },
       inventory: inventory.map((i) => ({
         ...i.serialize(),
         item: i.item.serialize(),
@@ -35,9 +37,7 @@ export default class InventoryController {
   }
 
   async equip({ params, auth, response }: HttpContext) {
-    const character = await Character.query()
-      .where('userId', auth.user!.id)
-      .firstOrFail()
+    const character = await Character.query().where('userId', auth.user!.id).firstOrFail()
 
     const invItem = await InventoryItem.query()
       .where('id', params.id)
@@ -69,9 +69,7 @@ export default class InventoryController {
   }
 
   async unequip({ params, auth, response }: HttpContext) {
-    const character = await Character.query()
-      .where('userId', auth.user!.id)
-      .firstOrFail()
+    const character = await Character.query().where('userId', auth.user!.id).firstOrFail()
 
     const invItem = await InventoryItem.query()
       .where('id', params.id)
@@ -85,9 +83,7 @@ export default class InventoryController {
   }
 
   async use({ params, auth, response, session }: HttpContext) {
-    const character = await Character.query()
-      .where('userId', auth.user!.id)
-      .firstOrFail()
+    const character = await Character.query().where('userId', auth.user!.id).firstOrFail()
 
     const invItem = await InventoryItem.query()
       .where('id', params.id)
@@ -103,16 +99,21 @@ export default class InventoryController {
 
     // Apply effect
     if (invItem.item.effectType === 'hp_restore') {
-      if (character.hpCurrent >= character.hpMax) {
+      const effectiveHpMax = await CompanionService.getEffectiveHpMax(character)
+      if (character.hpCurrent >= effectiveHpMax) {
         session.flash('errors', { message: 'Tes HP sont deja au maximum' })
         return response.redirect('/inventory')
       }
-      character.hpCurrent = Math.min(character.hpMax, character.hpCurrent + (invItem.item.effectValue || 0))
+      character.hpCurrent = Math.min(
+        effectiveHpMax,
+        character.hpCurrent + (invItem.item.effectValue || 0)
+      )
       await character.save()
     } else if (invItem.item.effectType === 'xp_boost') {
       character.xp += invItem.item.effectValue || 0
       if (character.xp >= character.level * 100) {
         character.levelUp()
+        await CompanionService.refillHpAfterLevelUp(character)
       }
       await character.save()
     } else if (invItem.item.effectType === 'permanent_click') {
@@ -143,9 +144,7 @@ export default class InventoryController {
   }
 
   async discard({ params, request, auth, response, session }: HttpContext) {
-    const character = await Character.query()
-      .where('userId', auth.user!.id)
-      .firstOrFail()
+    const character = await Character.query().where('userId', auth.user!.id).firstOrFail()
 
     const invItem = await InventoryItem.query()
       .where('id', params.id)

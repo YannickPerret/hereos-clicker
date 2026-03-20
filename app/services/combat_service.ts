@@ -8,6 +8,7 @@ import PartyMember from '#models/party_member'
 import CombatSkill from '#models/combat_skill'
 import CharacterTalent from '#models/character_talent'
 import ClickerService from '#services/clicker_service'
+import CompanionService from '#services/companion_service'
 import TalentService from '#services/talent_service'
 import DailyMissionService from '#services/daily_mission_service'
 import QuestService from '#services/quest_service'
@@ -80,14 +81,18 @@ export default class CombatService {
 
   private static async trackDungeonFloorClearQuest(run: DungeonRun, fallbackCharacter: Character) {
     if (!run.partyId) {
-      await QuestService.trackObjectiveProgress(fallbackCharacter, 'dungeon_floor_clear', 1).catch(() => {})
+      await QuestService.trackObjectiveProgress(fallbackCharacter, 'dungeon_floor_clear', 1).catch(
+        () => {}
+      )
       return
     }
 
     const members = await PartyMember.query().where('partyId', run.partyId).preload('character')
 
     for (const member of members) {
-      await QuestService.trackObjectiveProgress(member.character, 'dungeon_floor_clear', 1).catch(() => {})
+      await QuestService.trackObjectiveProgress(member.character, 'dungeon_floor_clear', 1).catch(
+        () => {}
+      )
     }
   }
 
@@ -175,7 +180,7 @@ export default class CombatService {
 
     const enemy = await Enemy.findOrFail(run.currentEnemyId!)
     const bonuses = await ClickerService.calculateEquipBonuses(character)
-    const rawDmg = Math.max(1, (character.attack + bonuses.attackBonus) - enemy.defense)
+    const rawDmg = Math.max(1, character.attack + bonuses.attackBonus - enemy.defense)
     run.currentEnemyHp = Math.max(0, run.currentEnemyHp - rawDmg)
 
     persistentLog.push({
@@ -201,7 +206,10 @@ export default class CombatService {
   }
 
   /** Get next turn character id in party rotation */
-  private static async getNextTurnId(run: DungeonRun, currentCharId: number): Promise<number | null> {
+  private static async getNextTurnId(
+    run: DungeonRun,
+    currentCharId: number
+  ): Promise<number | null> {
     if (!run.partyId) return currentCharId
     const members = await PartyMember.query()
       .where('partyId', run.partyId)
@@ -210,9 +218,7 @@ export default class CombatService {
 
     const ids = members.map((member) => member.characterId)
     const aliveIds = new Set(
-      members
-        .filter((member) => member.character.hpCurrent > 0)
-        .map((member) => member.characterId)
+      members.filter((member) => member.character.hpCurrent > 0).map((member) => member.characterId)
     )
 
     if (aliveIds.size === 0) {
@@ -263,12 +269,12 @@ export default class CombatService {
       return actingCharacter
     }
 
-    const members = await PartyMember.query()
-      .where('partyId', run.partyId)
-      .preload('character')
+    const members = await PartyMember.query().where('partyId', run.partyId).preload('character')
 
     const aliveCharacters = members
-      .map((member) => (member.characterId === actingCharacter.id ? actingCharacter : member.character))
+      .map((member) =>
+        member.characterId === actingCharacter.id ? actingCharacter : member.character
+      )
       .filter((memberCharacter) => memberCharacter.hpCurrent > 0)
 
     if (aliveCharacters.length === 0) {
@@ -300,9 +306,7 @@ export default class CombatService {
     run.turnDeadline = null
 
     if (run.partyId) {
-      const members = await PartyMember.query()
-        .where('partyId', run.partyId)
-        .preload('character')
+      const members = await PartyMember.query().where('partyId', run.partyId).preload('character')
 
       for (const member of members) {
         if (member.character.hpCurrent <= 0) {
@@ -333,7 +337,7 @@ export default class CombatService {
     const target = await this.selectEnemyTarget(run, actingCharacter)
     const targetBonuses = await ClickerService.calculateEquipBonuses(target)
     const targetTalentBonuses = await TalentService.getCharacterBonuses(target.id)
-    const targetCombatMult = 1 + (targetTalentBonuses.combatPercent / 100)
+    const targetCombatMult = 1 + targetTalentBonuses.combatPercent / 100
     const targetMods = this.applyPlayerModifiers(
       {
         attack: target.attack + targetTalentBonuses.atkFlat,
@@ -361,7 +365,9 @@ export default class CombatService {
     }
 
     const enemyMods = this.applyEnemyModifiers(enemy, effects)
-    const effectiveDef = Math.floor((targetMods.defense + targetBonuses.defenseBonus) * targetCombatMult)
+    const effectiveDef = Math.floor(
+      (targetMods.defense + targetBonuses.defenseBonus) * targetCombatMult
+    )
     const rawEnemyAttack = Math.max(1, enemyMods.attack - effectiveDef)
     const enemyVariance = Math.floor(Math.random() * Math.floor(rawEnemyAttack * 0.3))
     const baseEnemyDamage = rawEnemyAttack + enemyVariance
@@ -386,7 +392,9 @@ export default class CombatService {
           .where('partyId', run.partyId)
           .preload('character')
 
-        const hasAliveMember = remainingAliveMembers.some((member) => member.character.hpCurrent > 0)
+        const hasAliveMember = remainingAliveMembers.some(
+          (member) => member.character.hpCurrent > 0
+        )
         if (!hasAliveMember) {
           await this.handlePartyDefeat(run)
           log.push({
@@ -440,7 +448,7 @@ export default class CombatService {
       }
 
       if (run.currentTurnId !== character.id) {
-        throw new Error('Ce n\'est pas ton tour')
+        throw new Error("Ce n'est pas ton tour")
       }
     }
 
@@ -449,6 +457,7 @@ export default class CombatService {
     const enemy = await Enemy.findOrFail(run.currentEnemyId!)
     const bonuses = await ClickerService.calculateEquipBonuses(character)
     const talentBonuses = await TalentService.getCharacterBonuses(character.id)
+    const effectiveCritChance = Math.min(100, character.critChance + bonuses.critChanceBonus)
     let effects = this.getEffects(run)
 
     const log: any[] = []
@@ -458,7 +467,10 @@ export default class CombatService {
     effects = tickResult.effects
     log.push(...tickResult.log)
     if (tickResult.dotDamage + tickResult.turretDamage > 0) {
-      run.currentEnemyHp = Math.max(0, run.currentEnemyHp - tickResult.dotDamage - tickResult.turretDamage)
+      run.currentEnemyHp = Math.max(
+        0,
+        run.currentEnemyHp - tickResult.dotDamage - tickResult.turretDamage
+      )
     }
 
     // Tick cooldowns
@@ -467,12 +479,19 @@ export default class CombatService {
     // Apply modifiers from active effects (includes talent bonuses)
     const baseAtk = character.attack + talentBonuses.atkFlat
     const baseDef = character.defense + talentBonuses.defFlat
-    const combatMult = 1 + (talentBonuses.combatPercent / 100)
+    const combatMult = 1 + talentBonuses.combatPercent / 100
     const enemyMods = this.applyEnemyModifiers(enemy, effects)
-    const playerMods = this.applyPlayerModifiers({ attack: baseAtk, defense: baseDef }, effects, character.id)
+    const playerMods = this.applyPlayerModifiers(
+      { attack: baseAtk, defense: baseDef },
+      effects,
+      character.id
+    )
 
     // Player attacks (with talent combat multiplier)
-    const rawPlayerAttack = Math.max(1, Math.floor((playerMods.attack + bonuses.attackBonus) * combatMult) - enemyMods.defense)
+    const rawPlayerAttack = Math.max(
+      1,
+      Math.floor((playerMods.attack + bonuses.attackBonus) * combatMult) - enemyMods.defense
+    )
     const variance = Math.floor(Math.random() * Math.floor(rawPlayerAttack * 0.3))
     const basePlayerDamage = rawPlayerAttack + variance
 
@@ -480,10 +499,13 @@ export default class CombatService {
     const forceCrit = this.hasGuaranteedCrit(effects, character.id)
     let playerHit: { damage: number; isCrit: boolean }
     if (forceCrit) {
-      playerHit = { damage: Math.floor(basePlayerDamage * (character.critDamage / 100)), isCrit: true }
+      playerHit = {
+        damage: Math.floor(basePlayerDamage * (character.critDamage / 100)),
+        isCrit: true,
+      }
       effects = this.consumeEffect(effects, character.id, 'guaranteed_crit')
     } else {
-      playerHit = this.rollCrit(character.critChance, character.critDamage, basePlayerDamage)
+      playerHit = this.rollCrit(effectiveCritChance, character.critDamage, basePlayerDamage)
     }
 
     run.currentEnemyHp = Math.max(0, run.currentEnemyHp - playerHit.damage)
@@ -512,6 +534,7 @@ export default class CombatService {
       const xpForNextLevel = character.level * 100
       if (character.xp >= xpForNextLevel) {
         character.levelUp()
+        await CompanionService.refillHpAfterLevelUp(character)
         log.push({ action: 'level_up', newLevel: character.level })
       }
 
@@ -577,7 +600,7 @@ export default class CombatService {
     } else {
       // Enemy attacks back (unless stunned)
       if (enemyMods.isStunned) {
-        log.push({ action: 'enemy_stunned', message: 'L\'ennemi est paralyse!' })
+        log.push({ action: 'enemy_stunned', message: "L'ennemi est paralyse!" })
       } else {
         effects = await this.handleEnemyCounterAttack(run, enemy, effects, character, log)
       }
@@ -675,11 +698,13 @@ export default class CombatService {
 
     let effect = ''
     switch (invItem.item.effectType) {
-      case 'hp_restore':
-        const healed = Math.min(invItem.item.effectValue || 0, character.hpMax - character.hpCurrent)
+      case 'hp_restore': {
+        const effectiveHpMax = await CompanionService.getEffectiveHpMax(character)
+        const healed = Math.min(invItem.item.effectValue || 0, effectiveHpMax - character.hpCurrent)
         character.hpCurrent += healed
         effect = `Restored ${healed} HP`
         break
+      }
       default:
         effect = `Used ${invItem.item.name}`
     }
@@ -765,7 +790,7 @@ export default class CombatService {
     const bonuses = await ClickerService.calculateEquipBonuses(character)
     const talentBonuses = await TalentService.getCharacterBonuses(character.id)
     const effects = this.getEffects(run)
-    const combatMult = 1 + (talentBonuses.combatPercent / 100)
+    const combatMult = 1 + talentBonuses.combatPercent / 100
 
     const playerMods = this.applyPlayerModifiers(
       {
@@ -832,7 +857,10 @@ export default class CombatService {
   }
 
   /** Apply active effects modifiers to enemy stats */
-  private static applyEnemyModifiers(enemy: { attack: number; defense: number }, effects: ActiveEffect[]) {
+  private static applyEnemyModifiers(
+    enemy: { attack: number; defense: number },
+    effects: ActiveEffect[]
+  ) {
     let atkMod = 0
     let defMod = 0
     for (const e of effects) {
@@ -844,12 +872,18 @@ export default class CombatService {
     return {
       attack: Math.max(0, Math.floor(enemy.attack * (1 - atkMod / 100))),
       defense: Math.max(0, Math.floor(enemy.defense * (1 - defMod / 100))),
-      isStunned: effects.some((e) => e.targetType === 'enemy' && e.type === 'stun' && e.turnsLeft > 0),
+      isStunned: effects.some(
+        (e) => e.targetType === 'enemy' && e.type === 'stun' && e.turnsLeft > 0
+      ),
     }
   }
 
   /** Apply player buff modifiers */
-  private static applyPlayerModifiers(character: { attack: number; defense: number }, effects: ActiveEffect[], charId: number) {
+  private static applyPlayerModifiers(
+    character: { attack: number; defense: number },
+    effects: ActiveEffect[],
+    charId: number
+  ) {
     let atkBonus = 0
     let defBonus = 0
     for (const e of effects) {
@@ -865,16 +899,32 @@ export default class CombatService {
 
   /** Check if player has guaranteed crit */
   private static hasGuaranteedCrit(effects: ActiveEffect[], charId: number): boolean {
-    return effects.some((e) => e.targetType === 'player' && e.sourceCharId === charId && e.type === 'guaranteed_crit' && e.turnsLeft > 0)
+    return effects.some(
+      (e) =>
+        e.targetType === 'player' &&
+        e.sourceCharId === charId &&
+        e.type === 'guaranteed_crit' &&
+        e.turnsLeft > 0
+    )
   }
 
   /** Check if player has shield */
   private static hasShield(effects: ActiveEffect[], charId: number): boolean {
-    return effects.some((e) => e.targetType === 'player' && e.sourceCharId === charId && e.type === 'shield' && e.turnsLeft > 0)
+    return effects.some(
+      (e) =>
+        e.targetType === 'player' &&
+        e.sourceCharId === charId &&
+        e.type === 'shield' &&
+        e.turnsLeft > 0
+    )
   }
 
   /** Remove consumed one-shot effects (guaranteed_crit, shield) after use */
-  private static consumeEffect(effects: ActiveEffect[], charId: number, type: string): ActiveEffect[] {
+  private static consumeEffect(
+    effects: ActiveEffect[],
+    charId: number,
+    type: string
+  ): ActiveEffect[] {
     return effects.map((e) => {
       if (e.targetType === 'player' && e.sourceCharId === charId && e.type === type) {
         return { ...e, turnsLeft: 0 }
@@ -884,7 +934,10 @@ export default class CombatService {
   }
 
   /** Tick effects down and apply DOTs/turrets, return log entries */
-  private static tickEffects(run: DungeonRun, _characterId: number): { effects: ActiveEffect[]; log: any[]; dotDamage: number; turretDamage: number } {
+  private static tickEffects(
+    run: DungeonRun,
+    _characterId: number
+  ): { effects: ActiveEffect[]; log: any[]; dotDamage: number; turretDamage: number } {
     let effects = this.getEffects(run)
     const log: any[] = []
     let dotDamage = 0
@@ -940,7 +993,7 @@ export default class CombatService {
         }
       }
       if (run.currentTurnId !== character.id) {
-        throw new Error('Ce n\'est pas ton tour')
+        throw new Error("Ce n'est pas ton tour")
       }
     }
 
@@ -970,6 +1023,7 @@ export default class CombatService {
     const enemy = await Enemy.findOrFail(run.currentEnemyId!)
     const bonuses = await ClickerService.calculateEquipBonuses(character)
     const talentBonuses = await TalentService.getCharacterBonuses(character.id)
+    const effectiveCritChance = Math.min(100, character.critChance + bonuses.critChanceBonus)
     let effects = this.getEffects(run)
 
     const log: any[] = []
@@ -981,13 +1035,20 @@ export default class CombatService {
 
     // Apply DOT/turret damage
     if (tickResult.dotDamage + tickResult.turretDamage > 0) {
-      run.currentEnemyHp = Math.max(0, run.currentEnemyHp - tickResult.dotDamage - tickResult.turretDamage)
+      run.currentEnemyHp = Math.max(
+        0,
+        run.currentEnemyHp - tickResult.dotDamage - tickResult.turretDamage
+      )
     }
 
     // Apply the skill (with talent bonuses)
     const baseAtk = character.attack + talentBonuses.atkFlat
-    const combatMult = 1 + (talentBonuses.combatPercent / 100)
-    const playerMods = this.applyPlayerModifiers({ attack: baseAtk, defense: character.defense + talentBonuses.defFlat }, effects, character.id)
+    const combatMult = 1 + talentBonuses.combatPercent / 100
+    const playerMods = this.applyPlayerModifiers(
+      { attack: baseAtk, defense: character.defense + talentBonuses.defFlat },
+      effects,
+      character.id
+    )
     const effectiveAtk = Math.floor((playerMods.attack + bonuses.attackBonus) * combatMult)
 
     switch (skill.effectType) {
@@ -995,19 +1056,44 @@ export default class CombatService {
         // Ignore defense entirely
         const dmg = skill.effectValue + Math.floor(effectiveAtk * 0.5)
         run.currentEnemyHp = Math.max(0, run.currentEnemyHp - dmg)
-        log.push({ action: 'skill_use', skillName: skill.name, damage: dmg, enemyHpLeft: run.currentEnemyHp })
+        log.push({
+          action: 'skill_use',
+          skillName: skill.name,
+          damage: dmg,
+          enemyHpLeft: run.currentEnemyHp,
+        })
         break
       }
 
       case 'debuff_def': {
-        effects.push({ type: 'debuff_def', value: skill.effectValue, turnsLeft: skill.duration, sourceCharId: character.id, targetType: 'enemy' })
-        log.push({ action: 'skill_use', skillName: skill.name, message: `DEF ennemi -${skill.effectValue}% pendant ${skill.duration} tours` })
+        effects.push({
+          type: 'debuff_def',
+          value: skill.effectValue,
+          turnsLeft: skill.duration,
+          sourceCharId: character.id,
+          targetType: 'enemy',
+        })
+        log.push({
+          action: 'skill_use',
+          skillName: skill.name,
+          message: `DEF ennemi -${skill.effectValue}% pendant ${skill.duration} tours`,
+        })
         break
       }
 
       case 'debuff_atk': {
-        effects.push({ type: 'debuff_atk', value: skill.effectValue, turnsLeft: skill.duration, sourceCharId: character.id, targetType: 'enemy' })
-        log.push({ action: 'skill_use', skillName: skill.name, message: `ATK ennemi -${skill.effectValue}% pendant ${skill.duration} tours` })
+        effects.push({
+          type: 'debuff_atk',
+          value: skill.effectValue,
+          turnsLeft: skill.duration,
+          sourceCharId: character.id,
+          targetType: 'enemy',
+        })
+        log.push({
+          action: 'skill_use',
+          skillName: skill.name,
+          message: `ATK ennemi -${skill.effectValue}% pendant ${skill.duration} tours`,
+        })
         break
       }
 
@@ -1017,38 +1103,80 @@ export default class CombatService {
         const stolen = Math.floor(dmg * 0.5)
         run.currentEnemyHp = Math.max(0, run.currentEnemyHp - dmg)
         character.credits += stolen
-        log.push({ action: 'skill_use', skillName: skill.name, damage: dmg, stolen, enemyHpLeft: run.currentEnemyHp })
+        log.push({
+          action: 'skill_use',
+          skillName: skill.name,
+          damage: dmg,
+          stolen,
+          enemyHpLeft: run.currentEnemyHp,
+        })
         break
       }
 
       case 'damage_stun': {
         const dmg = skill.effectValue + Math.floor(effectiveAtk * 0.3)
         run.currentEnemyHp = Math.max(0, run.currentEnemyHp - dmg)
-        effects.push({ type: 'stun', value: 0, turnsLeft: skill.duration, sourceCharId: character.id, targetType: 'enemy' })
-        log.push({ action: 'skill_use', skillName: skill.name, damage: dmg, stun: true, enemyHpLeft: run.currentEnemyHp })
+        effects.push({
+          type: 'stun',
+          value: 0,
+          turnsLeft: skill.duration,
+          sourceCharId: character.id,
+          targetType: 'enemy',
+        })
+        log.push({
+          action: 'skill_use',
+          skillName: skill.name,
+          damage: dmg,
+          stun: true,
+          enemyHpLeft: run.currentEnemyHp,
+        })
         break
       }
 
       case 'guaranteed_crit': {
-        effects.push({ type: 'guaranteed_crit', value: 0, turnsLeft: 2, sourceCharId: character.id, targetType: 'player' })
-        log.push({ action: 'skill_use', skillName: skill.name, message: 'Prochaine attaque = critique garanti' })
+        effects.push({
+          type: 'guaranteed_crit',
+          value: 0,
+          turnsLeft: 2,
+          sourceCharId: character.id,
+          targetType: 'player',
+        })
+        log.push({
+          action: 'skill_use',
+          skillName: skill.name,
+          message: 'Prochaine attaque = critique garanti',
+        })
         break
       }
 
       case 'purge_damage': {
         // Remove all enemy buffs + deal damage
-        effects = effects.filter((e) => e.targetType !== 'enemy' || e.type === 'dot' || e.type === 'turret')
+        effects = effects.filter(
+          (e) => e.targetType !== 'enemy' || e.type === 'dot' || e.type === 'turret'
+        )
         const dmg = skill.effectValue + Math.floor(effectiveAtk * 0.3)
         run.currentEnemyHp = Math.max(0, run.currentEnemyHp - dmg)
-        log.push({ action: 'skill_use', skillName: skill.name, damage: dmg, message: 'Protections ennemies purgees', enemyHpLeft: run.currentEnemyHp })
+        log.push({
+          action: 'skill_use',
+          skillName: skill.name,
+          damage: dmg,
+          message: 'Protections ennemies purgees',
+          enemyHpLeft: run.currentEnemyHp,
+        })
         break
       }
 
       case 'heal_percent': {
-        const healed = Math.floor(character.hpMax * skill.effectValue / 100)
-        const actualHeal = Math.min(healed, character.hpMax - character.hpCurrent)
-        character.hpCurrent = Math.min(character.hpMax, character.hpCurrent + healed)
-        log.push({ action: 'skill_use', skillName: skill.name, healed: actualHeal, message: `+${actualHeal} HP` })
+        const effectiveHpMax = await CompanionService.getEffectiveHpMax(character)
+        const healed = Math.floor((effectiveHpMax * skill.effectValue) / 100)
+        const actualHeal = Math.min(healed, effectiveHpMax - character.hpCurrent)
+        character.hpCurrent = Math.min(effectiveHpMax, character.hpCurrent + healed)
+        log.push({
+          action: 'skill_use',
+          skillName: skill.name,
+          healed: actualHeal,
+          message: `+${actualHeal} HP`,
+        })
         break
       }
 
@@ -1057,9 +1185,15 @@ export default class CombatService {
         for (let i = 0; i < 2; i++) {
           const rawDmg = Math.max(1, effectiveAtk - enemyMods.defense)
           const variance = Math.floor(Math.random() * Math.floor(rawDmg * 0.3))
-          const hit = this.rollCrit(character.critChance, character.critDamage, rawDmg + variance)
+          const hit = this.rollCrit(effectiveCritChance, character.critDamage, rawDmg + variance)
           run.currentEnemyHp = Math.max(0, run.currentEnemyHp - hit.damage)
-          log.push({ action: 'skill_use', skillName: `${skill.name} #${i + 1}`, damage: hit.damage, isCrit: hit.isCrit, enemyHpLeft: run.currentEnemyHp })
+          log.push({
+            action: 'skill_use',
+            skillName: `${skill.name} #${i + 1}`,
+            damage: hit.damage,
+            isCrit: hit.isCrit,
+            enemyHpLeft: run.currentEnemyHp,
+          })
         }
         break
       }
@@ -1069,14 +1203,37 @@ export default class CombatService {
         const dmg = Math.max(1, skill.effectValue + effectiveAtk - enemyMods.defense)
         run.currentEnemyHp = Math.max(0, run.currentEnemyHp - dmg)
         const dotDmg = Math.floor(dmg * 0.3)
-        effects.push({ type: 'dot', value: dotDmg, turnsLeft: skill.duration, sourceCharId: character.id, targetType: 'enemy' })
-        log.push({ action: 'skill_use', skillName: skill.name, damage: dmg, dot: dotDmg, duration: skill.duration, enemyHpLeft: run.currentEnemyHp })
+        effects.push({
+          type: 'dot',
+          value: dotDmg,
+          turnsLeft: skill.duration,
+          sourceCharId: character.id,
+          targetType: 'enemy',
+        })
+        log.push({
+          action: 'skill_use',
+          skillName: skill.name,
+          damage: dmg,
+          dot: dotDmg,
+          duration: skill.duration,
+          enemyHpLeft: run.currentEnemyHp,
+        })
         break
       }
 
       case 'shield': {
-        effects.push({ type: 'shield', value: 0, turnsLeft: 2, sourceCharId: character.id, targetType: 'player' })
-        log.push({ action: 'skill_use', skillName: skill.name, message: 'Bouclier actif — prochain coup absorbe' })
+        effects.push({
+          type: 'shield',
+          value: 0,
+          turnsLeft: 2,
+          sourceCharId: character.id,
+          targetType: 'player',
+        })
+        log.push({
+          action: 'skill_use',
+          skillName: skill.name,
+          message: 'Bouclier actif — prochain coup absorbe',
+        })
         break
       }
 
@@ -1085,19 +1242,45 @@ export default class CombatService {
         const rawDmg = Math.max(1, effectiveAtk - enemyMods.defense)
         const dmg = Math.floor(rawDmg * 3 * (character.critDamage / 100))
         run.currentEnemyHp = Math.max(0, run.currentEnemyHp - dmg)
-        log.push({ action: 'skill_use', skillName: skill.name, damage: dmg, isCrit: true, enemyHpLeft: run.currentEnemyHp })
+        log.push({
+          action: 'skill_use',
+          skillName: skill.name,
+          damage: dmg,
+          isCrit: true,
+          enemyHpLeft: run.currentEnemyHp,
+        })
         break
       }
 
       case 'turret': {
-        effects.push({ type: 'turret', value: skill.effectValue, turnsLeft: skill.duration, sourceCharId: character.id, targetType: 'enemy' })
-        log.push({ action: 'skill_use', skillName: skill.name, message: `Tourelle deployee — ${skill.effectValue} degats/tour pendant ${skill.duration} tours` })
+        effects.push({
+          type: 'turret',
+          value: skill.effectValue,
+          turnsLeft: skill.duration,
+          sourceCharId: character.id,
+          targetType: 'enemy',
+        })
+        log.push({
+          action: 'skill_use',
+          skillName: skill.name,
+          message: `Tourelle deployee — ${skill.effectValue} degats/tour pendant ${skill.duration} tours`,
+        })
         break
       }
 
       case 'buff_all': {
-        effects.push({ type: 'buff_all', value: skill.effectValue, turnsLeft: skill.duration, sourceCharId: character.id, targetType: 'player' })
-        log.push({ action: 'skill_use', skillName: skill.name, message: `ATK et DEF +${skill.effectValue}% pendant ${skill.duration} tours` })
+        effects.push({
+          type: 'buff_all',
+          value: skill.effectValue,
+          turnsLeft: skill.duration,
+          sourceCharId: character.id,
+          targetType: 'player',
+        })
+        log.push({
+          action: 'skill_use',
+          skillName: skill.name,
+          message: `ATK et DEF +${skill.effectValue}% pendant ${skill.duration} tours`,
+        })
         break
       }
     }
@@ -1119,7 +1302,7 @@ export default class CombatService {
     if (!enemyMods.isStunned) {
       effects = await this.handleEnemyCounterAttack(run, enemy, effects, character, log)
     } else {
-      log.push({ action: 'enemy_stunned', message: 'L\'ennemi est paralyse!' })
+      log.push({ action: 'enemy_stunned', message: "L'ennemi est paralyse!" })
     }
 
     await character.save()
@@ -1159,7 +1342,14 @@ export default class CombatService {
   }
 
   /** Handle enemy death (shared between attack and useSkill) */
-  private static async handleEnemyDeath(character: Character, run: DungeonRun, enemy: Enemy, _bonuses: any, log: any[], effects: ActiveEffect[]) {
+  private static async handleEnemyDeath(
+    character: Character,
+    run: DungeonRun,
+    enemy: Enemy,
+    _bonuses: any,
+    log: any[],
+    effects: ActiveEffect[]
+  ) {
     run.enemiesDefeated += 1
 
     const creditsReward = Math.floor(
@@ -1171,6 +1361,7 @@ export default class CombatService {
     const xpForNextLevel = character.level * 100
     if (character.xp >= xpForNextLevel) {
       character.levelUp()
+      await CompanionService.refillHpAfterLevelUp(character)
       log.push({ action: 'level_up', newLevel: character.level })
     }
 

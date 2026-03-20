@@ -6,6 +6,7 @@ import CharacterCompanion from '#models/character_companion'
 import ClickerService from '#services/clicker_service'
 import TalentService from '#services/talent_service'
 import QuestService from '#services/quest_service'
+import CompanionService from '#services/companion_service'
 import PartyMember from '#models/party_member'
 import DungeonRun from '#models/dungeon_run'
 
@@ -25,17 +26,34 @@ export default class PlayController {
 
     const leaderboard = await this.getLeaderboardData()
 
-    let bonuses = { clickBonus: 0, attackBonus: 0, defenseBonus: 0 }
+    let bonuses = {
+      clickBonus: 0,
+      attackBonus: 0,
+      defenseBonus: 0,
+      cpsBonus: 0,
+      hpBonus: 0,
+      critChanceBonus: 0,
+      lootBonus: 0,
+    }
     let talentBonuses = {
-      cpcFlat: 0, cpcPercent: 0, cpsFlat: 0, cpsPercent: 0,
-      atkFlat: 0, defFlat: 0, hpFlat: 0, combatPercent: 0,
-      shopDiscount: 0, lootBonus: 0, dungeonCredits: 0,
+      cpcFlat: 0,
+      cpcPercent: 0,
+      cpsFlat: 0,
+      cpsPercent: 0,
+      atkFlat: 0,
+      defFlat: 0,
+      hpFlat: 0,
+      combatPercent: 0,
+      shopDiscount: 0,
+      lootBonus: 0,
+      dungeonCredits: 0,
     }
     let offlineCredits = 0
     let effectiveCpc = 1
     let effectiveCps = 0
     let equippedItems: any[] = []
     let questSummary: any = null
+    let activeCharacterPayload: any = null
 
     if (activeCharacter) {
       offlineCredits = await TalentService.syncOfflineCredits(activeCharacter)
@@ -50,9 +68,19 @@ export default class PlayController {
         talentBonuses
       )
       effectiveCps = TalentService.computeEffectiveCps(
-        activeCharacter.creditsPerSecond,
+        activeCharacter.creditsPerSecond + bonuses.cpsBonus,
         talentBonuses
       )
+
+      activeCharacterPayload = {
+        ...activeCharacter.serialize(),
+        attack: activeCharacter.attack + bonuses.attackBonus,
+        defense: activeCharacter.defense + bonuses.defenseBonus,
+        hpMax: activeCharacter.hpMax + bonuses.hpBonus,
+        critChance: Math.min(100, activeCharacter.critChance + bonuses.critChanceBonus),
+        creditsPerClick: activeCharacter.creditsPerClick + bonuses.clickBonus,
+        creditsPerSecond: activeCharacter.creditsPerSecond + bonuses.cpsBonus,
+      }
 
       equippedItems = await InventoryItem.query()
         .where('characterId', activeCharacter.id)
@@ -100,7 +128,7 @@ export default class PlayController {
 
     return inertia.render('play/index', {
       characters: characters.map((c) => c.serialize()),
-      activeCharacter: activeCharacter?.serialize() || null,
+      activeCharacter: activeCharacterPayload,
       leaderboard,
       bonuses,
       talentBonuses,
@@ -242,7 +270,7 @@ export default class PlayController {
         description: entry.companion.description,
         rarity: entry.companion.rarity,
         bonusType: entry.companion.bonusType,
-        bonusValue: entry.companion.bonusValue * entry.level,
+        bonusValue: CompanionService.getScaledBonusValue(entry.companion.bonusValue, entry.level),
         icon: entry.companion.icon,
         isActive: entry.isActive,
         level: entry.level,

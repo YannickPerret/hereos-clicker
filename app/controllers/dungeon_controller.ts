@@ -8,6 +8,7 @@ import PartyMember from '#models/party_member'
 import CombatService from '#services/combat_service'
 import CharacterPvpSeasonStat from '#models/character_pvp_season_stat'
 import SeasonService from '#services/season_service'
+import CompanionService from '#services/companion_service'
 
 export default class DungeonController {
   private leaderboardPageSize = 25
@@ -93,14 +94,13 @@ export default class DungeonController {
     session: HttpContext['session']
   ) {
     const run = await this.findAccessibleRun(character, runId)
-    session.flash('errors', { message: 'Ce donjon n\'est plus actif.' })
+    session.flash('errors', { message: "Ce donjon n'est plus actif." })
     return response.redirect(run ? `/dungeon/run/${run.id}` : '/dungeon')
   }
 
   async index({ inertia, auth }: HttpContext) {
-    const character = await Character.query()
-      .where('userId', auth.user!.id)
-      .firstOrFail()
+    const character = await Character.query().where('userId', auth.user!.id).firstOrFail()
+    const companionBonuses = await CompanionService.getActiveBonuses(character.id)
 
     const floors = await DungeonFloor.query().orderBy('floorNumber', 'asc')
 
@@ -124,16 +124,17 @@ export default class DungeonController {
     }
 
     return inertia.render('dungeon/index', {
-      character: character.serialize(),
+      character: {
+        ...character.serialize(),
+        hpMax: character.hpMax + companionBonuses.hpBonus,
+      },
       floors: floors.map((f) => f.serialize()),
       activeRun: activeRun?.serialize() || null,
     })
   }
 
   async enter({ params, auth, response, session }: HttpContext) {
-    const character = await Character.query()
-      .where('userId', auth.user!.id)
-      .firstOrFail()
+    const character = await Character.query().where('userId', auth.user!.id).firstOrFail()
 
     try {
       const { run } = await CombatService.startRun(character, params.floorId)
@@ -174,9 +175,7 @@ export default class DungeonController {
   }
 
   async show({ params, inertia, auth, response, session }: HttpContext) {
-    const character = await Character.query()
-      .where('userId', auth.user!.id)
-      .firstOrFail()
+    const character = await Character.query().where('userId', auth.user!.id).firstOrFail()
 
     const run = await this.findAccessibleRun(character, params.runId)
     if (!run) {
@@ -201,9 +200,14 @@ export default class DungeonController {
     const cooldowns = JSON.parse(run.skillCooldowns || '{}')
     const charCooldowns = cooldowns[character.id] || {}
     const activeEffects = JSON.parse(run.activeEffects || '[]')
+    const companionBonuses = await CompanionService.getActiveBonuses(character.id)
 
     return inertia.render('dungeon/run', {
-      character: character.serialize(),
+      character: {
+        ...character.serialize(),
+        hpMax: character.hpMax + companionBonuses.hpBonus,
+        critChance: Math.min(100, character.critChance + companionBonuses.critChanceBonus),
+      },
       run: run.serialize(),
       floor: run.dungeonFloor.serialize(),
       currentEnemy: currentEnemy?.serialize() || null,
@@ -218,9 +222,7 @@ export default class DungeonController {
   }
 
   async attack({ params, auth, response, session }: HttpContext) {
-    const character = await Character.query()
-      .where('userId', auth.user!.id)
-      .firstOrFail()
+    const character = await Character.query().where('userId', auth.user!.id).firstOrFail()
 
     try {
       const result = await CombatService.attack(character, params.runId)
@@ -240,9 +242,7 @@ export default class DungeonController {
   }
 
   async useSkill({ params, request, auth, response, session }: HttpContext) {
-    const character = await Character.query()
-      .where('userId', auth.user!.id)
-      .firstOrFail()
+    const character = await Character.query().where('userId', auth.user!.id).firstOrFail()
 
     try {
       const skillId = Number(request.input('skillId'))
@@ -259,9 +259,7 @@ export default class DungeonController {
   }
 
   async useItem({ params, request, auth, response, session }: HttpContext) {
-    const character = await Character.query()
-      .where('userId', auth.user!.id)
-      .firstOrFail()
+    const character = await Character.query().where('userId', auth.user!.id).firstOrFail()
 
     try {
       const inventoryItemId = request.input('inventoryItemId')
@@ -281,9 +279,7 @@ export default class DungeonController {
   }
 
   async flee({ params, auth, response, session }: HttpContext) {
-    const character = await Character.query()
-      .where('userId', auth.user!.id)
-      .firstOrFail()
+    const character = await Character.query().where('userId', auth.user!.id).firstOrFail()
 
     let result
     try {
@@ -304,9 +300,7 @@ export default class DungeonController {
 
   /** JSON API: poll run state for party members */
   async runState({ params, auth, response }: HttpContext) {
-    const character = await Character.query()
-      .where('userId', auth.user!.id)
-      .firstOrFail()
+    const character = await Character.query().where('userId', auth.user!.id).firstOrFail()
 
     const run = await this.findAccessibleRun(character, params.runId)
     if (!run) return response.notFound({ error: 'Run introuvable' })
@@ -329,20 +323,26 @@ export default class DungeonController {
     // Get party members info for turn display
     let partyMembers: any[] = []
     if (run.partyId) {
-      const members = await PartyMember.query()
-        .where('partyId', run.partyId)
-        .preload('character')
-      partyMembers = members.map((m) => ({
-        id: m.character.id,
-        name: m.character.name,
-        level: m.character.level,
-        hpCurrent: m.character.hpCurrent,
-        hpMax: m.character.hpMax,
-      }))
+      const members = await PartyMember.query().where('partyId', run.partyId).preload('character')
+      partyMembers = await Promise.all(
+        members.map(async (m) => ({
+          id: m.character.id,
+          name: m.character.name,
+          level: m.character.level,
+          hpCurrent: m.character.hpCurrent,
+          hpMax: await CompanionService.getEffectiveHpMax(m.character),
+        }))
+      )
     }
 
+    const companionBonuses = await CompanionService.getActiveBonuses(character.id)
+
     return response.json({
-      character: character.serialize(),
+      character: {
+        ...character.serialize(),
+        hpMax: character.hpMax + companionBonuses.hpBonus,
+        critChance: Math.min(100, character.critChance + companionBonuses.critChanceBonus),
+      },
       run: {
         ...run.serialize(),
         combatLog: JSON.parse(run.combatLog || '[]'),
@@ -370,7 +370,13 @@ export default class DungeonController {
   async leaderboardState({ request, response }: HttpContext) {
     const board = request.input('board', 'global')
     const offset = Math.max(0, Number(request.input('offset', 0)) || 0)
-    const limit = Math.max(1, Math.min(100, Number(request.input('limit', this.leaderboardPageSize)) || this.leaderboardPageSize))
+    const limit = Math.max(
+      1,
+      Math.min(
+        100,
+        Number(request.input('limit', this.leaderboardPageSize)) || this.leaderboardPageSize
+      )
+    )
 
     if (board === 'pvp') {
       return response.json(await this.getPvpLeaderboardPage(offset, limit))

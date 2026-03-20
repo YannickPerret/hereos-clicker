@@ -14,7 +14,8 @@ interface OwnedCompanion {
   isActive: boolean
   level: number
   xp: number
-  xpToLevel: number
+  nextBonusValue: number
+  upgradePrice: number
 }
 
 interface ShopCompanion {
@@ -59,13 +60,17 @@ export default function Companions({ character, owned, shop }: Props) {
     <GameLayout>
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-cyber-pink tracking-widest">DRONES & COMPAGNONS</h1>
+          <h1 className="text-2xl font-bold text-cyber-pink tracking-widest">
+            DRONES & COMPAGNONS
+          </h1>
           <span className="text-xs text-cyber-yellow">{character.credits.toLocaleString()}c</span>
         </div>
 
         {/* Active Companion */}
         {active && (
-          <div className={`bg-cyber-dark border rounded-lg p-4 mb-6 ${RARITY_COLORS[active.rarity]}`}>
+          <div
+            className={`bg-cyber-dark border rounded-lg p-4 mb-6 ${RARITY_COLORS[active.rarity]}`}
+          >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <span className="text-3xl">{active.icon}</span>
@@ -73,8 +78,14 @@ export default function Companions({ character, owned, shop }: Props) {
                   <div className="text-sm font-bold text-white">{active.name}</div>
                   <div className="text-[10px] text-gray-600">{active.description}</div>
                   <div className="text-xs mt-1">
-                    <span className="text-cyber-green">+{active.bonusValue} {BONUS_LABELS[active.bonusType]}</span>
+                    <span className="text-cyber-green">
+                      +{active.bonusValue} {BONUS_LABELS[active.bonusType]}
+                    </span>
                     <span className="text-gray-700 ml-2">LVL {active.level}</span>
+                  </div>
+                  <div className="text-[10px] mt-1 text-gray-500">
+                    Prochain palier: +{active.nextBonusValue} pour{' '}
+                    {active.upgradePrice.toLocaleString()}c
                   </div>
                 </div>
               </div>
@@ -98,8 +109,11 @@ export default function Companions({ character, owned, shop }: Props) {
                 </div>
               ) : (
                 owned.map((c) => (
-                  <div key={c.id} className={`bg-cyber-dark border rounded-lg p-3 ${RARITY_COLORS[c.rarity]}`}>
-                    <div className="flex items-center justify-between">
+                  <div
+                    key={c.id}
+                    className={`bg-cyber-dark border rounded-lg p-3 ${RARITY_COLORS[c.rarity]}`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-2">
                         <span className="text-xl">{c.icon}</span>
                         <div>
@@ -107,32 +121,43 @@ export default function Companions({ character, owned, shop }: Props) {
                           <div className="text-[10px] text-gray-600">
                             +{c.bonusValue} {BONUS_LABELS[c.bonusType]} • LVL {c.level}
                           </div>
+                          <div className="text-[10px] text-gray-500 mt-0.5">
+                            Niveau suivant: +{c.nextBonusValue} • Cout{' '}
+                            {c.upgradePrice.toLocaleString()}c
+                          </div>
                         </div>
                       </div>
-                      {c.isActive ? (
+                      <div className="flex flex-col gap-2">
+                        {c.isActive ? (
+                          <button
+                            onClick={() => router.post(`/companions/${c.id}/deactivate`)}
+                            className="text-[10px] px-2 py-1 rounded border border-gray-700 text-gray-500 hover:text-gray-400"
+                          >
+                            DESACTIVER
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => router.post(`/companions/${c.id}/activate`)}
+                            className="text-[10px] px-2 py-1 rounded border border-cyber-green/30 text-cyber-green hover:bg-cyber-green/10"
+                          >
+                            ACTIVER
+                          </button>
+                        )}
                         <button
-                          onClick={() => router.post(`/companions/${c.id}/deactivate`)}
-                          className="text-[10px] px-2 py-1 rounded border border-gray-700 text-gray-500 hover:text-gray-400"
+                          onClick={() => router.post(`/companions/${c.id}/upgrade`)}
+                          disabled={character.credits < c.upgradePrice}
+                          className={`text-[10px] px-2 py-1 rounded border font-bold ${
+                            character.credits >= c.upgradePrice
+                              ? 'border-cyber-yellow/30 text-cyber-yellow hover:bg-cyber-yellow/10'
+                              : 'border-gray-800 text-gray-700 cursor-not-allowed'
+                          }`}
                         >
-                          DESACTIVER
+                          UPGRADE {c.upgradePrice.toLocaleString()}c
                         </button>
-                      ) : (
-                        <button
-                          onClick={() => router.post(`/companions/${c.id}/activate`)}
-                          className="text-[10px] px-2 py-1 rounded border border-cyber-green/30 text-cyber-green hover:bg-cyber-green/10"
-                        >
-                          ACTIVER
-                        </button>
-                      )}
-                    </div>
-                    {/* XP bar */}
-                    <div className="mt-2">
-                      <div className="h-1 bg-cyber-black rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-cyber-purple transition-all"
-                          style={{ width: `${(c.xp / c.xpToLevel) * 100}%` }}
-                        />
                       </div>
+                    </div>
+                    <div className="mt-3 text-[10px] text-cyber-yellow">
+                      Progression dure: le prix du prochain niveau augmente de facon exponentielle.
                     </div>
                   </div>
                 ))
@@ -149,7 +174,10 @@ export default function Companions({ character, owned, shop }: Props) {
               {shop.map((c) => {
                 const canAfford = character.credits >= c.basePrice
                 return (
-                  <div key={c.id} className={`bg-cyber-dark border rounded-lg p-3 ${RARITY_COLORS[c.rarity]}`}>
+                  <div
+                    key={c.id}
+                    className={`bg-cyber-dark border rounded-lg p-3 ${RARITY_COLORS[c.rarity]}`}
+                  >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <span className="text-xl">{c.icon}</span>

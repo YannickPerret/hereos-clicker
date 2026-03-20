@@ -109,6 +109,7 @@ router
     // Compagnons
     router.get('/companions', [CompanionController, 'index'])
     router.post('/companions/:id/buy', [CompanionController, 'buy'])
+    router.post('/companions/:id/upgrade', [CompanionController, 'upgrade'])
     router.post('/companions/:id/activate', [CompanionController, 'activate'])
     router.post('/companions/:id/deactivate', [CompanionController, 'deactivate'])
 

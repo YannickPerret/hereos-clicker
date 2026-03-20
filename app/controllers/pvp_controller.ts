@@ -16,6 +16,8 @@ export default class PvpController {
       ...character.serialize(),
       attack: character.attack + equipBonuses.attackBonus,
       defense: character.defense + equipBonuses.defenseBonus,
+      hpMax: character.hpMax + equipBonuses.hpBonus,
+      critChance: Math.min(100, character.critChance + equipBonuses.critChanceBonus),
     }
   }
 

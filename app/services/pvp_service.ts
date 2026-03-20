@@ -5,6 +5,7 @@ import PartyMember from '#models/party_member'
 import PvpMatch from '#models/pvp_match'
 import PvpMatchParticipant from '#models/pvp_match_participant'
 import ClickerService from '#services/clicker_service'
+import CompanionService from '#services/companion_service'
 import QuestService from '#services/quest_service'
 import SeasonService from '#services/season_service'
 import transmit from '@adonisjs/transmit/services/main'
@@ -92,7 +93,11 @@ export default class PvpService {
     match.skillCooldowns = JSON.stringify(all)
   }
 
-  private static applyModifiers(stats: { attack: number; defense: number }, effects: PvpActiveEffect[], characterId: number) {
+  private static applyModifiers(
+    stats: { attack: number; defense: number },
+    effects: PvpActiveEffect[],
+    characterId: number
+  ) {
     let attackMod = 0
     let defenseMod = 0
 
@@ -112,14 +117,22 @@ export default class PvpService {
   }
 
   private static hasEffect(effects: PvpActiveEffect[], targetCharId: number, type: string) {
-    return effects.some((effect) => effect.targetCharId === targetCharId && effect.type === type && effect.turnsLeft > 0)
+    return effects.some(
+      (effect) =>
+        effect.targetCharId === targetCharId && effect.type === type && effect.turnsLeft > 0
+    )
   }
 
   private static consumeEffect(effects: PvpActiveEffect[], targetCharId: number, type: string) {
     let consumed = false
 
     return effects.filter((effect) => {
-      if (!consumed && effect.targetCharId === targetCharId && effect.type === type && effect.turnsLeft > 0) {
+      if (
+        !consumed &&
+        effect.targetCharId === targetCharId &&
+        effect.type === type &&
+        effect.turnsLeft > 0
+      ) {
         consumed = true
         return false
       }
@@ -131,7 +144,9 @@ export default class PvpService {
   private static removePurgeableEffects(effects: PvpActiveEffect[], targetCharId: number) {
     return effects.filter((effect) => {
       if (effect.targetCharId !== targetCharId) return true
-      return !['buff_atk', 'buff_def', 'buff_all', 'shield', 'guaranteed_crit'].includes(effect.type)
+      return !['buff_atk', 'buff_def', 'buff_all', 'shield', 'guaranteed_crit'].includes(
+        effect.type
+      )
     })
   }
 
@@ -141,7 +156,10 @@ export default class PvpService {
       .sort((a, b) => a.slot - b.slot || a.team - b.team || a.characterId - b.characterId)
   }
 
-  private static getNextTurnParticipant(participants: PvpMatchParticipant[], currentCharacterId: number | null) {
+  private static getNextTurnParticipant(
+    participants: PvpMatchParticipant[],
+    currentCharacterId: number | null
+  ) {
     const order = this.getTurnOrder(participants)
     if (order.length === 0) return null
     if (!currentCharacterId) return order[0]
@@ -161,13 +179,15 @@ export default class PvpService {
   }
 
   private static syncLegacyHpFields(match: PvpMatch, participants: PvpMatchParticipant[]) {
-    const totalHp = (team: number) => participants
-      .filter((participant) => participant.team === team)
-      .reduce((sum, participant) => sum + participant.currentHp, 0)
+    const totalHp = (team: number) =>
+      participants
+        .filter((participant) => participant.team === team)
+        .reduce((sum, participant) => sum + participant.currentHp, 0)
 
-    const totalHpMax = (team: number) => participants
-      .filter((participant) => participant.team === team)
-      .reduce((sum, participant) => sum + participant.hpMax, 0)
+    const totalHpMax = (team: number) =>
+      participants
+        .filter((participant) => participant.team === team)
+        .reduce((sum, participant) => sum + participant.hpMax, 0)
 
     match.challengerHp = totalHp(1)
     match.challengerHpMax = totalHpMax(1)
@@ -193,7 +213,9 @@ export default class PvpService {
     attackerTeam: number,
     targetId?: number | null
   ) {
-    const aliveOpponents = participants.filter((participant) => participant.team !== attackerTeam && !participant.isEliminated)
+    const aliveOpponents = participants.filter(
+      (participant) => participant.team !== attackerTeam && !participant.isEliminated
+    )
 
     if (aliveOpponents.length === 0) return null
     if (!targetId) return aliveOpponents[0]
@@ -209,7 +231,10 @@ export default class PvpService {
 
   private static averageRating(participants: PvpMatchParticipant[]) {
     if (participants.length === 0) return 1000
-    const total = participants.reduce((sum, participant) => sum + participant.character.pvpRating, 0)
+    const total = participants.reduce(
+      (sum, participant) => sum + participant.character.pvpRating,
+      0
+    )
     return total / participants.length
   }
 
@@ -235,7 +260,9 @@ export default class PvpService {
     const membership = await PartyMember.query()
       .where('characterId', character.id)
       .whereHas('party', (query) => query.where('status', 'waiting'))
-      .preload('party', (query) => query.preload('members', (memberQuery) => memberQuery.preload('character')))
+      .preload('party', (query) =>
+        query.preload('members', (memberQuery) => memberQuery.preload('character'))
+      )
       .first()
 
     if (!membership) {
@@ -255,7 +282,9 @@ export default class PvpService {
       .map((member) => member.character)
 
     if (members.length !== teamSize) {
-      throw new Error(`Ton groupe doit contenir exactement ${teamSize} joueurs pour ${this.modeLabel(mode)}`)
+      throw new Error(
+        `Ton groupe doit contenir exactement ${teamSize} joueurs pour ${this.modeLabel(mode)}`
+      )
     }
 
     return {
@@ -283,16 +312,19 @@ export default class PvpService {
     const createdAt = Date.now()
 
     for (const [index, member] of members.entries()) {
-      created.push(await PvpMatchParticipant.create({
-        matchId,
-        characterId: member.id,
-        team,
-        slot: index + 1,
-        currentHp: member.hpMax,
-        hpMax: member.hpMax,
-        isEliminated: false,
-        createdAt,
-      }))
+      const effectiveHpMax = await CompanionService.getEffectiveHpMax(member)
+      created.push(
+        await PvpMatchParticipant.create({
+          matchId,
+          characterId: member.id,
+          team,
+          slot: index + 1,
+          currentHp: effectiveHpMax,
+          hpMax: effectiveHpMax,
+          isEliminated: false,
+          createdAt,
+        })
+      )
     }
 
     return created
@@ -307,16 +339,21 @@ export default class PvpService {
       .preload('participants', (query) => query.preload('character'))
       .orderBy('createdAt', 'asc')
 
-    const myAverage = queueTeam.members.reduce((sum, member) => sum + member.pvpRating, 0) / queueTeam.members.length
+    const myAverage =
+      queueTeam.members.reduce((sum, member) => sum + member.pvpRating, 0) /
+      queueTeam.members.length
 
     for (const waiting of waitingMatches) {
       if (queueTeam.partyId && waiting.challengerPartyId === queueTeam.partyId) continue
       if (!queueTeam.partyId && waiting.challengerId === queueTeam.leader.id) continue
 
-      const queuedParticipants = waiting.participants.filter((participant) => participant.team === 1)
+      const queuedParticipants = waiting.participants.filter(
+        (participant) => participant.team === 1
+      )
       const queuedAverage = this.averageRating(queuedParticipants)
       const waitedAt = Number(waiting.createdAt) || 0
-      const waitedSeconds = waitedAt > 0 ? Math.max(0, Math.floor((Date.now() - waitedAt) / 1000)) : 0
+      const waitedSeconds =
+        waitedAt > 0 ? Math.max(0, Math.floor((Date.now() - waitedAt) / 1000)) : 0
       const maxGap = 150 + Math.floor(waitedSeconds / 15) * 50
 
       if (Math.abs(queuedAverage - myAverage) <= maxGap) {
@@ -329,9 +366,7 @@ export default class PvpService {
 
   static async getQueueOverview(character: Character) {
     const activeSeason = await SeasonService.getCurrentRankedSeason()
-    const waitingMatches = await PvpMatch.query()
-      .where('status', 'waiting')
-      .select('queueMode')
+    const waitingMatches = await PvpMatch.query().where('status', 'waiting').select('queueMode')
 
     const waitingByMode: Record<QueueMode, number> = {
       solo: 0,
@@ -385,7 +420,9 @@ export default class PvpService {
     if (activeSeason && !activeSeason.isRankedPvpEnabled) {
       throw new Error('Le PvP classe est desactive pour la saison active')
     }
-    const active = await this.findActiveMatchForCharacters(queueTeam.members.map((member) => member.id))
+    const active = await this.findActiveMatchForCharacters(
+      queueTeam.members.map((member) => member.id)
+    )
 
     if (active) return active
 
@@ -397,9 +434,10 @@ export default class PvpService {
       waiting.defenderId = queueTeam.leader.id
       waiting.defenderPartyId = queueTeam.partyId
       waiting.status = 'in_progress'
-      waiting.currentTurnId = waiting.participants
-        .filter((participant) => participant.team === 1)
-        .sort((a, b) => a.slot - b.slot)[0]?.characterId || waiting.challengerId
+      waiting.currentTurnId =
+        waiting.participants
+          .filter((participant) => participant.team === 1)
+          .sort((a, b) => a.slot - b.slot)[0]?.characterId || waiting.challengerId
       waiting.log = '[]'
       waiting.skillCooldowns = '{}'
       waiting.activeEffects = '[]'
@@ -408,8 +446,14 @@ export default class PvpService {
       this.syncLegacyHpFields(waiting, participants)
       await waiting.save()
 
-      const teamOneNames = participants.filter((participant) => participant.team === 1).map((participant) => participant.character.name).join(', ')
-      const teamTwoNames = participants.filter((participant) => participant.team === 2).map((participant) => participant.character.name).join(', ')
+      const teamOneNames = participants
+        .filter((participant) => participant.team === 1)
+        .map((participant) => participant.character.name)
+        .join(', ')
+      const teamTwoNames = participants
+        .filter((participant) => participant.team === 2)
+        .map((participant) => participant.character.name)
+        .join(', ')
 
       transmit.broadcast(`pvp/match/${waiting.id}`, {
         type: 'match_start',
@@ -472,7 +516,12 @@ export default class PvpService {
     await participant.match.save()
   }
 
-  private static async validateSkill(character: Character, match: PvpMatch, skillId: number, participants: PvpMatchParticipant[]) {
+  private static async validateSkill(
+    character: Character,
+    match: PvpMatch,
+    skillId: number,
+    participants: PvpMatchParticipant[]
+  ) {
     if (match.status !== 'in_progress') {
       throw new Error('Match non actif')
     }
@@ -483,7 +532,7 @@ export default class PvpService {
     }
 
     if (match.currentTurnId !== character.id) {
-      throw new Error('Ce n\'est pas ton tour')
+      throw new Error("Ce n'est pas ton tour")
     }
 
     const skill = await CombatSkill.findOrFail(skillId)
@@ -552,11 +601,13 @@ export default class PvpService {
 
       if (this.isTeamDefeated(participants, target.team)) {
         this.setLog(match, log)
-        effects = effects.map((entry) => (
-          entry.sourceCharId === actor.characterId
-            ? { ...entry, turnsLeft: entry.turnsLeft - 1 }
-            : entry
-        )).filter((entry) => entry.turnsLeft > 0)
+        effects = effects
+          .map((entry) =>
+            entry.sourceCharId === actor.characterId
+              ? { ...entry, turnsLeft: entry.turnsLeft - 1 }
+              : entry
+          )
+          .filter((entry) => entry.turnsLeft > 0)
         this.setEffects(match, effects)
         this.syncLegacyHpFields(match, participants)
         for (const participant of participants) await participant.save()
@@ -566,11 +617,11 @@ export default class PvpService {
     }
 
     effects = effects
-      .map((effect) => (
+      .map((effect) =>
         effect.sourceCharId === actor.characterId
           ? { ...effect, turnsLeft: effect.turnsLeft - 1 }
           : effect
-      ))
+      )
       .filter((effect) => effect.turnsLeft > 0)
 
     if (this.hasEffect(effects, actor.characterId, 'stun')) {
@@ -602,7 +653,11 @@ export default class PvpService {
     return match
   }
 
-  private static async advanceTurn(match: PvpMatch, participants: PvpMatchParticipant[], currentCharacterId: number) {
+  private static async advanceTurn(
+    match: PvpMatch,
+    participants: PvpMatchParticipant[],
+    currentCharacterId: number
+  ) {
     const nextParticipant = this.getNextTurnParticipant(participants, currentCharacterId)
     match.currentTurnId = nextParticipant?.characterId || null
     this.syncLegacyHpFields(match, participants)
@@ -626,10 +681,14 @@ export default class PvpService {
     }
 
     if (match.currentTurnId !== character.id) {
-      throw new Error('Ce n\'est pas ton tour')
+      throw new Error("Ce n'est pas ton tour")
     }
 
-    const targetParticipant = this.getTargetParticipant(participants, actorParticipant.team, targetId)
+    const targetParticipant = this.getTargetParticipant(
+      participants,
+      actorParticipant.team,
+      targetId
+    )
     if (!targetParticipant) {
       throw new Error('Aucune cible valide')
     }
@@ -639,23 +698,32 @@ export default class PvpService {
 
     const attackerBonuses = await ClickerService.calculateEquipBonuses(character)
     const defenderBonuses = await ClickerService.calculateEquipBonuses(targetParticipant.character)
+    const attackerCritChance = Math.min(100, character.critChance + attackerBonuses.critChanceBonus)
 
-    const attackerStats = this.applyModifiers({
-      attack: character.attack + attackerBonuses.attackBonus,
-      defense: character.defense + attackerBonuses.defenseBonus,
-    }, effects, character.id)
+    const attackerStats = this.applyModifiers(
+      {
+        attack: character.attack + attackerBonuses.attackBonus,
+        defense: character.defense + attackerBonuses.defenseBonus,
+      },
+      effects,
+      character.id
+    )
 
-    const defenderStats = this.applyModifiers({
-      attack: targetParticipant.character.attack + defenderBonuses.attackBonus,
-      defense: targetParticipant.character.defense + defenderBonuses.defenseBonus,
-    }, effects, targetParticipant.characterId)
+    const defenderStats = this.applyModifiers(
+      {
+        attack: targetParticipant.character.attack + defenderBonuses.attackBonus,
+        defense: targetParticipant.character.defense + defenderBonuses.defenseBonus,
+      },
+      effects,
+      targetParticipant.characterId
+    )
 
     const rawDamage = Math.max(1, attackerStats.attack - defenderStats.defense)
     const variance = Math.floor(Math.random() * Math.max(1, Math.floor(rawDamage * 0.3)))
     const forceCrit = this.hasEffect(effects, character.id, 'guaranteed_crit')
     const hit = forceCrit
       ? { damage: Math.floor((rawDamage + variance) * (character.critDamage / 100)), isCrit: true }
-      : this.rollCrit(character.critChance, character.critDamage, rawDamage + variance)
+      : this.rollCrit(attackerCritChance, character.critDamage, rawDamage + variance)
 
     if (forceCrit) {
       effects = this.consumeEffect(effects, character.id, 'guaranteed_crit')
@@ -692,7 +760,12 @@ export default class PvpService {
     return { match, log: log[log.length - 1] }
   }
 
-  static async useSkill(character: Character, matchId: number, skillId: number, targetId?: number | null) {
+  static async useSkill(
+    character: Character,
+    matchId: number,
+    skillId: number,
+    targetId?: number | null
+  ) {
     const match = await PvpMatch.findOrFail(matchId)
     const participants = await this.loadParticipants(match.id)
     const actorParticipant = this.getParticipant(participants, character.id)
@@ -704,29 +777,43 @@ export default class PvpService {
     let effects = this.getEffects(match)
     const log = this.getLog(match)
 
-    const targetParticipant = ['heal_percent', 'guaranteed_crit', 'shield', 'buff_all'].includes(skill.effectType)
+    const targetParticipant = ['heal_percent', 'guaranteed_crit', 'shield', 'buff_all'].includes(
+      skill.effectType
+    )
       ? null
       : this.getTargetParticipant(participants, actorParticipant.team, targetId)
 
-    if (!['heal_percent', 'guaranteed_crit', 'shield', 'buff_all'].includes(skill.effectType) && !targetParticipant) {
+    if (
+      !['heal_percent', 'guaranteed_crit', 'shield', 'buff_all'].includes(skill.effectType) &&
+      !targetParticipant
+    ) {
       throw new Error('Aucune cible valide')
     }
 
     const attackerBonuses = await ClickerService.calculateEquipBonuses(character)
-    const attackerStats = this.applyModifiers({
-      attack: character.attack + attackerBonuses.attackBonus,
-      defense: character.defense + attackerBonuses.defenseBonus,
-    }, effects, character.id)
+    const attackerCritChance = Math.min(100, character.critChance + attackerBonuses.critChanceBonus)
+    const attackerStats = this.applyModifiers(
+      {
+        attack: character.attack + attackerBonuses.attackBonus,
+        defense: character.defense + attackerBonuses.defenseBonus,
+      },
+      effects,
+      character.id
+    )
 
     const defenderBonuses = targetParticipant
       ? await ClickerService.calculateEquipBonuses(targetParticipant.character)
       : null
 
     const defenderStats = targetParticipant
-      ? this.applyModifiers({
-          attack: targetParticipant.character.attack + (defenderBonuses?.attackBonus || 0),
-          defense: targetParticipant.character.defense + (defenderBonuses?.defenseBonus || 0),
-        }, effects, targetParticipant.characterId)
+      ? this.applyModifiers(
+          {
+            attack: targetParticipant.character.attack + (defenderBonuses?.attackBonus || 0),
+            defense: targetParticipant.character.defense + (defenderBonuses?.defenseBonus || 0),
+          },
+          effects,
+          targetParticipant.characterId
+        )
       : null
 
     switch (skill.effectType) {
@@ -737,7 +824,10 @@ export default class PvpService {
           blocked = true
           effects = this.consumeEffect(effects, targetParticipant.characterId, 'shield')
         } else {
-          this.applyDamage(targetParticipant, skill.effectValue + Math.floor(attackerStats.attack * 0.5))
+          this.applyDamage(
+            targetParticipant,
+            skill.effectValue + Math.floor(attackerStats.attack * 0.5)
+          )
         }
         log.push({
           action: 'skill_use',
@@ -754,7 +844,13 @@ export default class PvpService {
 
       case 'debuff_def': {
         if (!targetParticipant) break
-        effects.push({ type: 'debuff_def', value: skill.effectValue, turnsLeft: skill.duration, sourceCharId: character.id, targetCharId: targetParticipant.characterId })
+        effects.push({
+          type: 'debuff_def',
+          value: skill.effectValue,
+          turnsLeft: skill.duration,
+          sourceCharId: character.id,
+          targetCharId: targetParticipant.characterId,
+        })
         log.push({
           action: 'skill_use',
           attackerId: character.id,
@@ -769,7 +865,13 @@ export default class PvpService {
 
       case 'debuff_atk': {
         if (!targetParticipant) break
-        effects.push({ type: 'debuff_atk', value: skill.effectValue, turnsLeft: skill.duration, sourceCharId: character.id, targetCharId: targetParticipant.characterId })
+        effects.push({
+          type: 'debuff_atk',
+          value: skill.effectValue,
+          turnsLeft: skill.duration,
+          sourceCharId: character.id,
+          targetCharId: targetParticipant.characterId,
+        })
         log.push({
           action: 'skill_use',
           attackerId: character.id,
@@ -784,7 +886,10 @@ export default class PvpService {
 
       case 'steal_damage': {
         if (!targetParticipant || !defenderStats) break
-        const baseDamage = Math.max(1, skill.effectValue + attackerStats.attack - defenderStats.defense)
+        const baseDamage = Math.max(
+          1,
+          skill.effectValue + attackerStats.attack - defenderStats.defense
+        )
         let blocked = false
         if (this.hasEffect(effects, targetParticipant.characterId, 'shield')) {
           blocked = true
@@ -801,7 +906,9 @@ export default class PvpService {
           skillName: skill.name,
           damage: blocked ? 0 : baseDamage,
           blocked,
-          message: blocked ? 'Bouclier adverse absorbe le siphon' : 'Le systeme adverse est siphonne',
+          message: blocked
+            ? 'Bouclier adverse absorbe le siphon'
+            : 'Le systeme adverse est siphonne',
         })
         break
       }
@@ -815,7 +922,13 @@ export default class PvpService {
           effects = this.consumeEffect(effects, targetParticipant.characterId, 'shield')
         } else {
           this.applyDamage(targetParticipant, damage)
-          effects.push({ type: 'stun', value: 0, turnsLeft: skill.duration, sourceCharId: character.id, targetCharId: targetParticipant.characterId })
+          effects.push({
+            type: 'stun',
+            value: 0,
+            turnsLeft: skill.duration,
+            sourceCharId: character.id,
+            targetCharId: targetParticipant.characterId,
+          })
         }
         log.push({
           action: 'skill_use',
@@ -832,7 +945,13 @@ export default class PvpService {
       }
 
       case 'guaranteed_crit': {
-        effects.push({ type: 'guaranteed_crit', value: 0, turnsLeft: 2, sourceCharId: character.id, targetCharId: character.id })
+        effects.push({
+          type: 'guaranteed_crit',
+          value: 0,
+          turnsLeft: 2,
+          sourceCharId: character.id,
+          targetCharId: character.id,
+        })
         log.push({
           action: 'skill_use',
           attackerId: character.id,
@@ -871,9 +990,12 @@ export default class PvpService {
       }
 
       case 'heal_percent': {
-        const healed = Math.floor(actorParticipant.hpMax * skill.effectValue / 100)
+        const healed = Math.floor((actorParticipant.hpMax * skill.effectValue) / 100)
         const hpBefore = actorParticipant.currentHp
-        actorParticipant.currentHp = Math.min(actorParticipant.hpMax, actorParticipant.currentHp + healed)
+        actorParticipant.currentHp = Math.min(
+          actorParticipant.hpMax,
+          actorParticipant.currentHp + healed
+        )
         log.push({
           action: 'skill_use',
           attackerId: character.id,
@@ -893,7 +1015,7 @@ export default class PvpService {
           let blocked = false
           const baseDamage = Math.max(1, attackerStats.attack - defenderStats.defense)
           const variance = Math.floor(Math.random() * Math.max(1, Math.floor(baseDamage * 0.3)))
-          const hit = this.rollCrit(character.critChance, character.critDamage, baseDamage + variance)
+          const hit = this.rollCrit(attackerCritChance, character.critDamage, baseDamage + variance)
           if (this.hasEffect(effects, targetParticipant.characterId, 'shield')) {
             blocked = true
             effects = this.consumeEffect(effects, targetParticipant.characterId, 'shield')
@@ -918,7 +1040,10 @@ export default class PvpService {
 
       case 'damage_dot': {
         if (!targetParticipant || !defenderStats) break
-        const baseDamage = Math.max(1, skill.effectValue + attackerStats.attack - defenderStats.defense)
+        const baseDamage = Math.max(
+          1,
+          skill.effectValue + attackerStats.attack - defenderStats.defense
+        )
         let blocked = false
         if (this.hasEffect(effects, targetParticipant.characterId, 'shield')) {
           blocked = true
@@ -949,7 +1074,13 @@ export default class PvpService {
 
       case 'shield': {
         effects = this.consumeEffect(effects, character.id, 'shield')
-        effects.push({ type: 'shield', value: 0, turnsLeft: 2, sourceCharId: character.id, targetCharId: character.id })
+        effects.push({
+          type: 'shield',
+          value: 0,
+          turnsLeft: 2,
+          sourceCharId: character.id,
+          targetCharId: character.id,
+        })
         log.push({
           action: 'skill_use',
           attackerId: character.id,
@@ -989,7 +1120,13 @@ export default class PvpService {
 
       case 'turret': {
         if (!targetParticipant) break
-        effects.push({ type: 'turret', value: skill.effectValue, turnsLeft: skill.duration, sourceCharId: character.id, targetCharId: targetParticipant.characterId })
+        effects.push({
+          type: 'turret',
+          value: skill.effectValue,
+          turnsLeft: skill.duration,
+          sourceCharId: character.id,
+          targetCharId: targetParticipant.characterId,
+        })
         log.push({
           action: 'skill_use',
           attackerId: character.id,
@@ -1003,7 +1140,13 @@ export default class PvpService {
       }
 
       case 'buff_all': {
-        effects.push({ type: 'buff_all', value: skill.effectValue, turnsLeft: skill.duration, sourceCharId: character.id, targetCharId: character.id })
+        effects.push({
+          type: 'buff_all',
+          value: skill.effectValue,
+          turnsLeft: skill.duration,
+          sourceCharId: character.id,
+          targetCharId: character.id,
+        })
         log.push({
           action: 'skill_use',
           attackerId: character.id,
@@ -1070,7 +1213,7 @@ export default class PvpService {
     log: any[],
     participants?: PvpMatchParticipant[]
   ) {
-    const loadedParticipants = participants || await this.loadParticipants(match.id)
+    const loadedParticipants = participants || (await this.loadParticipants(match.id))
     const winners = loadedParticipants.filter((participant) => participant.team === winnerTeam)
     const losers = loadedParticipants.filter((participant) => participant.team !== winnerTeam)
 
@@ -1084,14 +1227,18 @@ export default class PvpService {
 
     const activeSeason = await SeasonService.getCurrentRankedSeason()
     const kFactor = 32
-    const expectedWinner = 1 / (1 + Math.pow(10, (this.averageRating(losers) - this.averageRating(winners)) / 400))
+    const expectedWinner =
+      1 / (1 + Math.pow(10, (this.averageRating(losers) - this.averageRating(winners)) / 400))
     const ratingChange = Math.round(kFactor * (1 - expectedWinner))
     const creditReward = Math.floor(100 + ratingChange * 10)
 
     for (const participant of winners) {
       let updatedRating = participant.character.pvpRating + ratingChange
       if (activeSeason) {
-        const seasonStat = await SeasonService.getOrCreatePvpSeasonStat(participant.character, activeSeason)
+        const seasonStat = await SeasonService.getOrCreatePvpSeasonStat(
+          participant.character,
+          activeSeason
+        )
         seasonStat.rating = updatedRating
         seasonStat.peakRating = Math.max(seasonStat.peakRating, seasonStat.rating)
         seasonStat.wins += 1
@@ -1108,7 +1255,10 @@ export default class PvpService {
     for (const participant of losers) {
       const updatedRating = Math.max(0, participant.character.pvpRating - ratingChange)
       if (activeSeason) {
-        const seasonStat = await SeasonService.getOrCreatePvpSeasonStat(participant.character, activeSeason)
+        const seasonStat = await SeasonService.getOrCreatePvpSeasonStat(
+          participant.character,
+          activeSeason
+        )
         seasonStat.rating = updatedRating
         seasonStat.peakRating = Math.max(seasonStat.peakRating, updatedRating)
         seasonStat.losses += 1
@@ -1122,7 +1272,9 @@ export default class PvpService {
     }
 
     for (const participant of loadedParticipants) {
-      await QuestService.trackObjectiveProgress(participant.character, 'pvp_match', 1).catch(() => {})
+      await QuestService.trackObjectiveProgress(participant.character, 'pvp_match', 1).catch(
+        () => {}
+      )
     }
 
     match.ratingChange = ratingChange
@@ -1153,41 +1305,50 @@ export default class PvpService {
   static async getMatchState(matchId: number) {
     const match = await PvpMatch.findOrFail(matchId)
     const participants = await this.loadParticipants(match.id)
-    const teams = await Promise.all([1, 2].map(async (team) => {
-      const members = participants
-        .filter((participant) => participant.team === team)
-        .sort((a, b) => a.slot - b.slot)
+    const teams = await Promise.all(
+      [1, 2].map(async (team) => {
+        const members = participants
+          .filter((participant) => participant.team === team)
+          .sort((a, b) => a.slot - b.slot)
 
-      const serializedMembers = await Promise.all(
-        members.map(async (participant) => {
-          const equipBonuses = await ClickerService.calculateEquipBonuses(participant.character)
+        const serializedMembers = await Promise.all(
+          members.map(async (participant) => {
+            const equipBonuses = await ClickerService.calculateEquipBonuses(participant.character)
 
-          return {
-            id: participant.character.id,
-            name: participant.character.name,
-            level: participant.character.level,
-            attack: participant.character.attack + equipBonuses.attackBonus,
-            defense: participant.character.defense + equipBonuses.defenseBonus,
-            critChance: participant.character.critChance,
-            critDamage: participant.character.critDamage,
-            pvpRating: participant.character.pvpRating,
-            currentHp: participant.currentHp,
-            hpMax: participant.hpMax,
-            isEliminated: participant.isEliminated,
-            slot: participant.slot,
-            isLeader: participant.slot === 1,
-          }
-        })
-      )
+            return {
+              id: participant.character.id,
+              name: participant.character.name,
+              level: participant.character.level,
+              attack: participant.character.attack + equipBonuses.attackBonus,
+              defense: participant.character.defense + equipBonuses.defenseBonus,
+              critChance: Math.min(
+                100,
+                participant.character.critChance + equipBonuses.critChanceBonus
+              ),
+              critDamage: participant.character.critDamage,
+              pvpRating: participant.character.pvpRating,
+              currentHp: participant.currentHp,
+              hpMax: participant.hpMax,
+              isEliminated: participant.isEliminated,
+              slot: participant.slot,
+              isLeader: participant.slot === 1,
+            }
+          })
+        )
 
-      return {
-        team,
-        averageRating: members.length > 0
-          ? Math.round(members.reduce((sum, participant) => sum + participant.character.pvpRating, 0) / members.length)
-          : 0,
-        members: serializedMembers,
-      }
-    }))
+        return {
+          team,
+          averageRating:
+            members.length > 0
+              ? Math.round(
+                  members.reduce((sum, participant) => sum + participant.character.pvpRating, 0) /
+                    members.length
+                )
+              : 0,
+          members: serializedMembers,
+        }
+      })
+    )
 
     const waitingMatches = await PvpMatch.query()
       .where('status', 'waiting')
@@ -1205,7 +1366,10 @@ export default class PvpService {
         ratingChange: match.ratingChange,
         log: this.getLog(match),
         skillCooldowns: JSON.parse(match.skillCooldowns || '{}'),
-        queueEstimateSeconds: this.estimateQueueSeconds(match.queueMode, Math.max(0, waitingMatches.length - 1)),
+        queueEstimateSeconds: this.estimateQueueSeconds(
+          match.queueMode,
+          Math.max(0, waitingMatches.length - 1)
+        ),
       },
       activeEffects: this.getEffects(match),
       teams,

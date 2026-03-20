@@ -4,6 +4,7 @@ import CharacterQuest from '#models/character_quest'
 import InventoryItem from '#models/inventory_item'
 import Quest from '#models/quest'
 import Season from '#models/season'
+import CompanionService from '#services/companion_service'
 import SeasonService from '#services/season_service'
 
 type HackProgressPayload = {
@@ -185,7 +186,10 @@ export default class QuestService {
 
     const states = await CharacterQuest.query()
       .where('characterId', characterId)
-      .whereIn('questId', quests.map((quest) => quest.id))
+      .whereIn(
+        'questId',
+        quests.map((quest) => quest.id)
+      )
       .preload('quest')
 
     const stateByQuestId = new Map(states.map((state) => [state.questId, state]))
@@ -235,7 +239,10 @@ export default class QuestService {
     const activeStates = await CharacterQuest.query()
       .where('characterId', character.id)
       .where('status', 'active')
-      .whereIn('questId', quests.map((quest) => quest.id))
+      .whereIn(
+        'questId',
+        quests.map((quest) => quest.id)
+      )
       .preload('quest')
 
     const toComplete: CharacterQuest[] = []
@@ -260,7 +267,11 @@ export default class QuestService {
     }
   }
 
-  private static computeNextProgress(quest: Quest, currentProgress: number, payload: HackProgressPayload) {
+  private static computeNextProgress(
+    quest: Quest,
+    currentProgress: number,
+    payload: HackProgressPayload
+  ) {
     if (quest.objectiveType === 'hack_clicks') {
       return Math.min(quest.targetValue, currentProgress + Math.max(0, payload.clicks))
     }
@@ -278,11 +289,17 @@ export default class QuestService {
     }
 
     if (quest.objectiveType === 'companion_purchase') {
-      return Math.min(quest.targetValue, currentProgress + Math.max(0, payload.companionPurchases || 0))
+      return Math.min(
+        quest.targetValue,
+        currentProgress + Math.max(0, payload.companionPurchases || 0)
+      )
     }
 
     if (quest.objectiveType === 'companion_activate') {
-      return Math.min(quest.targetValue, currentProgress + Math.max(0, payload.companionActivations || 0))
+      return Math.min(
+        quest.targetValue,
+        currentProgress + Math.max(0, payload.companionActivations || 0)
+      )
     }
 
     if (quest.objectiveType === 'pvp_match') {
@@ -290,13 +307,20 @@ export default class QuestService {
     }
 
     if (quest.objectiveType === 'dungeon_floor_clear') {
-      return Math.min(quest.targetValue, currentProgress + Math.max(0, payload.dungeonFloorClears || 0))
+      return Math.min(
+        quest.targetValue,
+        currentProgress + Math.max(0, payload.dungeonFloorClears || 0)
+      )
     }
 
     return currentProgress
   }
 
-  private static async completeQuest(character: Character, state: CharacterQuest, events: QuestEvent[]) {
+  private static async completeQuest(
+    character: Character,
+    state: CharacterQuest,
+    events: QuestEvent[]
+  ) {
     state.status = 'completed'
     state.progress = state.quest.targetValue
     state.completedAt = DateTime.now()
@@ -323,6 +347,7 @@ export default class QuestService {
         character.xp += reward.value
         while (character.xp >= character.level * 100) {
           character.levelUp()
+          await CompanionService.refillHpAfterLevelUp(character)
         }
         continue
       }
@@ -358,12 +383,16 @@ export default class QuestService {
 
   private static async buildSummary(characterId: number, activeSeason: Season | null) {
     const quests = await this.getEligibleQuests(activeSeason)
-    const states = quests.length === 0
-      ? []
-      : await CharacterQuest.query()
-          .where('characterId', characterId)
-          .whereIn('questId', quests.map((quest) => quest.id))
-          .preload('quest')
+    const states =
+      quests.length === 0
+        ? []
+        : await CharacterQuest.query()
+            .where('characterId', characterId)
+            .whereIn(
+              'questId',
+              quests.map((quest) => quest.id)
+            )
+            .preload('quest')
 
     return {
       mainTrack: this.buildTrackSummary(
@@ -374,9 +403,12 @@ export default class QuestService {
       ),
       seasonalTrack: activeSeason
         ? this.buildTrackSummary(
-            quests.filter((quest) => quest.questType === 'seasonal' && quest.seasonId === activeSeason.id),
+            quests.filter(
+              (quest) => quest.questType === 'seasonal' && quest.seasonId === activeSeason.id
+            ),
             states.filter(
-              (state) => state.quest.questType === 'seasonal' && state.quest.seasonId === activeSeason.id
+              (state) =>
+                state.quest.questType === 'seasonal' && state.quest.seasonId === activeSeason.id
             ),
             'seasonal',
             activeSeason
@@ -387,14 +419,18 @@ export default class QuestService {
 
   private static async buildJournal(characterId: number, activeSeason: Season | null) {
     const quests = await this.getEligibleQuests(activeSeason)
-    const states = quests.length === 0
-      ? []
-      : await CharacterQuest.query()
-          .where('characterId', characterId)
-          .whereIn('questId', quests.map((quest) => quest.id))
-          .preload('quest', (query) => {
-            query.preload('parentQuest').preload('season')
-          })
+    const states =
+      quests.length === 0
+        ? []
+        : await CharacterQuest.query()
+            .where('characterId', characterId)
+            .whereIn(
+              'questId',
+              quests.map((quest) => quest.id)
+            )
+            .preload('quest', (query) => {
+              query.preload('parentQuest').preload('season')
+            })
 
     const tracks: QuestTrackJournal[] = []
 
@@ -412,7 +448,9 @@ export default class QuestService {
         (state) => state.quest.questType === 'seasonal' && state.quest.seasonId === activeSeason.id
       )
       if (seasonalQuests.length > 0) {
-        tracks.push(this.buildTrackJournal(seasonalQuests, seasonalStates, 'seasonal', activeSeason))
+        tracks.push(
+          this.buildTrackJournal(seasonalQuests, seasonalStates, 'seasonal', activeSeason)
+        )
       }
     }
 
@@ -431,14 +469,18 @@ export default class QuestService {
       return null
     }
 
-    const activeState = states
-      .filter((state) => state.status === 'active')
-      .sort((a, b) => a.quest.sortOrder - b.quest.sortOrder)[0] || null
+    const activeState =
+      states
+        .filter((state) => state.status === 'active')
+        .sort((a, b) => a.quest.sortOrder - b.quest.sortOrder)[0] || null
 
     return {
       questType,
       trackKey: questType === 'main' ? 'main' : `seasonal:${season?.id ?? 'active'}`,
-      title: questType === 'main' ? quests[0].arcTitle : season?.campaignTitle || season?.name || quests[0].arcTitle,
+      title:
+        questType === 'main'
+          ? quests[0].arcTitle
+          : season?.campaignTitle || season?.name || quests[0].arcTitle,
       subtitle:
         questType === 'main'
           ? 'Quete principale'
@@ -511,7 +553,8 @@ export default class QuestService {
     return {
       questType,
       trackKey: summary?.trackKey || questType,
-      title: summary?.title || (questType === 'main' ? 'Quete principale' : season?.name || 'Saison'),
+      title:
+        summary?.title || (questType === 'main' ? 'Quete principale' : season?.name || 'Saison'),
       subtitle: summary?.subtitle || '',
       completedCount: summary?.completedCount || 0,
       totalCount: summary?.totalCount || quests.length,
@@ -607,11 +650,13 @@ export default class QuestService {
       return []
     }
 
-    return [{
-      type: quest.rewardType as QuestReward['type'],
-      value: quest.rewardValue,
-      itemId: null,
-      itemName: null,
-    }]
+    return [
+      {
+        type: quest.rewardType as QuestReward['type'],
+        value: quest.rewardValue,
+        itemId: null,
+        itemName: null,
+      },
+    ]
   }
 }

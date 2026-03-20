@@ -1,6 +1,7 @@
 import Character from '#models/character'
 import Talent from '#models/talent'
 import CharacterTalent from '#models/character_talent'
+import CompanionService from '#services/companion_service'
 
 export interface TalentBonuses {
   cpcFlat: number
@@ -141,7 +142,11 @@ export default class TalentService {
 
     const cappedSeconds = Math.min(elapsed, 4 * 3600)
     const talentBonuses = await this.getCharacterBonuses(character.id)
-    const totalCps = this.computeEffectiveCps(character.creditsPerSecond, talentBonuses)
+    const companionBonuses = await CompanionService.getActiveBonuses(character.id)
+    const totalCps = this.computeEffectiveCps(
+      character.creditsPerSecond + companionBonuses.cpsBonus,
+      talentBonuses
+    )
     const offlineCredits = totalCps * cappedSeconds
 
     if (offlineCredits > 0) {

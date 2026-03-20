@@ -3,10 +3,13 @@ import Character from '#models/character'
 import CharacterDailyRewardState from '#models/character_daily_reward_state'
 import DailyRewardConfig from '#models/daily_reward_config'
 import InventoryItem from '#models/inventory_item'
+import CompanionService from '#services/companion_service'
 
 export default class DailyRewardService {
   private static async ensureState(characterId: number) {
-    const existing = await CharacterDailyRewardState.query().where('characterId', characterId).first()
+    const existing = await CharacterDailyRewardState.query()
+      .where('characterId', characterId)
+      .first()
     if (existing) return existing
 
     return CharacterDailyRewardState.create({
@@ -52,6 +55,7 @@ export default class DailyRewardService {
         character.xp += config.rewardValue
         if (character.xp >= character.level * 100) {
           character.levelUp()
+          await CompanionService.refillHpAfterLevelUp(character)
         }
         break
       case 'item': {
@@ -82,10 +86,7 @@ export default class DailyRewardService {
   }
 
   static async getStatus(characterId: number) {
-    const [state, configs] = await Promise.all([
-      this.ensureState(characterId),
-      this.getConfigs(),
-    ])
+    const [state, configs] = await Promise.all([this.ensureState(characterId), this.getConfigs()])
 
     const claimedToday = this.hasClaimedToday(state)
     const streakStillAlive = claimedToday || this.claimedYesterday(state)

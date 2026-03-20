@@ -3,6 +3,7 @@ import InventoryItem from '#models/inventory_item'
 import TalentService from '#services/talent_service'
 import DailyMissionService from '#services/daily_mission_service'
 import QuestService from '#services/quest_service'
+import CompanionService from '#services/companion_service'
 import transmit from '@adonisjs/transmit/services/main'
 
 const MAX_CLICKS_PER_BATCH = 50
@@ -12,19 +13,19 @@ const MAX_CLICKS_PER_BATCH = 50
 // ═══════════════════════════════════════════
 
 interface ClickRecord {
-  timestamps: number[]    // Last N request timestamps
-  clickCounts: number[]   // Last N click counts
-  penaltyUntil: number    // If > Date.now(), clicks are blocked
-  warnings: number        // Accumulated warnings
+  timestamps: number[] // Last N request timestamps
+  clickCounts: number[] // Last N click counts
+  penaltyUntil: number // If > Date.now(), clicks are blocked
+  warnings: number // Accumulated warnings
 }
 
 const clickRecords = new Map<number, ClickRecord>()
 
-const RATE_LIMIT_WINDOW = 1000      // 1 second window
-const MAX_REQUESTS_PER_WINDOW = 14  // Mobile users can legitimately burst more often
-const PATTERN_HISTORY = 20         // Track last 20 requests
-const PENALTY_DURATION = 8_000     // 8 second penalty
-const MAX_WARNINGS = 5             // Warnings before penalty
+const RATE_LIMIT_WINDOW = 1000 // 1 second window
+const MAX_REQUESTS_PER_WINDOW = 14 // Mobile users can legitimately burst more often
+const PATTERN_HISTORY = 20 // Track last 20 requests
+const PENALTY_DURATION = 8_000 // 8 second penalty
+const MAX_WARNINGS = 5 // Warnings before penalty
 const MIN_CLICK_COUNT_FOR_PATTERN_CHECK = 18
 const HUMAN_BATCH_INTERVAL = 500
 const HUMAN_BATCH_TOLERANCE = 160
@@ -33,7 +34,10 @@ const BOT_INTERVAL_THRESHOLD = 300
 
 export default class ClickerService {
   /** Anti-cheat: check if user is rate-limited or showing bot patterns */
-  static checkAntiCheat(userId: number, clickCount: number): { allowed: boolean; reason?: string; penaltySeconds?: number } {
+  static checkAntiCheat(
+    userId: number,
+    clickCount: number
+  ): { allowed: boolean; reason?: string; penaltySeconds?: number } {
     const now = Date.now()
 
     if (!clickRecords.has(userId)) {
@@ -44,7 +48,11 @@ export default class ClickerService {
     // Check active penalty
     if (record.penaltyUntil > now) {
       const remaining = Math.ceil((record.penaltyUntil - now) / 1000)
-      return { allowed: false, reason: 'Activite suspecte detectee. Attends avant de continuer.', penaltySeconds: remaining }
+      return {
+        allowed: false,
+        reason: 'Activite suspecte detectee. Attends avant de continuer.',
+        penaltySeconds: remaining,
+      }
     }
 
     // Record this request
@@ -89,7 +97,8 @@ export default class ClickerService {
           intervals.push(last10Times[i] - last10Times[i - 1])
         }
         const avgInterval = intervals.reduce((a, b) => a + b, 0) / intervals.length
-        const variance = intervals.reduce((sum, v) => sum + (v - avgInterval) ** 2, 0) / intervals.length
+        const variance =
+          intervals.reduce((sum, v) => sum + (v - avgInterval) ** 2, 0) / intervals.length
         const stdDev = Math.sqrt(variance)
         const looksLikeClientBatchCadence =
           Math.abs(avgInterval - HUMAN_BATCH_INTERVAL) <= HUMAN_BATCH_TOLERANCE && stdDev < 35
@@ -149,6 +158,7 @@ export default class ClickerService {
     let leveledUp = false
     if (character.xp >= xpForNextLevel) {
       character.levelUp()
+      await CompanionService.refillHpAfterLevelUp(character)
       leveledUp = true
     }
 
@@ -173,7 +183,7 @@ export default class ClickerService {
     })
 
     const effectiveCps = TalentService.computeEffectiveCps(
-      character.creditsPerSecond,
+      character.creditsPerSecond + equipBonuses.cpsBonus,
       talentBonuses
     )
 
@@ -195,8 +205,9 @@ export default class ClickerService {
 
   static async tick(character: Character) {
     const talentBonuses = await TalentService.getCharacterBonuses(character.id)
+    const companionBonuses = await CompanionService.getActiveBonuses(character.id)
     const effectiveCps = TalentService.computeEffectiveCps(
-      character.creditsPerSecond,
+      character.creditsPerSecond + companionBonuses.cpsBonus,
       talentBonuses
     )
 
@@ -234,6 +245,16 @@ export default class ClickerService {
       }
     }
 
-    return { clickBonus, attackBonus, defenseBonus }
+    const companionBonuses = await CompanionService.getActiveBonuses(character.id)
+
+    return {
+      clickBonus: clickBonus + companionBonuses.clickBonus,
+      attackBonus: attackBonus + companionBonuses.attackBonus,
+      defenseBonus: defenseBonus + companionBonuses.defenseBonus,
+      cpsBonus: companionBonuses.cpsBonus,
+      hpBonus: companionBonuses.hpBonus,
+      critChanceBonus: companionBonuses.critChanceBonus,
+      lootBonus: companionBonuses.lootBonus,
+    }
   }
 }

@@ -3,6 +3,7 @@ import Character from '#models/character'
 import DailyMission from '#models/daily_mission'
 import CharacterDailyMission from '#models/character_daily_mission'
 import InventoryItem from '#models/inventory_item'
+import CompanionService from '#services/companion_service'
 
 const MISSIONS_PER_DAY = 3
 
@@ -88,6 +89,7 @@ export default class DailyMissionService {
         character.xp += mission.rewardValue
         if (character.xp >= character.level * 100) {
           character.levelUp()
+          await CompanionService.refillHpAfterLevelUp(character)
         }
         break
       case 'item':
