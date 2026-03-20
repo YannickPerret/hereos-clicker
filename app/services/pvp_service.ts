@@ -300,7 +300,8 @@ export default class PvpService {
 
       const queuedParticipants = waiting.participants.filter((participant) => participant.team === 1)
       const queuedAverage = this.averageRating(queuedParticipants)
-      const waitedSeconds = waiting.createdAt ? Math.max(0, Math.floor((Date.now() - waiting.createdAt.toMillis()) / 1000)) : 0
+      const waitedAt = Number(waiting.createdAt) || 0
+      const waitedSeconds = waitedAt > 0 ? Math.max(0, Math.floor((Date.now() - waitedAt) / 1000)) : 0
       const maxGap = 150 + Math.floor(waitedSeconds / 15) * 50
 
       if (Math.abs(queuedAverage - myAverage) <= maxGap) {
