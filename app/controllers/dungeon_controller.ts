@@ -16,6 +16,10 @@ export default class DungeonController {
     return error instanceof Error && error.message === 'Invalid run'
   }
 
+  private isCharacterKoError(error: unknown) {
+    return error instanceof Error && error.message === 'Ton personnage est KO'
+  }
+
   private async getGlobalLeaderboardPage(offset: number, limit: number) {
     const rows = await Character.query()
       .orderBy('credits', 'desc')
@@ -225,6 +229,10 @@ export default class DungeonController {
       if (this.isRunAccessError(error)) {
         return this.redirectAfterRunError(character, Number(params.runId), response, session)
       }
+      if (this.isCharacterKoError(error)) {
+        session.flash('errors', { message: 'Ton personnage est KO. Attends la fin du combat.' })
+        return response.redirect(`/dungeon/run/${params.runId}`)
+      }
       throw error
     }
 
@@ -262,6 +270,10 @@ export default class DungeonController {
       if (this.isRunAccessError(error)) {
         return this.redirectAfterRunError(character, Number(params.runId), response, session)
       }
+      if (this.isCharacterKoError(error)) {
+        session.flash('errors', { message: 'Ton personnage est KO. Attends la fin du combat.' })
+        return response.redirect(`/dungeon/run/${params.runId}`)
+      }
       throw error
     }
 
@@ -279,6 +291,10 @@ export default class DungeonController {
     } catch (error) {
       if (this.isRunAccessError(error)) {
         return this.redirectAfterRunError(character, Number(params.runId), response, session)
+      }
+      if (this.isCharacterKoError(error)) {
+        session.flash('errors', { message: 'Ton personnage est KO. Attends la fin du combat.' })
+        return response.redirect(`/dungeon/run/${params.runId}`)
       }
       throw error
     }
@@ -326,6 +342,7 @@ export default class DungeonController {
     }
 
     return response.json({
+      character: character.serialize(),
       run: {
         ...run.serialize(),
         combatLog: JSON.parse(run.combatLog || '[]'),

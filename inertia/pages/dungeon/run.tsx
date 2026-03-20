@@ -315,6 +315,7 @@ export default function DungeonRun({
   skills = [],
   activeEffects: initialEffects = [],
 }: Props) {
+  const [playerCharacter, setPlayerCharacter] = useState(character)
   const [run, setRun] = useState(initialRun)
   const [enemy, setEnemy] = useState(initialEnemy)
   const [preview, setPreview] = useState(combatPreview)
@@ -326,17 +327,19 @@ export default function DungeonRun({
   const isOver = run.status !== 'in_progress'
   const { combatLog } = usePage().props as any
   const isGroupRun = !!run.partyId
-  const isMyTurn = !run.partyId || run.currentTurnId === character.id
+  const isMyTurn = !run.partyId || run.currentTurnId === playerCharacter.id
+  const isCharacterKo = playerCharacter.hpCurrent <= 0
   const afkPenalties = parseAfkPenalties(run.afkPenalties)
   const currentTurnIsAfk =
     run.currentTurnId !== null && (afkPenalties[String(run.currentTurnId)] || 0) > 0
 
   // Sync from Inertia props
   useEffect(() => {
+    setPlayerCharacter(character)
     setRun(initialRun)
     setEnemy(initialEnemy)
     setPreview(combatPreview)
-  }, [initialRun, initialEnemy, combatPreview])
+  }, [character, initialRun, initialEnemy, combatPreview])
 
   // Poll run state for group dungeons
   useEffect(() => {
@@ -348,6 +351,7 @@ export default function DungeonRun({
         const res = await fetch(`/dungeon/run/${run.id}/state`)
         if (!res.ok) return
         const data = await res.json()
+        if (data.character) setPlayerCharacter(data.character)
         setRun(data.run)
         setEnemy(data.currentEnemy)
         setPreview(data.combatPreview)
@@ -418,7 +422,7 @@ export default function DungeonRun({
               className={`text-center px-3 py-1.5 rounded border text-xs ${
                 m.id === run.currentTurnId
                   ? 'border-cyber-yellow/50 bg-cyber-yellow/10'
-                  : m.id === character.id
+                  : m.id === playerCharacter.id
                     ? 'border-cyber-blue/30 bg-cyber-blue/5'
                     : 'border-gray-800'
               }`}
@@ -486,19 +490,19 @@ export default function DungeonRun({
             {/* Player */}
             <div className="bg-cyber-dark border border-cyber-blue/30 rounded-lg p-5">
               <h3 className="text-cyber-blue font-bold text-center mb-3 tracking-widest text-sm">
-                {character.name}
+                {playerCharacter.name}
               </h3>
               <div className="mb-3">
                 <div className="flex justify-between text-xs text-gray-500 mb-1">
                   <span>HP</span>
                   <span>
-                    {character.hpCurrent}/{character.hpMax}
+                    {playerCharacter.hpCurrent}/{playerCharacter.hpMax}
                   </span>
                 </div>
                 <div className="h-4 bg-cyber-black rounded-full overflow-hidden border border-cyber-green/20">
                   <div
                     className="h-full bg-gradient-to-r from-cyber-green to-cyber-blue transition-all duration-500"
-                    style={{ width: `${(character.hpCurrent / character.hpMax) * 100}%` }}
+                    style={{ width: `${(playerCharacter.hpCurrent / playerCharacter.hpMax) * 100}%` }}
                   />
                 </div>
               </div>
@@ -506,28 +510,33 @@ export default function DungeonRun({
                 <div className="text-center">
                   <div className="text-gray-600">ATK</div>
                   <div className="text-cyber-red font-bold">{preview.player.attack}</div>
-                  {preview.player.attack !== character.attack && (
-                    <div className="text-[10px] text-gray-600">base {character.attack}</div>
+                  {preview.player.attack !== playerCharacter.attack && (
+                    <div className="text-[10px] text-gray-600">base {playerCharacter.attack}</div>
                   )}
                 </div>
                 <div className="text-center">
                   <div className="text-gray-600">DEF</div>
                   <div className="text-cyber-blue font-bold">{preview.player.defense}</div>
-                  {preview.player.defense !== character.defense && (
-                    <div className="text-[10px] text-gray-600">base {character.defense}</div>
+                  {preview.player.defense !== playerCharacter.defense && (
+                    <div className="text-[10px] text-gray-600">base {playerCharacter.defense}</div>
                   )}
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-2 text-xs border-t border-gray-800 pt-2">
                 <div className="text-center">
                   <div className="text-gray-600">CRIT%</div>
-                  <div className="text-cyber-yellow font-bold">{character.critChance}%</div>
+                  <div className="text-cyber-yellow font-bold">{playerCharacter.critChance}%</div>
                 </div>
                 <div className="text-center">
                   <div className="text-gray-600">CRIT DMG</div>
-                  <div className="text-cyber-yellow font-bold">{character.critDamage}%</div>
+                  <div className="text-cyber-yellow font-bold">{playerCharacter.critDamage}%</div>
                 </div>
               </div>
+              {isCharacterKo && isGroupRun && (
+                <div className="mt-3 rounded border border-cyber-red/30 bg-cyber-red/10 px-3 py-2 text-[11px] text-cyber-red">
+                  Tu es KO. Attends la fin du combat.
+                </div>
+              )}
             </div>
 
             {/* VS + Actions */}
@@ -539,14 +548,18 @@ export default function DungeonRun({
               <div className="space-y-2 w-full">
                 <button
                   onClick={() => router.post(`/dungeon/run/${run.id}/attack`)}
-                  disabled={isGroupRun && !isMyTurn}
+                  disabled={(isGroupRun && !isMyTurn) || isCharacterKo}
                   className={`w-full py-3 border font-bold uppercase tracking-widest rounded transition-all text-sm ${
-                    isGroupRun && !isMyTurn
+                    (isGroupRun && !isMyTurn) || isCharacterKo
                       ? 'bg-gray-900 border-gray-800 text-gray-700 cursor-not-allowed'
                       : 'bg-cyber-red/20 border-cyber-red text-cyber-red hover:bg-cyber-red/30'
                   } ${isMyTurn && isGroupRun ? 'animate-pulse' : ''}`}
                 >
-                  {isGroupRun && !isMyTurn ? '[ EN ATTENTE... ]' : '[ ATTAQUER ]'}
+                  {isCharacterKo
+                    ? '[ KO ]'
+                    : isGroupRun && !isMyTurn
+                      ? '[ EN ATTENTE... ]'
+                      : '[ ATTAQUER ]'}
                 </button>
 
                 {/* Combat Skills */}
@@ -557,7 +570,7 @@ export default function DungeonRun({
                     </div>
                     {skills.map((skill) => {
                       const onCooldown = skill.currentCooldown > 0
-                      const disabled = onCooldown || (isGroupRun && !isMyTurn)
+                      const disabled = onCooldown || (isGroupRun && !isMyTurn) || isCharacterKo
                       return (
                         <button
                           key={skill.id}
@@ -629,7 +642,12 @@ export default function DungeonRun({
                         onClick={() =>
                           router.post(`/dungeon/run/${run.id}/use-item`, { inventoryItemId: c.id })
                         }
-                        className="w-full py-2 bg-cyber-green/10 border border-cyber-green/30 text-cyber-green rounded hover:bg-cyber-green/20 transition-all text-xs"
+                        disabled={isCharacterKo}
+                        className={`w-full py-2 rounded transition-all text-xs ${
+                          isCharacterKo
+                            ? 'bg-gray-900 border border-gray-800 text-gray-700 cursor-not-allowed'
+                            : 'bg-cyber-green/10 border border-cyber-green/30 text-cyber-green hover:bg-cyber-green/20'
+                        }`}
                       >
                         {c.item.name} (x{c.quantity}) +{c.item.effectValue}{' '}
                         {c.item.effectType === 'hp_restore' ? 'HP' : ''}
@@ -743,8 +761,8 @@ export default function DungeonRun({
                     {m.id === run.currentTurnId && (
                       <span className="text-cyber-yellow animate-pulse">▶</span>
                     )}
-                    <span
-                      className={m.id === character.id ? 'text-cyber-blue font-bold' : 'text-white'}
+                      <span
+                      className={m.id === playerCharacter.id ? 'text-cyber-blue font-bold' : 'text-white'}
                     >
                       {m.name}
                     </span>
@@ -796,7 +814,7 @@ export default function DungeonRun({
                       entry.action === 'player_attack'
                         ? entry.isCrit
                           ? 'bg-cyber-yellow/10 border border-cyber-yellow/20'
-                          : entry.characterId === character.id
+                          : entry.characterId === playerCharacter.id
                             ? 'bg-cyber-blue/5'
                             : 'bg-cyber-purple/5'
                         : entry.action === 'enemy_attack'
@@ -813,7 +831,7 @@ export default function DungeonRun({
                     {entry.action === 'player_attack' && (
                       <>
                         <span
-                          className={`font-bold ${entry.characterId === character.id ? 'text-cyber-blue' : 'text-cyber-purple'}`}
+                          className={`font-bold ${entry.characterId === playerCharacter.id ? 'text-cyber-blue' : 'text-cyber-purple'}`}
                         >
                           {entry.characterName}
                         </span>
@@ -864,7 +882,7 @@ export default function DungeonRun({
                     {entry.action === 'skill_use' && (
                       <>
                         <span
-                          className={`font-bold ${entry.characterId === character.id ? 'text-cyber-blue' : 'text-cyber-purple'}`}
+                          className={`font-bold ${entry.characterId === playerCharacter.id ? 'text-cyber-blue' : 'text-cyber-purple'}`}
                         >
                           {entry.characterName}
                         </span>

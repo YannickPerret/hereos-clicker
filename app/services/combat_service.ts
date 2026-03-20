@@ -85,6 +85,18 @@ export default class CombatService {
     return penalties[key]
   }
 
+  private static clearCharacterAfk(run: DungeonRun, characterId: number) {
+    const penalties = this.getAfkPenalties(run)
+    const key = String(characterId)
+
+    if (!(key in penalties)) {
+      return
+    }
+
+    delete penalties[key]
+    this.setAfkPenalties(run, penalties)
+  }
+
   private static isCharacterAfkPenalized(run: DungeonRun, characterId: number) {
     const penalties = this.getAfkPenalties(run)
     return (penalties[String(characterId)] || 0) > 0
@@ -418,6 +430,8 @@ export default class CombatService {
       }
     }
 
+    this.clearCharacterAfk(run, character.id)
+
     const enemy = await Enemy.findOrFail(run.currentEnemyId!)
     const bonuses = await ClickerService.calculateEquipBonuses(character)
     const talentBonuses = await TalentService.getCharacterBonuses(character.id)
@@ -632,6 +646,7 @@ export default class CombatService {
   static async useConsumable(character: Character, runId: number, inventoryItemId: number) {
     const run = await DungeonRun.findOrFail(runId)
     await this.validateRunAccess(character, run)
+    this.clearCharacterAfk(run, character.id)
 
     const invItem = await InventoryItem.query()
       .where('id', inventoryItemId)
@@ -662,6 +677,7 @@ export default class CombatService {
     }
 
     await character.save()
+    await run.save()
 
     return { effect, character: character.serialize() }
   }
@@ -912,6 +928,8 @@ export default class CombatService {
         throw new Error('Ce n\'est pas ton tour')
       }
     }
+
+    this.clearCharacterAfk(run, character.id)
 
     const skill = await CombatSkill.findOrFail(skillId)
 
