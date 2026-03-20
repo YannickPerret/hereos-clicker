@@ -38,6 +38,12 @@ export default class PvpMatch extends BaseModel {
   declare log: string
 
   @column()
+  declare skillCooldowns: string
+
+  @column()
+  declare activeEffects: string
+
+  @column()
   declare ratingChange: number
 
   @column.dateTime({ autoCreate: true })

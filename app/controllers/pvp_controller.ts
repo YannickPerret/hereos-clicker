@@ -1,10 +1,26 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import Character from '#models/character'
 import PvpMatch from '#models/pvp_match'
+import CombatService from '#services/combat_service'
 import PvpService from '#services/pvp_service'
 import DailyMissionService from '#services/daily_mission_service'
 
 export default class PvpController {
+  private async buildMatchPayload(character: Character, matchId: number) {
+    const state = await PvpService.getMatchState(matchId)
+    const skills = await CombatService.getAvailableSkills(character)
+    const cooldowns = state.match.skillCooldowns?.[character.id] || {}
+
+    return {
+      myId: character.id,
+      ...state,
+      skills: skills.map((skill) => ({
+        ...skill.serialize(),
+        currentCooldown: cooldowns[skill.id] || 0,
+      })),
+    }
+  }
+
   async index({ inertia, auth }: HttpContext) {
     const character = await Character.query()
       .where('userId', auth.user!.id)
@@ -81,18 +97,16 @@ export default class PvpController {
       .where('userId', auth.user!.id)
       .firstOrFail()
 
-    const state = await PvpService.getMatchState(params.matchId)
-
-    return inertia.render('pvp/match', {
-      myId: character.id,
-      ...state,
-    })
+    return inertia.render('pvp/match', await this.buildMatchPayload(character, params.matchId))
   }
 
   /** JSON API for polling match state */
-  async state({ params, response }: HttpContext) {
-    const state = await PvpService.getMatchState(params.matchId)
-    return response.json(state)
+  async state({ params, auth, response }: HttpContext) {
+    const character = await Character.query()
+      .where('userId', auth.user!.id)
+      .firstOrFail()
+
+    return response.json(await this.buildMatchPayload(character, params.matchId))
   }
 
   async attack({ params, auth, response, session }: HttpContext) {
@@ -102,6 +116,25 @@ export default class PvpController {
 
     try {
       const result = await PvpService.attack(character, params.matchId)
+
+      if (result.match.status === 'completed' && result.match.winnerId === character.id) {
+        await DailyMissionService.trackProgress(character.id, 'pvp_win')
+      }
+    } catch (e: any) {
+      session.flash('errors', { message: e.message })
+    }
+
+    return response.redirect(`/pvp/match/${params.matchId}`)
+  }
+
+  async useSkill({ params, request, auth, response, session }: HttpContext) {
+    const character = await Character.query()
+      .where('userId', auth.user!.id)
+      .firstOrFail()
+
+    try {
+      const skillId = Number(request.input('skillId'))
+      const result = await PvpService.useSkill(character, params.matchId, skillId)
 
       if (result.match.status === 'completed' && result.match.winnerId === character.id) {
         await DailyMissionService.trackProgress(character.id, 'pvp_win')

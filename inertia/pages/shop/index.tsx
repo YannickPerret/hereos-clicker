@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { router } from '@inertiajs/react'
 import GameLayout from '~/components/layout'
 
@@ -58,7 +59,31 @@ const TYPE_LABELS: Record<string, string> = {
 }
 
 export default function Shop({ character, listings }: Props) {
+  const [quantities, setQuantities] = useState<Record<number, string>>({})
   const categories = ['weapon', 'armor', 'implant', 'consumable', 'upgrade']
+
+  const getQuantity = (listingId: number) => {
+    const value = quantities[listingId] ?? '1'
+    const parsed = Number.parseInt(value, 10)
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 1
+  }
+
+  const setQuantity = (listingId: number, quantity: number) => {
+    setQuantities((current) => ({
+      ...current,
+      [listingId]: String(Math.max(1, Math.floor(quantity))),
+    }))
+  }
+
+  const setQuantityInput = (listingId: number, value: string) => {
+    if (value === '') {
+      setQuantities((current) => ({ ...current, [listingId]: '' }))
+      return
+    }
+
+    const parsed = Number.parseInt(value, 10)
+    setQuantity(listingId, Number.isFinite(parsed) ? parsed : 1)
+  }
 
   return (
     <GameLayout>
@@ -82,8 +107,12 @@ export default function Shop({ character, listings }: Props) {
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {items.map((listing) => {
-                const canAfford = character.credits >= listing.price
+                const quantity = getQuantity(listing.id)
+                const totalPrice = listing.price * quantity
+                const canAfford = character.credits >= totalPrice
                 const outOfStock = listing.stock !== null && listing.stock <= 0
+                const hasEnoughStock = listing.stock === null || listing.stock >= quantity
+                const maxQuantity = listing.stock ?? Number.POSITIVE_INFINITY
 
                 return (
                   <div
@@ -117,18 +146,60 @@ export default function Shop({ character, listings }: Props) {
                       </div>
                     )}
 
+                    <div className="mb-3">
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setQuantity(listing.id, quantity - 1)}
+                          disabled={quantity <= 1}
+                          className="h-9 w-9 rounded border border-gray-700 bg-cyber-black text-sm font-bold text-gray-300 transition hover:border-cyber-blue/50 hover:text-cyber-blue disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          -
+                        </button>
+                        <input
+                          type="number"
+                          min={1}
+                          max={listing.stock ?? undefined}
+                          inputMode="numeric"
+                          value={quantities[listing.id] ?? '1'}
+                          onChange={(e) => setQuantityInput(listing.id, e.target.value)}
+                          className="h-9 flex-1 rounded border border-gray-800 bg-cyber-black px-3 text-center text-sm font-bold text-white focus:border-cyber-blue/50 focus:outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setQuantity(listing.id, quantity + 1)}
+                          disabled={quantity >= maxQuantity}
+                          className="h-9 w-9 rounded border border-gray-700 bg-cyber-black text-sm font-bold text-gray-300 transition hover:border-cyber-blue/50 hover:text-cyber-blue disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          +
+                        </button>
+                      </div>
+                      <div className="mt-2 flex items-center justify-between text-[10px] uppercase tracking-widest text-gray-600">
+                        <span>Quantite: {quantity}</span>
+                        <span>Total: {totalPrice.toLocaleString()}c</span>
+                      </div>
+                    </div>
+
                     <button
-                      onClick={() => router.post(`/shop/${listing.id}/buy`)}
-                      disabled={!canAfford || outOfStock}
+                      onClick={() => router.post(`/shop/${listing.id}/buy`, { quantity }, { preserveScroll: true })}
+                      disabled={!canAfford || outOfStock || !hasEnoughStock}
                       className={`w-full py-2 text-xs uppercase tracking-widest rounded font-bold transition-all ${
                         outOfStock
                           ? 'bg-gray-900 border border-gray-700 text-gray-700 cursor-not-allowed'
+                          : !hasEnoughStock
+                            ? 'bg-cyber-red/10 border border-cyber-red/30 text-cyber-red/50 cursor-not-allowed'
                           : canAfford
                             ? 'bg-cyber-yellow/10 border border-cyber-yellow/50 text-cyber-yellow hover:bg-cyber-yellow/20'
                             : 'bg-cyber-red/10 border border-cyber-red/30 text-cyber-red/50 cursor-not-allowed'
                       }`}
                     >
-                      {outOfStock ? '[ RUPTURE ]' : canAfford ? '[ ACHETER ]' : '[ FONDS INSUFFISANTS ]'}
+                      {outOfStock
+                        ? '[ RUPTURE ]'
+                        : !hasEnoughStock
+                          ? '[ STOCK INSUFFISANT ]'
+                          : canAfford
+                            ? `[ ACHETER x${quantity} ]`
+                            : '[ FONDS INSUFFISANTS ]'}
                     </button>
                   </div>
                 )

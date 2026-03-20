@@ -36,11 +36,44 @@ interface Props {
   characters: Character[]
   activeCharacter: Character | null
   leaderboard: { id: number; name: string; credits: number; level: number; totalClicks: number }[]
+  equippedItems: {
+    id: number
+    isEquipped: boolean
+    item: {
+      id: number
+      name: string
+      type: string
+      rarity: string
+      effectType: string | null
+      effectValue: number | null
+    }
+  }[]
   bonuses: { clickBonus: number; attackBonus: number; defenseBonus: number }
   effectiveCpc: number
   effectiveCps: number
   offlineCredits: number
   party: PartyInfo | null
+}
+
+const TYPE_LABELS: Record<string, string> = {
+  weapon: 'ARME',
+  armor: 'ARMURE',
+  implant: 'IMPLANT',
+}
+
+const RARITY_TEXT: Record<string, string> = {
+  common: 'text-gray-400',
+  uncommon: 'text-cyber-green',
+  rare: 'text-cyber-blue',
+  epic: 'text-cyber-purple',
+  legendary: 'text-cyber-yellow',
+}
+
+const EFFECT_LABELS: Record<string, string> = {
+  attack_boost: 'ATK',
+  defense_boost: 'DEF',
+  click_multiplier: 'CPC',
+  permanent_click: 'CPC',
 }
 
 function formatCredits(n: number): string {
@@ -49,7 +82,7 @@ function formatCredits(n: number): string {
   return n.toString()
 }
 
-export default function Play({ characters, activeCharacter, leaderboard, bonuses, effectiveCpc, effectiveCps, offlineCredits, party }: Props) {
+export default function Play({ characters, activeCharacter, leaderboard, equippedItems, bonuses, effectiveCpc, effectiveCps, offlineCredits, party }: Props) {
   const [char, setChar] = useState(activeCharacter)
   const [particles, setParticles] = useState<{ id: number; x: number; y: number; value: number }[]>([])
   const [clickScale, setClickScale] = useState(1)
@@ -379,6 +412,37 @@ export default function Play({ characters, activeCharacter, leaderboard, bonuses
                     <span className={s.color}>{s.value}</span>
                   </div>
                 ))}
+              </div>
+
+              <div className="mt-4 border-t border-gray-800 pt-3">
+                <div className="text-[10px] uppercase tracking-widest text-gray-500 mb-2 text-center">Equipement</div>
+                <div className="space-y-2">
+                  {['weapon', 'armor', 'implant'].map((type) => {
+                    const entry = equippedItems.find((item) => item.item.type === type)
+
+                    return (
+                      <div key={type} className="rounded border border-gray-800 bg-cyber-black/40 px-2 py-2">
+                        <div className="text-[10px] uppercase tracking-wider text-gray-600 mb-1">
+                          {TYPE_LABELS[type]}
+                        </div>
+                        {entry ? (
+                          <>
+                            <div className={`text-xs font-bold ${RARITY_TEXT[entry.item.rarity] || 'text-white'}`}>
+                              {entry.item.name}
+                            </div>
+                            {entry.item.effectType && entry.item.effectValue !== null && (
+                              <div className="text-[10px] text-cyber-green mt-0.5">
+                                {EFFECT_LABELS[entry.item.effectType] || entry.item.effectType}: +{entry.item.effectValue}
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <div className="text-xs text-gray-700">[ Vide ]</div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
             </div>
           )}

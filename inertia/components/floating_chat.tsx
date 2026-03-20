@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { usePage } from '@inertiajs/react'
+import { router, usePage } from '@inertiajs/react'
 
 interface Message {
   id: number
@@ -16,6 +16,17 @@ interface Channel {
   isPublic: boolean
 }
 
+interface UserMenuState {
+  characterName: string
+  x: number
+  y: number
+}
+
+interface ChatFeedback {
+  type: 'success' | 'error' | 'info'
+  message: string
+}
+
 function getCsrfToken() {
   return decodeURIComponent(document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] || '')
 }
@@ -26,6 +37,10 @@ function getChatOpenStorageKey(username: string) {
 
 function getChatClosedAtStorageKey(username: string) {
   return `floating-chat-closed-at:${username}`
+}
+
+function getBlockedUsersStorageKey(username: string) {
+  return `floating-chat-blocked-users:${username}`
 }
 
 export default function FloatingChat() {
@@ -53,8 +68,22 @@ function ChatWidget({ username, partyChannel }: { username: string; partyChannel
   const [joinPassword, setJoinPassword] = useState('')
   const [showJoin, setShowJoin] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
+  const [userMenu, setUserMenu] = useState<UserMenuState | null>(null)
+  const [feedback, setFeedback] = useState<ChatFeedback | null>(null)
+  const [blockedUsers, setBlockedUsers] = useState<string[]>(() => {
+    if (typeof window === 'undefined') return []
+    try {
+      const raw = window.localStorage.getItem(getBlockedUsersStorageKey(username))
+      if (!raw) return []
+      const parsed = JSON.parse(raw)
+      return Array.isArray(parsed) ? parsed.filter((entry): entry is string => typeof entry === 'string') : []
+    } catch {
+      return []
+    }
+  })
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const userMenuRef = useRef<HTMLDivElement>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const closedAtRef = useRef<string | null>(
     typeof window === 'undefined' ? null : window.localStorage.getItem(getChatClosedAtStorageKey(username))
@@ -64,6 +93,30 @@ function ChatWidget({ username, partyChannel }: { username: string; partyChannel
     if (typeof window === 'undefined') return
     window.localStorage.setItem(getChatOpenStorageKey(username), isOpen ? '1' : '0')
   }, [isOpen, username])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    window.localStorage.setItem(getBlockedUsersStorageKey(username), JSON.stringify(blockedUsers))
+  }, [blockedUsers, username])
+
+  useEffect(() => {
+    if (!userMenu) return
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setUserMenu(null)
+      }
+    }
+
+    window.addEventListener('mousedown', handlePointerDown)
+    return () => window.removeEventListener('mousedown', handlePointerDown)
+  }, [userMenu])
+
+  useEffect(() => {
+    if (!feedback) return
+    const timeout = window.setTimeout(() => setFeedback(null), 3500)
+    return () => window.clearTimeout(timeout)
+  }, [feedback])
 
   const openChat = useCallback(() => {
     setIsOpen(true)
@@ -77,6 +130,7 @@ function ChatWidget({ username, partyChannel }: { username: string; partyChannel
   const closeChat = useCallback(() => {
     setIsOpen(false)
     setUnreadCount(0)
+    setUserMenu(null)
     const closedAt = new Date().toISOString()
     closedAtRef.current = closedAt
     if (typeof window !== 'undefined') {
@@ -134,7 +188,11 @@ function ChatWidget({ username, partyChannel }: { username: string; partyChannel
         setMessages(data)
         if (!isOpen && closedAtRef.current) {
           const closedAtTs = new Date(closedAtRef.current).getTime()
-          const unread = data.filter((msg: Message) => new Date(msg.createdAt).getTime() > closedAtTs).length
+          const unread = data.filter((msg: Message) => (
+            msg.characterName !== '[SYSTEM]' &&
+            !blockedUsers.includes(msg.characterName) &&
+            new Date(msg.createdAt).getTime() > closedAtTs
+          )).length
           setUnreadCount(unread)
           return
         }
@@ -143,7 +201,7 @@ function ChatWidget({ username, partyChannel }: { username: string; partyChannel
         }
       })
       .catch(() => {})
-  }, [activeChannel, isOpen])
+  }, [activeChannel, blockedUsers, isOpen])
 
   useEffect(() => {
     loadMessages()
@@ -214,10 +272,86 @@ function ChatWidget({ username, partyChannel }: { username: string; partyChannel
     }
   }
 
+  const openUserMenu = (event: React.MouseEvent<HTMLButtonElement>, characterName: string) => {
+    const rect = event.currentTarget.getBoundingClientRect()
+    setUserMenu({
+      characterName,
+      x: rect.left,
+      y: rect.bottom + 6,
+    })
+  }
+
+  const toggleBlockedUser = (characterName: string) => {
+    setBlockedUsers((current) => (
+      current.includes(characterName)
+        ? current.filter((entry) => entry !== characterName)
+        : [...current, characterName]
+    ))
+
+    const isBlocked = blockedUsers.includes(characterName)
+    setFeedback({
+      type: isBlocked ? 'success' : 'info',
+      message: isBlocked
+        ? `${characterName} a ete debloque.`
+        : `${characterName} est maintenant masque dans le chat.`,
+    })
+    setUserMenu(null)
+  }
+
+  const handleInviteToParty = async (characterName: string) => {
+    try {
+      const res = await fetch('/party/invite', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-XSRF-TOKEN': getCsrfToken(),
+        },
+        body: JSON.stringify({ characterName }),
+      })
+
+      const data = await res.json().catch(() => ({}))
+      setFeedback({
+        type: res.ok ? 'success' : 'error',
+        message: data.message || data.error || 'Invitation impossible.',
+      })
+    } catch {
+      setFeedback({
+        type: 'error',
+        message: 'Erreur reseau pendant lenvoi de linvitation.',
+      })
+    }
+
+    setUserMenu(null)
+  }
+
+  const handleReportUser = (characterName: string) => {
+    const params = new URLSearchParams({
+      compose: '1',
+      category: 'player',
+      title: `Signalement joueur: ${characterName}`,
+      description: `Pseudo concerne: ${characterName}\nSalon: ${activeChannel}\nMotif: `,
+    })
+
+    setUserMenu(null)
+    router.visit(`/reports?${params.toString()}`)
+  }
+
+  const handleUnavailableAction = (label: string) => {
+    setFeedback({
+      type: 'info',
+      message: `${label} sera branche quand le backend social sera ajoute.`,
+    })
+    setUserMenu(null)
+  }
+
   const formatTime = (dateStr: string) => {
     const date = new Date(dateStr)
     return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
   }
+
+  const visibleMessages = messages.filter((msg) => (
+    msg.characterName === '[SYSTEM]' || !blockedUsers.includes(msg.characterName)
+  ))
 
   return (
     <>
@@ -365,25 +499,45 @@ function ChatWidget({ username, partyChannel }: { username: string; partyChannel
             </form>
           )}
 
+          {feedback && (
+            <div className={`border-b px-3 py-2 text-[10px] uppercase tracking-widest shrink-0 ${
+              feedback.type === 'success'
+                ? 'border-cyber-green/20 bg-cyber-green/10 text-cyber-green'
+                : feedback.type === 'error'
+                  ? 'border-cyber-red/20 bg-cyber-red/10 text-cyber-red'
+                  : 'border-cyber-blue/20 bg-cyber-blue/10 text-cyber-blue'
+            }`}>
+              {feedback.message}
+            </div>
+          )}
+
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-3 font-mono space-y-0.5" style={{ fontSize: '11px' }}>
-            {messages.length === 0 ? (
+            {visibleMessages.length === 0 ? (
               <div className="text-gray-700 text-center py-10 text-[10px]">
                 &gt; En attente de transmission..._
               </div>
             ) : (
-              messages.map((msg) => (
+              visibleMessages.map((msg) => (
                 <div key={msg.id} className={`flex gap-1.5 px-1 rounded ${msg.characterName === '[SYSTEM]' ? 'bg-cyber-yellow/5' : 'hover:bg-cyber-green/5'}`}>
                   <span className="text-gray-700 shrink-0">[{formatTime(msg.createdAt)}]</span>
-                  <span className={`font-bold shrink-0 ${
-                    msg.characterName === '[SYSTEM]'
-                      ? 'text-cyber-yellow'
-                      : msg.characterName === username
-                        ? 'text-cyber-blue'
-                        : 'text-cyber-green'
-                  }`}>
-                    {msg.characterName}:
-                  </span>
+                  {msg.characterName === '[SYSTEM]' ? (
+                    <span className="font-bold shrink-0 text-cyber-yellow">
+                      {msg.characterName}:
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={(event) => openUserMenu(event, msg.characterName)}
+                      className={`font-bold shrink-0 transition-colors ${
+                        msg.characterName === username
+                          ? 'text-cyber-blue hover:text-cyber-blue/80'
+                          : 'text-cyber-green hover:text-cyber-yellow'
+                      }`}
+                    >
+                      {msg.characterName}:
+                    </button>
+                  )}
                   <span className={`break-all ${msg.characterName === '[SYSTEM]' ? 'text-cyber-yellow/80 italic' : 'text-gray-300'}`}>{msg.message}</span>
                 </div>
               ))
@@ -409,6 +563,55 @@ function ChatWidget({ username, partyChannel }: { username: string; partyChannel
               ↵
             </button>
           </form>
+        </div>
+      )}
+
+      {userMenu && (
+        <div
+          ref={userMenuRef}
+          className="fixed z-[60] w-52 rounded-lg border border-cyber-green/30 bg-cyber-black/95 p-1.5 shadow-2xl backdrop-blur"
+          style={{ left: userMenu.x, top: userMenu.y }}
+        >
+          <div className="px-2 py-1 text-[10px] uppercase tracking-[0.3em] text-gray-500">
+            {userMenu.characterName}
+          </div>
+          <button
+            type="button"
+            onClick={() => handleUnavailableAction('Ajout en ami')}
+            className="flex w-full items-center justify-between rounded px-2 py-1.5 text-left text-[11px] text-gray-300 transition hover:bg-cyber-green/10 hover:text-white"
+          >
+            <span>Ajouter en ami</span>
+            <span className="text-[9px] uppercase text-gray-600">Bientot</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleUnavailableAction('Message prive')}
+            className="flex w-full items-center justify-between rounded px-2 py-1.5 text-left text-[11px] text-gray-300 transition hover:bg-cyber-green/10 hover:text-white"
+          >
+            <span>Envoyer un message prive</span>
+            <span className="text-[9px] uppercase text-gray-600">Bientot</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleReportUser(userMenu.characterName)}
+            className="flex w-full items-center justify-between rounded px-2 py-1.5 text-left text-[11px] text-gray-300 transition hover:bg-cyber-orange/10 hover:text-cyber-orange"
+          >
+            <span>Signaler</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => toggleBlockedUser(userMenu.characterName)}
+            className="flex w-full items-center justify-between rounded px-2 py-1.5 text-left text-[11px] text-gray-300 transition hover:bg-cyber-red/10 hover:text-cyber-red"
+          >
+            <span>{blockedUsers.includes(userMenu.characterName) ? 'Debloquer' : 'Bloquer'}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleInviteToParty(userMenu.characterName)}
+            className="flex w-full items-center justify-between rounded px-2 py-1.5 text-left text-[11px] text-gray-300 transition hover:bg-cyber-purple/10 hover:text-cyber-purple"
+          >
+            <span>Inviter dans le groupe</span>
+          </button>
         </div>
       )}
     </>

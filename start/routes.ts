@@ -81,6 +81,7 @@ router.group(() => {
   router.get('/pvp/match/:matchId', [PvpController, 'show'])
   router.get('/pvp/match/:matchId/state', [PvpController, 'state'])
   router.post('/pvp/match/:matchId/attack', [PvpController, 'attack'])
+  router.post('/pvp/match/:matchId/skill', [PvpController, 'useSkill'])
   router.post('/pvp/match/:matchId/forfeit', [PvpController, 'forfeit'])
 
   // Missions quotidiennes

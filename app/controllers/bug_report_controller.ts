@@ -3,6 +3,8 @@ import Character from '#models/character'
 import BugReport from '#models/bug_report'
 
 export default class BugReportController {
+  private readonly allowedCategories = ['bug', 'exploit', 'player', 'suggestion', 'other']
+
   /** User: submit a report */
   async create({ request, auth, response, session }: HttpContext) {
     const character = await Character.query()
@@ -21,7 +23,7 @@ export default class BugReportController {
       characterName: character?.name || auth.user!.username,
       title: title.slice(0, 200),
       description: description.slice(0, 2000),
-      category: ['bug', 'exploit', 'suggestion', 'other'].includes(category) ? category : 'bug',
+      category: this.allowedCategories.includes(category) ? category : 'bug',
       status: 'open',
     })
 

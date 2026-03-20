@@ -23,7 +23,7 @@ export default class ShopController {
     })
   }
 
-  async buy({ params, auth, response, session }: HttpContext) {
+  async buy({ params, request, auth, response, session }: HttpContext) {
     const character = await Character.query()
       .where('userId', auth.user!.id)
       .firstOrFail()
@@ -34,25 +34,27 @@ export default class ShopController {
       .preload('item')
       .firstOrFail()
 
+    const quantity = Math.max(1, Math.floor(Number(request.input('quantity', 1)) || 1))
     const price = listing.priceOverride ?? listing.item.basePrice
+    const totalPrice = price * quantity
 
-    if (character.credits < price) {
+    if (character.credits < totalPrice) {
       session.flash('errors', { message: 'Not enough credits' })
       return response.redirect('/shop')
     }
 
-    if (listing.stock !== null && listing.stock <= 0) {
+    if (listing.stock !== null && listing.stock < quantity) {
       session.flash('errors', { message: 'Out of stock' })
       return response.redirect('/shop')
     }
 
     // Deduct credits
-    character.credits -= price
+    character.credits -= totalPrice
     await character.save()
 
     // Reduce stock
     if (listing.stock !== null) {
-      listing.stock -= 1
+      listing.stock -= quantity
       if (listing.stock <= 0) {
         listing.isActive = false
       }
@@ -66,18 +68,18 @@ export default class ShopController {
       .first()
 
     if (existing) {
-      existing.quantity += 1
+      existing.quantity += quantity
       await existing.save()
     } else {
       await InventoryItem.create({
         characterId: character.id,
         itemId: listing.itemId,
-        quantity: 1,
+        quantity,
         isEquipped: false,
       })
     }
 
-    session.flash('success', `Purchased ${listing.item.name}`)
+    session.flash('success', `Purchased ${quantity}x ${listing.item.name}`)
     return response.redirect('/shop')
   }
 }

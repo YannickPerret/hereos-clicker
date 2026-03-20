@@ -1,5 +1,6 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import Character from '#models/character'
+import InventoryItem from '#models/inventory_item'
 import ClickerService from '#services/clicker_service'
 import TalentService from '#services/talent_service'
 import PartyMember from '#models/party_member'
@@ -24,6 +25,7 @@ export default class PlayController {
     let offlineCredits = 0
     let effectiveCpc = 1
     let effectiveCps = 0
+    let equippedItems: any[] = []
 
     if (activeCharacter) {
       // Collect offline earnings
@@ -40,6 +42,12 @@ export default class PlayController {
         activeCharacter.creditsPerSecond,
         talentBonuses
       )
+
+      equippedItems = await InventoryItem.query()
+        .where('characterId', activeCharacter.id)
+        .where('isEquipped', true)
+        .preload('item')
+        .orderBy('id', 'asc')
     }
 
     // Fetch party info if in a group
@@ -88,6 +96,10 @@ export default class PlayController {
       effectiveCpc,
       effectiveCps,
       offlineCredits,
+      equippedItems: equippedItems.map((entry) => ({
+        ...entry.serialize(),
+        item: entry.item.serialize(),
+      })),
       party: partyData,
     })
   }

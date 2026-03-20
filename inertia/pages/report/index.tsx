@@ -1,5 +1,5 @@
 import { router } from '@inertiajs/react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import GameLayout from '~/components/layout'
 
 interface Report {
@@ -36,6 +36,22 @@ export default function MyReports({ reports }: Props) {
   const [description, setDescription] = useState('')
   const [category, setCategory] = useState('bug')
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('compose') !== '1') return
+
+    const nextCategory = params.get('category') || 'bug'
+    const nextTitle = params.get('title') || ''
+    const nextDescription = params.get('description') || ''
+
+    setCategory(nextCategory)
+    setTitle(nextTitle)
+    setDescription(nextDescription)
+    setShowForm(true)
+  }, [])
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     router.post('/report', { title, description, category }, {
@@ -52,7 +68,7 @@ export default function MyReports({ reports }: Props) {
     <GameLayout>
       <div className="max-w-2xl mx-auto">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-cyber-orange tracking-widest">BUG REPORTS</h1>
+          <h1 className="text-2xl font-bold text-cyber-orange tracking-widest">REPORTS</h1>
           <button
             onClick={() => setShowForm(!showForm)}
             className="text-xs px-3 py-1.5 rounded border border-cyber-orange/30 text-cyber-orange hover:bg-cyber-orange/10 transition-all"
@@ -67,7 +83,7 @@ export default function MyReports({ reports }: Props) {
             <div>
               <label className="text-[10px] text-gray-500 uppercase block mb-1">Categorie</label>
               <div className="flex gap-2">
-                {['bug', 'exploit', 'suggestion', 'other'].map((cat) => (
+                {['bug', 'exploit', 'player', 'suggestion', 'other'].map((cat) => (
                   <button
                     key={cat}
                     type="button"
