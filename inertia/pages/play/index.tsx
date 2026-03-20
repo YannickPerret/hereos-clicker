@@ -240,7 +240,8 @@ export default function Play({
     []
   )
   const [clickScale, setClickScale] = useState(1)
-  const [showOffline, setShowOffline] = useState(offlineCredits > 0)
+  const [pendingOfflineCredits, setPendingOfflineCredits] = useState(offlineCredits)
+  const [collectingOffline, setCollectingOffline] = useState(false)
   const [antiCheatMsg, setAntiCheatMsg] = useState<string | null>(null)
 
   // Sync state when props change (e.g. after character creation redirect)
@@ -253,6 +254,9 @@ export default function Play({
   useEffect(() => {
     setQuestSummary(initialQuestSummary)
   }, [initialQuestSummary])
+  useEffect(() => {
+    setPendingOfflineCredits(offlineCredits)
+  }, [offlineCredits])
   useEffect(() => {
     if (questEvents.length === 0) return
 
@@ -443,33 +447,6 @@ export default function Play({
 
   return (
     <GameLayout>
-      {/* Offline earnings popup */}
-      {showOffline && (
-        <div
-          className="fixed inset-0 bg-black/70 flex items-center justify-center z-50"
-          onClick={() => setShowOffline(false)}
-        >
-          <div
-            className="bg-cyber-dark border border-cyber-yellow/50 rounded-lg p-8 text-center max-w-sm"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="text-xs uppercase tracking-widest text-gray-500 mb-2">
-              Revenus hors-ligne
-            </div>
-            <div className="text-4xl font-bold text-cyber-yellow mb-2">
-              +{formatCredits(offlineCredits)}
-            </div>
-            <div className="text-xs text-gray-600 mb-4">credits generes par tes daemons</div>
-            <button
-              onClick={() => setShowOffline(false)}
-              className="px-6 py-2 bg-cyber-yellow/20 border border-cyber-yellow text-cyber-yellow rounded uppercase tracking-widest text-xs font-bold hover:bg-cyber-yellow/30 transition-all"
-            >
-              [ COLLECTER ]
-            </button>
-          </div>
-        </div>
-      )}
-
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Main */}
         <div className="lg:col-span-3">
@@ -535,6 +512,60 @@ export default function Play({
           {antiCheatMsg && (
             <div className="mb-4 mx-auto max-w-md bg-cyber-red/10 border border-cyber-red/50 rounded-lg px-4 py-3 text-cyber-red text-sm text-center animate-pulse">
               {antiCheatMsg}
+            </div>
+          )}
+
+          {pendingOfflineCredits > 0 && (
+            <div className="mb-4 mx-auto max-w-2xl rounded-lg border border-cyber-yellow/40 bg-cyber-yellow/10 px-4 py-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="text-[10px] uppercase tracking-[0.25em] text-gray-500">
+                    Revenus hors-ligne
+                  </div>
+                  <div className="mt-1 text-xl font-bold text-cyber-yellow">
+                    +{formatCredits(pendingOfflineCredits)}
+                  </div>
+                  <div className="mt-1 text-xs text-gray-500">
+                    Credits generes par tes daemons. Tu peux les recuperer quand tu veux.
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  disabled={collectingOffline}
+                  onClick={() => {
+                    if (!char || collectingOffline) return
+                    setCollectingOffline(true)
+
+                    fetch('/play/collect-offline', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        'X-XSRF-TOKEN': decodeURIComponent(
+                          document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] || ''
+                        ),
+                      },
+                      body: JSON.stringify({ characterId: char.id }),
+                    })
+                      .then((response) => response.json())
+                      .then((data) => {
+                        setPendingOfflineCredits(data.remainingOfflineCredits || 0)
+                        setChar((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                credits: data.credits,
+                              }
+                            : null
+                        )
+                      })
+                      .catch(() => {})
+                      .finally(() => setCollectingOffline(false))
+                  }}
+                  className="rounded border border-cyber-yellow/40 bg-cyber-yellow/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-cyber-yellow transition-all hover:bg-cyber-yellow/20 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {collectingOffline ? 'COLLECTE...' : 'RECUPERER'}
+                </button>
+              </div>
             </div>
           )}
 

@@ -38,8 +38,7 @@ export default class PlayController {
     let questSummary: any = null
 
     if (activeCharacter) {
-      // Collect offline earnings
-      offlineCredits = await TalentService.collectOfflineCredits(activeCharacter)
+      offlineCredits = await TalentService.syncOfflineCredits(activeCharacter)
       questSummary = await QuestService.getPlaySummary(activeCharacter)
       await activeCharacter.refresh()
 
@@ -176,6 +175,22 @@ export default class PlayController {
 
     const result = await ClickerService.tick(character)
     return response.json(result)
+  }
+
+  async collectOffline({ request, auth, response }: HttpContext) {
+    const characterId = request.input('characterId')
+    const character = await Character.query()
+      .where('id', characterId)
+      .where('userId', auth.user!.id)
+      .firstOrFail()
+
+    const collected = await TalentService.claimOfflineCredits(character)
+
+    return response.json({
+      collected,
+      credits: character.credits,
+      remainingOfflineCredits: character.unclaimedOfflineCredits || 0,
+    })
   }
 
   async leaderboardState({ response }: HttpContext) {

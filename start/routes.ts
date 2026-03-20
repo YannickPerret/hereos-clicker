@@ -43,6 +43,7 @@ router
     router.post('/play/click', [PlayController, 'click'])
     router.post('/play/tick', [PlayController, 'autoTick'])
 
+    router.post('/play/collect-offline', [PlayController, 'collectOffline'])
     // Inventory
     router.get('/inventory', [InventoryController, 'index'])
     router.post('/inventory/:id/equip', [InventoryController, 'equip'])

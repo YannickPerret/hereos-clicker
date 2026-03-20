@@ -55,6 +55,9 @@ export default class Character extends BaseModel {
   declare lastTickAt: number
 
   @column()
+  declare unclaimedOfflineCredits: number
+
+  @column()
   declare chosenSpec: string | null
 
   @column()

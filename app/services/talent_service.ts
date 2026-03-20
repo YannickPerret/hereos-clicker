@@ -132,10 +132,12 @@ export default class TalentService {
     return refundedPoints
   }
 
-  static async collectOfflineCredits(character: Character): Promise<number> {
+  static async syncOfflineCredits(character: Character): Promise<number> {
     const now = Date.now()
     const elapsed = Math.floor((now - character.lastTickAt) / 1000)
-    if (elapsed <= 0) return 0
+    if (elapsed <= 0) {
+      return character.unclaimedOfflineCredits || 0
+    }
 
     const cappedSeconds = Math.min(elapsed, 4 * 3600)
     const talentBonuses = await this.getCharacterBonuses(character.id)
@@ -143,12 +145,25 @@ export default class TalentService {
     const offlineCredits = totalCps * cappedSeconds
 
     if (offlineCredits > 0) {
-      character.credits += offlineCredits
+      character.unclaimedOfflineCredits = (character.unclaimedOfflineCredits || 0) + offlineCredits
     }
     character.lastTickAt = now
     await character.save()
 
-    return offlineCredits
+    return character.unclaimedOfflineCredits || 0
+  }
+
+  static async claimOfflineCredits(character: Character): Promise<number> {
+    const amount = Math.max(0, character.unclaimedOfflineCredits || 0)
+    if (amount <= 0) {
+      return 0
+    }
+
+    character.credits += amount
+    character.unclaimedOfflineCredits = 0
+    await character.save()
+
+    return amount
   }
 
   static computeEffectiveCps(baseCps: number, talentBonuses: TalentBonuses): number {
