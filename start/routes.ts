@@ -12,6 +12,7 @@ const TalentController = () => import('#controllers/talent_controller')
 const PartyController = () => import('#controllers/party_controller')
 const PvpController = () => import('#controllers/pvp_controller')
 const MissionController = () => import('#controllers/mission_controller')
+const QuestController = () => import('#controllers/quest_controller')
 const CompanionController = () => import('#controllers/companion_controller')
 const ChatController = () => import('#controllers/chat_controller')
 const BugReportController = () => import('#controllers/bug_report_controller')
@@ -101,6 +102,9 @@ router
     router.post('/missions/daily-reward/claim', [MissionController, 'claimDailyReward'])
     router.post('/missions/:missionId/claim', [MissionController, 'claim'])
 
+    // Quetes principales
+    router.get('/quests', [QuestController, 'index'])
+
     // Compagnons
     router.get('/companions', [CompanionController, 'index'])
     router.post('/companions/:id/buy', [CompanionController, 'buy'])
@@ -189,6 +193,12 @@ router
     router.post('/admin/daily-rewards/create', [AdminController, 'createDailyReward'])
     router.post('/admin/daily-rewards/:id/update', [AdminController, 'updateDailyReward'])
     router.post('/admin/daily-rewards/:id/delete', [AdminController, 'deleteDailyReward'])
+
+    // Quests
+    router.get('/admin/quests', [AdminController, 'quests'])
+    router.post('/admin/quests/create', [AdminController, 'createQuest'])
+    router.post('/admin/quests/:id/update', [AdminController, 'updateQuest'])
+    router.post('/admin/quests/:id/delete', [AdminController, 'deleteQuest'])
 
     // Black Market
     router.get('/admin/black-market', [AdminController, 'blackMarket'])

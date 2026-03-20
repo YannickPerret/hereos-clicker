@@ -113,6 +113,13 @@ export default function AdminDashboard({ currentUser, stats, topCredits, activeS
             <p className="text-xs text-gray-600">Configuration du streak quotidien et des gains</p>
           </Link>
           <Link
+            href="/admin/quests"
+            className="bg-cyber-dark border border-cyber-blue/30 rounded-lg p-6 hover:border-cyber-blue/60 hover:bg-cyber-blue/5 transition-all"
+          >
+            <h3 className="text-sm font-bold text-cyber-blue tracking-widest mb-1">QUETES</h3>
+            <p className="text-xs text-gray-600">Arcs, prerequis, objectifs de hack et recompenses</p>
+          </Link>
+          <Link
             href="/admin/black-market"
             className="bg-cyber-dark border border-cyber-red/30 rounded-lg p-6 hover:border-cyber-red/60 hover:bg-cyber-red/5 transition-all"
           >

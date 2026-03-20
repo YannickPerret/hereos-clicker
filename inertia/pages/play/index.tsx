@@ -57,6 +57,46 @@ interface Props {
   effectiveCps: number
   offlineCredits: number
   party: PartyInfo | null
+  questSummary: {
+    mainTrack: {
+      trackKey: string
+      title: string
+      subtitle: string
+      completedCount: number
+      totalCount: number
+      activeQuest: {
+        id: number
+        key: string
+        title: string
+        summary: string
+        giverName: string | null
+        icon: string
+        progress: number
+        targetValue: number
+        objectiveLabel: string
+        rewardLabel: string
+      } | null
+    } | null
+    seasonalTrack: {
+      trackKey: string
+      title: string
+      subtitle: string
+      completedCount: number
+      totalCount: number
+      activeQuest: {
+        id: number
+        key: string
+        title: string
+        summary: string
+        giverName: string | null
+        icon: string
+        progress: number
+        targetValue: number
+        objectiveLabel: string
+        rewardLabel: string
+      } | null
+    } | null
+  } | null
 }
 
 const TYPE_LABELS: Record<string, string> = {
@@ -101,6 +141,84 @@ function formatCredits(n: number): string {
   return n.toString()
 }
 
+function QuestTrackCard({
+  track,
+  accent,
+}: {
+  track: NonNullable<Props['questSummary']>['mainTrack']
+  accent: 'blue' | 'yellow'
+}) {
+  if (!track) return null
+
+  const accentClasses =
+    accent === 'blue'
+      ? {
+          border: 'border-cyber-blue/30',
+          text: 'text-cyber-blue',
+          button: 'border-cyber-blue/30 text-cyber-blue hover:bg-cyber-blue/10',
+          inner: 'border-cyber-blue/20',
+          fill: 'from-cyber-blue to-cyber-purple',
+        }
+      : {
+          border: 'border-cyber-yellow/30',
+          text: 'text-cyber-yellow',
+          button: 'border-cyber-yellow/30 text-cyber-yellow hover:bg-cyber-yellow/10',
+          inner: 'border-cyber-yellow/20',
+          fill: 'from-cyber-yellow to-cyber-orange',
+        }
+
+  return (
+    <div className={`bg-cyber-dark rounded-lg p-4 mt-4 border ${accentClasses.border}`}>
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <div>
+          <div className={`text-[10px] uppercase tracking-[0.28em] ${accentClasses.text}`}>
+            {track.subtitle}
+          </div>
+          <h3 className="text-sm font-bold uppercase tracking-widest text-white mt-1">{track.title}</h3>
+        </div>
+        <button
+          type="button"
+          onClick={() => router.visit('/quests')}
+          className={`px-2.5 py-1 border rounded text-[10px] uppercase tracking-widest transition-all ${accentClasses.button}`}
+        >
+          Journal
+        </button>
+      </div>
+
+      <div className="text-[10px] text-gray-600 mb-3">
+        {track.completedCount}/{track.totalCount} quetes completees
+      </div>
+
+      {track.activeQuest ? (
+        <div className={`rounded-lg border bg-cyber-black/40 p-3 ${accentClasses.inner}`}>
+          <div className="text-[10px] uppercase tracking-[0.24em] text-gray-500 mb-1">Active</div>
+          <div className={`text-sm font-bold ${accentClasses.text}`}>{track.activeQuest.title}</div>
+          <div className="text-xs text-gray-400 mt-1">{track.activeQuest.summary}</div>
+          <div className="text-[11px] text-cyber-yellow mt-3">{track.activeQuest.objectiveLabel}</div>
+          <div className="mt-2 flex justify-between text-[10px] text-gray-500">
+            <span>{track.activeQuest.rewardLabel}</span>
+            <span>
+              {track.activeQuest.progress}/{track.activeQuest.targetValue}
+            </span>
+          </div>
+          <div className="mt-1.5 h-2 rounded-full overflow-hidden border bg-cyber-black border-gray-800">
+            <div
+              className={`h-full bg-gradient-to-r transition-all duration-300 ${accentClasses.fill}`}
+              style={{
+                width: `${Math.min(100, (track.activeQuest.progress / track.activeQuest.targetValue) * 100)}%`,
+              }}
+            />
+          </div>
+        </div>
+      ) : (
+        <div className="rounded-lg border border-cyber-green/20 bg-cyber-green/5 p-3 text-xs text-cyber-green">
+          Track termine.
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function Play({
   characters,
   activeCharacter,
@@ -110,9 +228,14 @@ export default function Play({
   effectiveCps,
   offlineCredits,
   party,
+  questSummary: initialQuestSummary,
 }: Props) {
   const [char, setChar] = useState(activeCharacter)
   const [liveLeaderboard, setLiveLeaderboard] = useState(leaderboard)
+  const [questSummary, setQuestSummary] = useState(initialQuestSummary)
+  const [questEvents, setQuestEvents] = useState<{ type: string; title: string; rewardLabel?: string }[]>(
+    []
+  )
   const [particles, setParticles] = useState<{ id: number; x: number; y: number; value: number }[]>(
     []
   )
@@ -127,6 +250,15 @@ export default function Play({
   useEffect(() => {
     setLiveLeaderboard(leaderboard)
   }, [leaderboard])
+  useEffect(() => {
+    setQuestSummary(initialQuestSummary)
+  }, [initialQuestSummary])
+  useEffect(() => {
+    if (questEvents.length === 0) return
+
+    const timer = window.setTimeout(() => setQuestEvents([]), 5000)
+    return () => window.clearTimeout(timer)
+  }, [questEvents])
   const pendingClicks = useRef(0)
   const batchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const particleId = useRef(0)
@@ -211,6 +343,8 @@ export default function Play({
               }
             : null
         )
+        setQuestSummary(data.questSummary || null)
+        setQuestEvents(Array.isArray(data.questEvents) ? data.questEvents : [])
       })
       .catch(() => {})
   }, [char])
@@ -401,6 +535,31 @@ export default function Play({
           {antiCheatMsg && (
             <div className="mb-4 mx-auto max-w-md bg-cyber-red/10 border border-cyber-red/50 rounded-lg px-4 py-3 text-cyber-red text-sm text-center animate-pulse">
               {antiCheatMsg}
+            </div>
+          )}
+
+          {questEvents.length > 0 && (
+            <div className="mb-4 space-y-2">
+              {questEvents.map((event, index) => (
+                <div
+                  key={`${event.type}-${event.title}-${index}`}
+                  className={`mx-auto max-w-2xl rounded-lg border px-4 py-3 text-sm ${
+                    event.type === 'completed'
+                      ? 'border-cyber-green/40 bg-cyber-green/10 text-cyber-green'
+                      : 'border-cyber-blue/40 bg-cyber-blue/10 text-cyber-blue'
+                  }`}
+                >
+                  <div className="text-[10px] uppercase tracking-[0.25em] text-gray-500 mb-1">
+                    {event.type === 'completed' ? 'Quete terminee' : 'Nouvelle quete'}
+                  </div>
+                  <div className="font-bold text-white">{event.title}</div>
+                  {event.rewardLabel && (
+                    <div className="text-xs mt-1">
+                      Recompense: <span className="text-cyber-yellow">{event.rewardLabel}</span>
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           )}
 
@@ -604,6 +763,9 @@ export default function Play({
               )}
             </div>
           </div>
+
+          {questSummary?.mainTrack && <QuestTrackCard track={questSummary.mainTrack} accent="blue" />}
+          {questSummary?.seasonalTrack && <QuestTrackCard track={questSummary.seasonalTrack} accent="yellow" />}
 
           {char && (
             <div className="bg-cyber-dark border border-cyber-green/30 rounded-lg p-4 mt-4">

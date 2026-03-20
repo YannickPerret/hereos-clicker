@@ -2,6 +2,7 @@ import Character from '#models/character'
 import InventoryItem from '#models/inventory_item'
 import TalentService from '#services/talent_service'
 import DailyMissionService from '#services/daily_mission_service'
+import QuestService from '#services/quest_service'
 import transmit from '@adonisjs/transmit/services/main'
 
 const MAX_CLICKS_PER_BATCH = 50
@@ -157,6 +158,12 @@ export default class ClickerService {
     DailyMissionService.trackProgress(character.id, 'click', validClicks).catch(() => {})
     DailyMissionService.trackProgress(character.id, 'earn_credits', creditsEarned).catch(() => {})
 
+    const questUpdate = await QuestService.trackHackProgress(character, {
+      clicks: validClicks,
+      creditsEarned,
+      level: character.level,
+    })
+
     transmit.broadcast('game/leaderboard', {
       characterId: character.id,
       name: character.name,
@@ -181,6 +188,8 @@ export default class ClickerService {
       creditsPerSecond: effectiveCps,
       talentPoints: character.talentPoints,
       leveledUp,
+      questSummary: questUpdate.summary,
+      questEvents: questUpdate.events,
     }
   }
 

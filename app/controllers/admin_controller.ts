@@ -13,10 +13,132 @@ import EnemyLootTable from '#models/enemy_loot_table'
 import SystemMessage from '#models/system_message'
 import DailyRewardConfig from '#models/daily_reward_config'
 import Season from '#models/season'
+import Quest from '#models/quest'
 import BlackMarketService from '#services/black_market_service'
 import SeasonService from '#services/season_service'
 
 export default class AdminController {
+  private normalizeQuestInput(request: HttpContext['request'], fallback: Partial<Quest> = {}) {
+    const key = String(request.input('key', fallback.key || '')).trim().toLowerCase().replace(/\s+/g, '_')
+    const questType = request.input('questType', fallback.questType || 'main') === 'seasonal'
+      ? 'seasonal'
+      : 'main'
+    const rawSeasonId = request.input('seasonId', fallback.seasonId ?? '')
+    const seasonId = rawSeasonId === '' || rawSeasonId === null || rawSeasonId === undefined
+      ? null
+      : Number(rawSeasonId)
+    const rawParentQuestId = request.input('parentQuestId', fallback.parentQuestId ?? '')
+    const parentQuestId = rawParentQuestId === '' || rawParentQuestId === null || rawParentQuestId === undefined
+      ? null
+      : Number(rawParentQuestId)
+    const arcKey = String(request.input('arcKey', fallback.arcKey || '')).trim().toLowerCase().replace(/\s+/g, '_')
+    const arcTitle = String(request.input('arcTitle', fallback.arcTitle || '')).trim()
+    const giverName = String(request.input('giverName', fallback.giverName || '')).trim()
+    const title = String(request.input('title', fallback.title || '')).trim()
+    const summary = String(request.input('summary', fallback.summary || '')).trim()
+    const narrative = String(request.input('narrative', fallback.narrative || '')).trim()
+    const objectiveType = String(request.input('objectiveType', fallback.objectiveType || 'hack_clicks')).trim()
+    const targetValue = Math.max(1, Number(request.input('targetValue', fallback.targetValue || 1)) || 1)
+    const rewardType = String(request.input('rewardType', fallback.rewardType || 'credits')).trim()
+    const rewardValue = Math.max(0, Number(request.input('rewardValue', fallback.rewardValue || 0)) || 0)
+    const icon = String(request.input('icon', fallback.icon || 'terminal')).trim()
+    const sortOrder = Math.max(1, Number(request.input('sortOrder', fallback.sortOrder || 1)) || 1)
+
+    return {
+      key,
+      questType: questType as 'main' | 'seasonal',
+      seasonId,
+      parentQuestId,
+      arcKey,
+      arcTitle,
+      giverName: giverName || null,
+      title,
+      summary,
+      narrative: narrative || null,
+      objectiveType,
+      targetValue,
+      rewardType,
+      rewardValue,
+      icon,
+      sortOrder,
+      requiredQuestKey: fallback.requiredQuestKey || null,
+    }
+  }
+
+  private async validateQuestPayload(
+    payload: ReturnType<AdminController['normalizeQuestInput']>,
+    currentQuestId?: number
+  ) {
+    if (!payload.key || !payload.arcKey || !payload.arcTitle || !payload.title || !payload.summary) {
+      return 'Les champs cle, arc, titre et resume sont obligatoires'
+    }
+
+    const allowedObjectives = ['hack_clicks', 'hack_credits', 'reach_level']
+    if (!allowedObjectives.includes(payload.objectiveType)) {
+      return 'Type d objectif invalide'
+    }
+
+    const allowedQuestTypes = ['main', 'seasonal']
+    if (!allowedQuestTypes.includes(payload.questType)) {
+      return 'Type de quete invalide'
+    }
+
+    const allowedRewards = ['credits', 'xp', 'talent_points']
+    if (!allowedRewards.includes(payload.rewardType)) {
+      return 'Type de recompense invalide'
+    }
+
+    let season: Season | null = null
+    if (payload.questType === 'seasonal') {
+      if (!payload.seasonId) {
+        return 'Choisis une saison pour une quete saisonniere'
+      }
+
+      season = await Season.find(payload.seasonId)
+      if (!season) {
+        return 'Saison introuvable'
+      }
+    }
+
+    const duplicateKey = await Quest.query()
+      .where('key', payload.key)
+      .if(currentQuestId !== undefined, (query) => query.whereNot('id', currentQuestId!))
+      .first()
+
+    if (duplicateKey) {
+      return `La cle ${payload.key} existe deja`
+    }
+
+    if (payload.parentQuestId) {
+      if (currentQuestId !== undefined && payload.parentQuestId === currentQuestId) {
+        return 'Une quete ne peut pas avoir elle-meme comme parent'
+      }
+
+      const parentQuest = await Quest.find(payload.parentQuestId)
+      if (!parentQuest) {
+        return 'Quete parente introuvable'
+      }
+
+      if (parentQuest.arcKey !== payload.arcKey) {
+        return 'La quete parente doit etre dans le meme arc'
+      }
+
+      if (parentQuest.questType !== payload.questType) {
+        return 'La quete parente doit etre du meme type'
+      }
+
+      if (payload.questType === 'seasonal' && parentQuest.seasonId !== payload.seasonId) {
+        return 'La quete parente doit appartenir a la meme saison'
+      }
+
+      if (payload.questType === 'main' && parentQuest.seasonId) {
+        return 'Une quete principale ne peut pas dependre d une quete de saison'
+      }
+    }
+
+    return null
+  }
+
   async dashboard({ inertia, auth }: HttpContext) {
     const totalUsers = await User.query().count('* as total')
     const totalCharacters = await Character.query().count('* as total')
@@ -808,6 +930,109 @@ export default class AdminController {
 
     session.flash('success', `Recompense J${dayNumber} supprimee`)
     return response.redirect('/admin/daily-rewards')
+  }
+
+  // ── Quests ──
+
+  async quests({ inertia }: HttpContext) {
+    const [quests, seasons] = await Promise.all([
+      Quest.query()
+        .preload('season')
+        .preload('parentQuest')
+        .orderBy('questType', 'asc')
+        .orderBy('arcTitle', 'asc')
+        .orderBy('sortOrder', 'asc')
+        .orderBy('id', 'asc'),
+      Season.query().orderBy('sortOrder', 'desc').orderBy('name', 'asc'),
+    ])
+
+    return inertia.render('admin/quests', {
+      quests: quests.map((quest) => ({
+        ...quest.serialize(),
+        seasonName: quest.season?.name || null,
+        parentQuestTitle: quest.parentQuest?.title || null,
+      })),
+      questOptions: quests.map((quest) => ({
+        id: quest.id,
+        key: quest.key,
+        title: quest.title,
+        arcTitle: quest.arcTitle,
+        questType: quest.questType,
+        seasonId: quest.seasonId,
+      })),
+      seasons: seasons.map((season) => ({
+        id: season.id,
+        name: season.name,
+        status: season.status,
+      })),
+      questTypes: [
+        { value: 'main', label: 'Principale' },
+        { value: 'seasonal', label: 'Saison' },
+      ],
+      objectiveTypes: [
+        { value: 'hack_clicks', label: 'Clicks de hack' },
+        { value: 'hack_credits', label: 'Credits siphonnes' },
+        { value: 'reach_level', label: 'Niveau atteint' },
+      ],
+      rewardTypes: [
+        { value: 'credits', label: 'Credits' },
+        { value: 'xp', label: 'XP' },
+        { value: 'talent_points', label: 'Points de talent' },
+      ],
+    })
+  }
+
+  async createQuest({ request, response, session }: HttpContext) {
+    const payload = this.normalizeQuestInput(request)
+    const validationError = await this.validateQuestPayload(payload)
+
+    if (validationError) {
+      session.flash('errors', { message: validationError })
+      return response.redirect('/admin/quests')
+    }
+
+    const parentQuest = payload.parentQuestId ? await Quest.find(payload.parentQuestId) : null
+
+    await Quest.create({
+      ...payload,
+      seasonId: payload.questType === 'seasonal' ? payload.seasonId : null,
+      requiredQuestKey: parentQuest?.key || null,
+    })
+
+    session.flash('success', `Quete ${payload.title} ajoutee`)
+    return response.redirect('/admin/quests')
+  }
+
+  async updateQuest({ params, request, response, session }: HttpContext) {
+    const quest = await Quest.findOrFail(params.id)
+    const payload = this.normalizeQuestInput(request, quest)
+    const validationError = await this.validateQuestPayload(payload, quest.id)
+
+    if (validationError) {
+      session.flash('errors', { message: validationError })
+      return response.redirect('/admin/quests')
+    }
+
+    const parentQuest = payload.parentQuestId ? await Quest.find(payload.parentQuestId) : null
+
+    quest.merge({
+      ...payload,
+      seasonId: payload.questType === 'seasonal' ? payload.seasonId : null,
+      requiredQuestKey: parentQuest?.key || null,
+    })
+    await quest.save()
+
+    session.flash('success', `Quete ${quest.title} mise a jour`)
+    return response.redirect('/admin/quests')
+  }
+
+  async deleteQuest({ params, response, session }: HttpContext) {
+    const quest = await Quest.findOrFail(params.id)
+    const title = quest.title
+    await quest.delete()
+
+    session.flash('success', `Quete ${title} supprimee`)
+    return response.redirect('/admin/quests')
   }
 
   // ── Black Market ──

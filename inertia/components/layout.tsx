@@ -28,6 +28,7 @@ export default function GameLayout({ children }: { children: ReactNode }) {
     { href: '/party', label: 'GROUPE' },
     { href: '/dungeon', label: 'DONJON' },
     { href: '/pvp', label: 'PVP' },
+    { href: '/quests', label: 'QUETES' },
     { href: '/missions', label: 'MISSIONS' },
     { href: '/leaderboard', label: 'CLASSEMENT' },
   ]

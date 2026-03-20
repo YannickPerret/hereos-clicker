@@ -5,6 +5,7 @@ import CharacterTalent from '#models/character_talent'
 import CharacterCompanion from '#models/character_companion'
 import ClickerService from '#services/clicker_service'
 import TalentService from '#services/talent_service'
+import QuestService from '#services/quest_service'
 import PartyMember from '#models/party_member'
 import DungeonRun from '#models/dungeon_run'
 
@@ -34,10 +35,13 @@ export default class PlayController {
     let effectiveCpc = 1
     let effectiveCps = 0
     let equippedItems: any[] = []
+    let questSummary: any = null
 
     if (activeCharacter) {
       // Collect offline earnings
       offlineCredits = await TalentService.collectOfflineCredits(activeCharacter)
+      questSummary = await QuestService.getPlaySummary(activeCharacter)
+      await activeCharacter.refresh()
 
       bonuses = await ClickerService.calculateEquipBonuses(activeCharacter)
       talentBonuses = await TalentService.getCharacterBonuses(activeCharacter.id)
@@ -109,6 +113,7 @@ export default class PlayController {
         item: entry.item.serialize(),
       })),
       party: partyData,
+      questSummary,
     })
   }
 
