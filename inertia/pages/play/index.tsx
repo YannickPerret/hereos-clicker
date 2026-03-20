@@ -476,25 +476,9 @@ export default function Play({
                       <div className="text-[10px] uppercase tracking-widest text-gray-500">
                         Personnage
                       </div>
-                      <h3 className="text-lg uppercase tracking-widest text-cyber-green font-bold mt-1 mb-1">
+                      <h3 className="text-lg uppercase tracking-widest text-cyber-green font-bold mt-1">
                         {char.name}
                       </h3>
-                      <div className="flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-widest">
-                        <span className="rounded border border-cyber-green/30 px-2 py-1 text-cyber-green">
-                          LVL {char.level}
-                        </span>
-                        {char.chosenSpec ? (
-                          <span
-                            className={`rounded border px-2 py-1 ${SPEC_CONFIG[char.chosenSpec]?.color} ${SPEC_CONFIG[char.chosenSpec]?.border}`}
-                          >
-                            {SPEC_CONFIG[char.chosenSpec]?.label || char.chosenSpec}
-                          </span>
-                        ) : (
-                          <span className="rounded border border-gray-800 px-2 py-1 text-gray-600">
-                            STYLE A CONFIGURER
-                          </span>
-                        )}
-                      </div>
                     </div>
                     <div className="flex gap-2">
                       <button

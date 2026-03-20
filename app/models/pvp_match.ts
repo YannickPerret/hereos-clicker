@@ -1,7 +1,8 @@
 import { DateTime } from 'luxon'
-import { BaseModel, column, belongsTo } from '@adonisjs/lucid/orm'
-import type { BelongsTo } from '@adonisjs/lucid/types/relations'
+import { BaseModel, column, belongsTo, hasMany } from '@adonisjs/lucid/orm'
+import type { BelongsTo, HasMany } from '@adonisjs/lucid/types/relations'
 import Character from '#models/character'
+import PvpMatchParticipant from '#models/pvp_match_participant'
 
 export default class PvpMatch extends BaseModel {
   @column({ isPrimary: true })
@@ -14,10 +15,25 @@ export default class PvpMatch extends BaseModel {
   declare defenderId: number | null
 
   @column()
+  declare challengerPartyId: number | null
+
+  @column()
+  declare defenderPartyId: number | null
+
+  @column()
   declare winnerId: number | null
 
   @column()
+  declare winnerTeam: number | null
+
+  @column()
   declare status: string
+
+  @column()
+  declare queueMode: 'solo' | 'duo' | 'trio'
+
+  @column()
+  declare teamSize: number
 
   @column()
   declare currentTurnId: number | null
@@ -57,4 +73,7 @@ export default class PvpMatch extends BaseModel {
 
   @belongsTo(() => Character, { foreignKey: 'defenderId' })
   declare defender: BelongsTo<typeof Character>
+
+  @hasMany(() => PvpMatchParticipant)
+  declare participants: HasMany<typeof PvpMatchParticipant>
 }

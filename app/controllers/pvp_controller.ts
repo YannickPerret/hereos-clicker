@@ -1,6 +1,6 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import Character from '#models/character'
-import PvpMatch from '#models/pvp_match'
+import PvpMatchParticipant from '#models/pvp_match_participant'
 import CombatService from '#services/combat_service'
 import PvpService from '#services/pvp_service'
 import DailyMissionService from '#services/daily_mission_service'
@@ -26,32 +26,33 @@ export default class PvpController {
       .where('userId', auth.user!.id)
       .firstOrFail()
 
-    // Check if already in an active match
-    const activeMatch = await PvpMatch.query()
-      .where((q) => {
-        q.where('challengerId', character.id).orWhere('defenderId', character.id)
-      })
-      .whereIn('status', ['waiting', 'in_progress'])
+    const activeParticipant = await PvpMatchParticipant.query()
+      .where('characterId', character.id)
+      .whereHas('match', (q) => q.whereIn('status', ['waiting', 'in_progress']))
+      .preload('match')
+      .orderBy('id', 'desc')
       .first()
+    const activeMatch = activeParticipant?.match || null
 
-    const recentMatches = await PvpMatch.query()
-      .where('status', 'completed')
-      .where((q) => {
-        q.where('challengerId', character.id).orWhere('defenderId', character.id)
-      })
-      .orderBy('createdAt', 'desc')
+    const recentParticipants = await PvpMatchParticipant.query()
+      .where('characterId', character.id)
+      .whereHas('match', (q) => q.where('status', 'completed'))
+      .preload('match')
+      .orderBy('id', 'desc')
       .limit(10)
 
     const matchData = []
-    for (const match of recentMatches) {
+    for (const entry of recentParticipants) {
+      const match = entry.match
       const challenger = await Character.find(match.challengerId)
       const defender = match.defenderId ? await Character.find(match.defenderId) : null
       matchData.push({
         id: match.id,
         challengerName: challenger?.name || '???',
         defenderName: defender?.name || '???',
-        isWin: match.winnerId === character.id,
+        isWin: match.winnerTeam === entry.team,
         ratingChange: match.ratingChange,
+        queueMode: match.queueMode,
       })
     }
 
@@ -60,27 +61,41 @@ export default class PvpController {
       .limit(20)
       .select('id', 'name', 'pvpRating', 'pvpWins', 'pvpLosses', 'level')
 
+    const queueOverview = await PvpService.getQueueOverview(character)
+
     return inertia.render('pvp/index', {
       character: character.serialize(),
-      activeMatchId: activeMatch?.id || null,
+      activeMatch: activeMatch
+        ? {
+            id: activeMatch.id,
+            status: activeMatch.status,
+            queueMode: activeMatch.queueMode,
+            teamSize: activeMatch.teamSize,
+          }
+        : null,
       recentMatches: matchData,
       rankings: rankings.map((r) => r.serialize()),
+      queueOverview,
     })
   }
 
-  async queue({ auth, response }: HttpContext) {
+  async queue({ request, auth, response, session }: HttpContext) {
     const character = await Character.query()
       .where('userId', auth.user!.id)
       .firstOrFail()
 
-    const match = await PvpService.joinQueue(character)
+    try {
+      const match = await PvpService.joinQueue(character, request.input('mode', 'solo'))
 
-    if (match.status === 'in_progress') {
+      if (match.status === 'in_progress') {
+        return response.redirect(`/pvp/match/${match.id}`)
+      }
+
       return response.redirect(`/pvp/match/${match.id}`)
+    } catch (error) {
+      session.flash('errors', { message: error instanceof Error ? error.message : 'Impossible de rejoindre la file PvP' })
+      return response.redirect('/pvp')
     }
-
-    // Still waiting
-    return response.redirect(`/pvp/match/${match.id}`)
   }
 
   async leaveQueue({ auth, response }: HttpContext) {
@@ -109,16 +124,23 @@ export default class PvpController {
     return response.json(await this.buildMatchPayload(character, params.matchId))
   }
 
-  async attack({ params, auth, response, session }: HttpContext) {
+  async attack({ params, request, auth, response, session }: HttpContext) {
     const character = await Character.query()
       .where('userId', auth.user!.id)
       .firstOrFail()
 
     try {
-      const result = await PvpService.attack(character, params.matchId)
+      const result = await PvpService.attack(character, params.matchId, request.input('targetId'))
 
-      if (result.match.status === 'completed' && result.match.winnerId === character.id) {
-        await DailyMissionService.trackProgress(character.id, 'pvp_win')
+      if (result.match.status === 'completed' && result.match.winnerTeam) {
+        const participant = await PvpMatchParticipant.query()
+          .where('matchId', result.match.id)
+          .where('characterId', character.id)
+          .first()
+
+        if (participant && participant.team === result.match.winnerTeam) {
+          await DailyMissionService.trackProgress(character.id, 'pvp_win')
+        }
       }
     } catch (e: any) {
       session.flash('errors', { message: e.message })
@@ -134,10 +156,17 @@ export default class PvpController {
 
     try {
       const skillId = Number(request.input('skillId'))
-      const result = await PvpService.useSkill(character, params.matchId, skillId)
+      const result = await PvpService.useSkill(character, params.matchId, skillId, request.input('targetId'))
 
-      if (result.match.status === 'completed' && result.match.winnerId === character.id) {
-        await DailyMissionService.trackProgress(character.id, 'pvp_win')
+      if (result.match.status === 'completed' && result.match.winnerTeam) {
+        const participant = await PvpMatchParticipant.query()
+          .where('matchId', result.match.id)
+          .where('characterId', character.id)
+          .first()
+
+        if (participant && participant.team === result.match.winnerTeam) {
+          await DailyMissionService.trackProgress(character.id, 'pvp_win')
+        }
       }
     } catch (e: any) {
       session.flash('errors', { message: e.message })

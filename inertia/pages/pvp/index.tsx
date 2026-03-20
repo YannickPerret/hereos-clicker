@@ -7,6 +7,7 @@ interface Match {
   defenderName: string
   isWin: boolean
   ratingChange: number
+  queueMode: 'solo' | 'duo' | 'trio'
 }
 
 interface Ranking {
@@ -16,6 +17,16 @@ interface Ranking {
   pvpWins: number
   pvpLosses: number
   level: number
+}
+
+interface QueueCard {
+  mode: 'solo' | 'duo' | 'trio'
+  label: string
+  teamSize: number
+  waitingTeams: number
+  etaSeconds: number
+  canQueue: boolean
+  reason: string | null
 }
 
 interface Props {
@@ -32,17 +43,28 @@ interface Props {
     critChance: number
     critDamage: number
   }
-  activeMatchId: number | null
+  activeMatch: {
+    id: number
+    status: string
+    queueMode: 'solo' | 'duo' | 'trio'
+    teamSize: number
+  } | null
   recentMatches: Match[]
   rankings: Ranking[]
+  queueOverview: QueueCard[]
 }
 
-export default function PvpArena({ character, activeMatchId, recentMatches, rankings }: Props) {
+const formatEta = (seconds: number) => {
+  if (seconds < 60) return `~${seconds}s`
+  return `~${Math.ceil(seconds / 60)} min`
+}
+
+export default function PvpArena({ character, activeMatch, recentMatches, rankings, queueOverview }: Props) {
   return (
     <GameLayout>
-      <div className="max-w-5xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-cyber-red tracking-widest">ARENA PVP</h1>
+      <div className="max-w-6xl mx-auto">
+        <div className="mb-6 flex items-center justify-between">
+          <h1 className="text-2xl font-bold tracking-widest text-cyber-red">ARENA PVP</h1>
           <div className="flex items-center gap-4">
             <div className="text-right">
               <div className="text-xs text-gray-600">ELO</div>
@@ -51,51 +73,48 @@ export default function PvpArena({ character, activeMatchId, recentMatches, rank
             <div className="text-right">
               <div className="text-xs text-gray-600">W/L</div>
               <div className="text-sm">
-                <span className="text-cyber-green font-bold">{character.pvpWins}</span>
+                <span className="font-bold text-cyber-green">{character.pvpWins}</span>
                 <span className="text-gray-600"> / </span>
-                <span className="text-cyber-red font-bold">{character.pvpLosses}</span>
+                <span className="font-bold text-cyber-red">{character.pvpLosses}</span>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Queue / Fight */}
-          <div className="lg:col-span-1 space-y-4">
-            <div className="bg-cyber-dark border border-cyber-red/30 rounded-lg p-6 text-center">
-              <div className="text-6xl mb-4">⚔️</div>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="space-y-4 lg:col-span-1">
+            <div className="rounded-lg border border-cyber-red/30 bg-cyber-dark p-6 text-center">
+              <div className="mb-4 text-6xl">⚔️</div>
 
-              {activeMatchId ? (
+              {activeMatch ? (
                 <div className="space-y-2">
+                  <div className="text-xs uppercase tracking-widest text-gray-500">
+                    {activeMatch.queueMode.toUpperCase()} • {activeMatch.teamSize}v{activeMatch.teamSize}
+                  </div>
                   <button
-                    onClick={() => router.visit(`/pvp/match/${activeMatchId}`)}
-                    className="w-full py-3 bg-cyber-yellow/20 border border-cyber-yellow text-cyber-yellow font-bold uppercase tracking-widest rounded hover:bg-cyber-yellow/30 transition-all text-sm"
+                    onClick={() => router.visit(`/pvp/match/${activeMatch.id}`)}
+                    className="w-full rounded border border-cyber-yellow bg-cyber-yellow/20 py-3 text-sm font-bold uppercase tracking-widest text-cyber-yellow transition-all hover:bg-cyber-yellow/30"
                   >
                     [ REJOINDRE COMBAT ]
                   </button>
-                  <button
-                    onClick={() => router.post('/pvp/leave-queue')}
-                    className="w-full py-2 text-xs text-gray-600 hover:text-gray-400 transition-colors"
-                  >
-                    Annuler la file
-                  </button>
+                  {activeMatch.status === 'waiting' && (
+                    <button
+                      onClick={() => router.post('/pvp/leave-queue')}
+                      className="w-full py-2 text-xs text-gray-600 transition-colors hover:text-gray-400"
+                    >
+                      Annuler la file
+                    </button>
+                  )}
                 </div>
               ) : (
-                <button
-                  onClick={() => router.post('/pvp/queue')}
-                  className="w-full py-3 bg-cyber-red/20 border border-cyber-red text-cyber-red font-bold uppercase tracking-widest rounded hover:bg-cyber-red/30 transition-all text-sm"
-                >
-                  [ CHERCHER UN ADVERSAIRE ]
-                </button>
+                <p className="text-[10px] text-gray-600">
+                  Matchmaking par mode. Les files duo/trio utilisent ton groupe actuel.
+                </p>
               )}
-
-              <p className="text-[10px] text-gray-600 mt-3">
-                Combat en temps reel tour par tour. Matchmaking par ELO.
-              </p>
             </div>
 
-            <div className="bg-cyber-dark border border-gray-800 rounded-lg p-4">
-              <h3 className="text-xs text-gray-600 uppercase tracking-widest mb-2">Tes stats</h3>
+            <div className="rounded-lg border border-gray-800 bg-cyber-dark p-4">
+              <h3 className="mb-2 text-xs uppercase tracking-widest text-gray-600">Tes stats</h3>
               <div className="space-y-1 text-xs">
                 {[
                   { label: 'ATK', value: character.attack, color: 'text-cyber-red' },
@@ -103,62 +122,94 @@ export default function PvpArena({ character, activeMatchId, recentMatches, rank
                   { label: 'HP', value: character.hpMax, color: 'text-cyber-green' },
                   { label: 'CRIT%', value: `${character.critChance}%`, color: 'text-cyber-yellow' },
                   { label: 'CRIT DMG', value: `${character.critDamage}%`, color: 'text-cyber-yellow' },
-                ].map((s) => (
-                  <div key={s.label} className="flex justify-between">
-                    <span className="text-gray-500">{s.label}</span>
-                    <span className={s.color}>{s.value}</span>
+                ].map((stat) => (
+                  <div key={stat.label} className="flex justify-between">
+                    <span className="text-gray-500">{stat.label}</span>
+                    <span className={stat.color}>{stat.value}</span>
                   </div>
                 ))}
               </div>
             </div>
           </div>
 
-          {/* Rankings */}
-          <div className="lg:col-span-1">
-            <div className="bg-cyber-dark border border-cyber-yellow/20 rounded-lg p-4">
-              <h3 className="text-sm text-cyber-yellow uppercase tracking-widest mb-3">Classement PvP</h3>
+          <div className="space-y-4 lg:col-span-1">
+            {queueOverview.map((card) => (
+              <div key={card.mode} className="rounded-lg border border-gray-800 bg-cyber-dark p-4">
+                <div className="mb-3 flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-bold uppercase tracking-widest text-cyber-red">{card.label}</h3>
+                    <div className="mt-1 text-[10px] uppercase tracking-widest text-gray-600">
+                      {card.teamSize}v{card.teamSize}
+                    </div>
+                  </div>
+                  <div className="text-right text-[10px] text-gray-500">
+                    <div>{card.waitingTeams} equipe(s)</div>
+                    <div className="text-cyber-yellow">{formatEta(card.etaSeconds)}</div>
+                  </div>
+                </div>
+
+                {card.reason && (
+                  <div className="mb-3 rounded border border-gray-800 bg-cyber-black/40 px-3 py-2 text-[10px] text-gray-500">
+                    {card.reason}
+                  </div>
+                )}
+
+                <button
+                  onClick={() => router.post('/pvp/queue', { mode: card.mode })}
+                  disabled={!card.canQueue || !!activeMatch}
+                  className={`w-full rounded border py-2 text-xs font-bold uppercase tracking-widest transition-all ${
+                    card.canQueue && !activeMatch
+                      ? 'border-cyber-red/40 bg-cyber-red/10 text-cyber-red hover:bg-cyber-red/20'
+                      : 'cursor-not-allowed border-gray-800 bg-gray-900 text-gray-700'
+                  }`}
+                >
+                  {activeMatch ? '[ FILE ACTIVE ]' : `[ LANCER ${card.label.toUpperCase()} ]`}
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <div className="space-y-6 lg:col-span-1">
+            <div className="rounded-lg border border-cyber-yellow/20 bg-cyber-dark p-4">
+              <h3 className="mb-3 text-sm uppercase tracking-widest text-cyber-yellow">Classement PvP</h3>
               <div className="space-y-1">
-                {rankings.map((r, i) => (
-                  <div key={r.id} className={`flex items-center justify-between p-2 rounded text-xs ${r.id === character.id ? 'bg-cyber-blue/10 border border-cyber-blue/30' : 'bg-cyber-black/30'}`}>
+                {rankings.map((entry, index) => (
+                  <div key={entry.id} className={`flex items-center justify-between rounded p-2 text-xs ${entry.id === character.id ? 'border border-cyber-blue/30 bg-cyber-blue/10' : 'bg-cyber-black/30'}`}>
                     <div className="flex items-center gap-2">
-                      <span className={`font-bold ${i === 0 ? 'text-cyber-yellow' : i === 1 ? 'text-gray-300' : i === 2 ? 'text-cyber-orange' : 'text-gray-600'}`}>
-                        #{i + 1}
+                      <span className={`font-bold ${index === 0 ? 'text-cyber-yellow' : index === 1 ? 'text-gray-300' : index === 2 ? 'text-cyber-orange' : 'text-gray-600'}`}>
+                        #{index + 1}
                       </span>
-                      <span className="text-white">{r.name}</span>
-                      <span className="text-gray-700">LVL {r.level}</span>
+                      <span className="text-white">{entry.name}</span>
+                      <span className="text-gray-700">LVL {entry.level}</span>
                     </div>
                     <div className="text-right">
-                      <div className="text-cyber-yellow font-bold">{r.pvpRating}</div>
-                      <div className="text-[9px] text-gray-600">{r.pvpWins}W / {r.pvpLosses}L</div>
+                      <div className="font-bold text-cyber-yellow">{entry.pvpRating}</div>
+                      <div className="text-[9px] text-gray-600">{entry.pvpWins}W / {entry.pvpLosses}L</div>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
-          </div>
 
-          {/* History */}
-          <div className="lg:col-span-1">
-            <div className="bg-cyber-dark border border-gray-800 rounded-lg p-4">
-              <h3 className="text-sm text-gray-400 uppercase tracking-widest mb-3">Historique</h3>
+            <div className="rounded-lg border border-gray-800 bg-cyber-dark p-4">
+              <h3 className="mb-3 text-sm uppercase tracking-widest text-gray-400">Historique</h3>
               <div className="space-y-1">
                 {recentMatches.length === 0 ? (
-                  <div className="text-xs text-gray-700 italic text-center py-4">Aucun combat</div>
+                  <div className="py-4 text-center text-xs italic text-gray-700">Aucun combat</div>
                 ) : (
-                  recentMatches.map((m) => (
-                    <div key={m.id} className={`flex items-center justify-between p-2 rounded text-xs ${m.isWin ? 'bg-cyber-green/5' : 'bg-cyber-red/5'}`}>
-                      <div>
-                        <span className={m.isWin ? 'text-cyber-green' : 'text-cyber-red'}>
-                          {m.isWin ? 'W' : 'L'}
-                        </span>
-                        <span className="text-gray-500 ml-2">vs</span>
-                        <span className="text-white ml-1">
-                          {m.challengerName === character.name ? m.defenderName : m.challengerName}
+                  recentMatches.map((match) => (
+                    <div key={`${match.id}-${match.queueMode}`} className={`rounded p-2 text-xs ${match.isWin ? 'bg-cyber-green/5' : 'bg-cyber-red/5'}`}>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className={match.isWin ? 'text-cyber-green' : 'text-cyber-red'}>{match.isWin ? 'W' : 'L'}</span>
+                          <span className="ml-2 text-gray-500">vs</span>
+                          <span className="ml-1 text-white">{match.challengerName === character.name ? match.defenderName : match.challengerName}</span>
+                        </div>
+                        <span className={`font-bold ${match.isWin ? 'text-cyber-green' : 'text-cyber-red'}`}>
+                          {match.isWin ? '+' : '-'}{match.ratingChange}
                         </span>
                       </div>
-                      <span className={`font-bold ${m.isWin ? 'text-cyber-green' : 'text-cyber-red'}`}>
-                        {m.isWin ? '+' : '-'}{m.ratingChange}
-                      </span>
+                      <div className="mt-1 text-[9px] uppercase tracking-widest text-gray-600">{match.queueMode}</div>
                     </div>
                   ))
                 )}

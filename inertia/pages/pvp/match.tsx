@@ -1,5 +1,5 @@
 import { router, usePage } from '@inertiajs/react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import GameLayout from '~/components/layout'
 
 interface Fighter {
@@ -11,6 +11,17 @@ interface Fighter {
   critChance: number
   critDamage: number
   pvpRating: number
+  currentHp: number
+  hpMax: number
+  isEliminated: boolean
+  slot: number
+  isLeader: boolean
+}
+
+interface TeamState {
+  team: number
+  averageRating: number
+  members: Fighter[]
 }
 
 interface Skill {
@@ -49,30 +60,39 @@ interface LogEntry {
   healed?: number
   dot?: number
   stun?: boolean
-  challengerHp: number
-  defenderHp: number
 }
 
 interface MatchState {
   id: number
   status: string
-  challengerHp: number
-  challengerHpMax: number
-  defenderHp: number
-  defenderHpMax: number
+  queueMode: 'solo' | 'duo' | 'trio'
+  teamSize: number
   currentTurnId: number | null
   winnerId: number | null
+  winnerTeam: number | null
   ratingChange: number
   log: LogEntry[]
+  queueEstimateSeconds: number
 }
 
 interface Props {
   myId: number
   match: MatchState
-  challenger: Fighter
-  defender: Fighter | null
+  teams: TeamState[]
   skills: Skill[]
   activeEffects: ActiveEffect[]
+}
+
+const formatEta = (seconds: number) => {
+  if (seconds < 60) return `~${seconds}s`
+  const minutes = Math.ceil(seconds / 60)
+  return `~${minutes} min`
+}
+
+const queueLabel: Record<MatchState['queueMode'], string> = {
+  solo: 'SoloQ',
+  duo: 'DuoQ',
+  trio: 'TrioQ',
 }
 
 function effectLabel(effect: ActiveEffect) {
@@ -108,64 +128,72 @@ function LogLine({ entry, myId }: { entry: LogEntry; myId: number }) {
   switch (entry.action) {
     case 'skill_use':
       return (
-        <div className="text-xs p-2 rounded bg-cyber-purple/10 border border-cyber-purple/30">
+        <div className="rounded border border-cyber-purple/30 bg-cyber-purple/10 p-2 text-xs">
           <span className={actorClass}>{entry.attackerName}</span>
-          <span className="text-cyber-purple font-bold ml-1">[{entry.skillName}]</span>
-          {entry.blocked
-            ? <span className="text-cyber-blue font-bold ml-1">BLOQUE</span>
-            : entry.damage
-              ? <span className="text-white font-bold ml-1">-{entry.damage}</span>
-              : null}
-          {entry.healed ? <span className="text-cyber-green font-bold ml-1">+{entry.healed} HP</span> : null}
-          {entry.isCrit ? <span className="text-cyber-yellow font-bold ml-1">CRIT!</span> : null}
-          {entry.dot ? <span className="text-cyber-orange ml-1">DOT {entry.dot}</span> : null}
-          {entry.stun ? <span className="text-cyber-yellow ml-1">STUN</span> : null}
-          {entry.message && !entry.damage && !entry.healed ? <span className="text-gray-400 ml-1">{entry.message}</span> : null}
+          <span className="ml-1 font-bold text-cyber-purple">[{entry.skillName}]</span>
+          {entry.blocked ? (
+            <span className="ml-1 font-bold text-cyber-blue">BLOQUE</span>
+          ) : entry.damage ? (
+            <span className="ml-1 font-bold text-white">-{entry.damage}</span>
+          ) : null}
+          {entry.healed ? (
+            <span className="ml-1 font-bold text-cyber-green">+{entry.healed} HP</span>
+          ) : null}
+          {entry.isCrit ? <span className="ml-1 font-bold text-cyber-yellow">CRIT!</span> : null}
+          {entry.dot ? <span className="ml-1 text-cyber-orange">DOT {entry.dot}</span> : null}
+          {entry.stun ? <span className="ml-1 text-cyber-yellow">STUN</span> : null}
+          {entry.message && !entry.damage && !entry.healed ? (
+            <span className="ml-1 text-gray-400">{entry.message}</span>
+          ) : null}
         </div>
       )
     case 'skill_effect':
       return (
-        <div className="text-xs p-2 rounded bg-cyber-orange/10 border border-cyber-orange/20">
+        <div className="rounded border border-cyber-orange/20 bg-cyber-orange/10 p-2 text-xs">
           <span className={actorClass}>{entry.attackerName}</span>
-          <span className="text-cyber-orange ml-1">{entry.message}</span>
-          {entry.blocked ? <span className="text-cyber-blue ml-1">BLOQUE</span> : null}
+          <span className="ml-1 text-cyber-orange">{entry.message}</span>
+          {entry.blocked ? <span className="ml-1 text-cyber-blue">BLOQUE</span> : null}
         </div>
       )
     case 'stunned':
       return (
-        <div className="text-xs p-2 rounded bg-cyber-yellow/10 border border-cyber-yellow/30">
-          <span className="text-cyber-yellow">{entry.message}</span>
+        <div className="rounded border border-cyber-yellow/30 bg-cyber-yellow/10 p-2 text-xs text-cyber-yellow">
+          {entry.message}
         </div>
       )
     case 'forfeit':
       return (
-        <div className="text-xs p-2 rounded bg-cyber-red/10 border border-cyber-red/30">
+        <div className="rounded border border-cyber-red/30 bg-cyber-red/10 p-2 text-xs">
           <span className={actorClass}>{entry.attackerName}</span>
-          <span className="text-gray-400 ml-1">abandonne le match</span>
+          <span className="ml-1 text-gray-400">abandonne le match</span>
         </div>
       )
     case 'player_attack':
     default:
       return (
-        <div className={`text-xs p-2 rounded ${
-          entry.blocked
-            ? 'bg-cyber-blue/10 border border-cyber-blue/20'
-            : entry.isCrit
-              ? 'bg-cyber-yellow/10 border border-cyber-yellow/20'
-              : entry.attackerId === myId
-                ? 'bg-cyber-blue/5'
-                : 'bg-cyber-red/5'
-        }`}>
+        <div
+          className={`rounded p-2 text-xs ${
+            entry.blocked
+              ? 'border border-cyber-blue/20 bg-cyber-blue/10'
+              : entry.isCrit
+                ? 'border border-cyber-yellow/20 bg-cyber-yellow/10'
+                : entry.attackerId === myId
+                  ? 'bg-cyber-blue/5'
+                  : 'bg-cyber-red/5'
+          }`}
+        >
           <span className={actorClass}>{entry.attackerName}</span>
           {entry.forfeit ? (
-            <span className="text-gray-500 ml-1">a abandonne</span>
+            <span className="ml-1 text-gray-500">a abandonne</span>
           ) : entry.blocked ? (
-            <span className="text-cyber-blue font-bold ml-1">attaque bloquee</span>
+            <span className="ml-1 font-bold text-cyber-blue">attaque bloquee</span>
           ) : (
             <>
-              <span className="text-gray-500 ml-1">frappe</span>
-              <span className="text-white font-bold ml-1">-{entry.damage}</span>
-              {entry.isCrit ? <span className="text-cyber-yellow font-bold ml-1">CRIT!</span> : null}
+              <span className="ml-1 text-gray-500">frappe</span>
+              <span className="ml-1 font-bold text-white">-{entry.damage}</span>
+              {entry.isCrit ? (
+                <span className="ml-1 font-bold text-cyber-yellow">CRIT!</span>
+              ) : null}
             </>
           )}
         </div>
@@ -173,36 +201,153 @@ function LogLine({ entry, myId }: { entry: LogEntry; myId: number }) {
   }
 }
 
+function FighterCard({
+  fighter,
+  isCurrentTurn,
+  isMe,
+  isSelected,
+  effects,
+  onSelect,
+}: {
+  fighter: Fighter
+  isCurrentTurn: boolean
+  isMe: boolean
+  isSelected: boolean
+  effects: ActiveEffect[]
+  onSelect?: () => void
+}) {
+  const border = fighter.isEliminated
+    ? 'border-gray-800 opacity-50'
+    : isCurrentTurn
+      ? 'border-cyber-yellow/50 bg-cyber-yellow/5'
+      : isSelected
+        ? 'border-cyber-red/50 bg-cyber-red/5'
+        : isMe
+          ? 'border-cyber-blue/40 bg-cyber-blue/5'
+          : 'border-gray-800'
+
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      disabled={!onSelect || fighter.isEliminated}
+      className={`w-full rounded-lg border p-3 text-left transition-all ${border} ${onSelect && !fighter.isEliminated ? 'hover:border-cyber-red/50' : 'cursor-default'}`}
+    >
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <div>
+          <div className="text-sm font-bold text-white">
+            {fighter.name} {isMe ? '(TOI)' : ''}
+          </div>
+          <div className="text-[10px] uppercase tracking-widest text-gray-600">
+            LVL {fighter.level} {fighter.isLeader ? '• Leader' : ''}
+          </div>
+        </div>
+        {fighter.isEliminated && (
+          <div className="rounded border border-cyber-red/30 bg-cyber-red/10 px-2 py-1 text-[10px] uppercase tracking-widest text-cyber-red">
+            KO
+          </div>
+        )}
+      </div>
+
+      <div className="mb-2">
+        <div className="mb-1 flex justify-between text-[10px] text-gray-500">
+          <span>HP</span>
+          <span>
+            {fighter.currentHp}/{fighter.hpMax}
+          </span>
+        </div>
+        <div className="h-3 overflow-hidden rounded-full border border-cyber-green/20 bg-cyber-black">
+          <div
+            className="h-full bg-gradient-to-r from-cyber-green to-cyber-blue transition-all duration-500"
+            style={{
+              width: `${fighter.hpMax > 0 ? (fighter.currentHp / fighter.hpMax) * 100 : 0}%`,
+            }}
+          />
+        </div>
+      </div>
+
+      {effects.length > 0 && (
+        <div className="mb-2 space-y-1">
+          {effects.map((effect, index) => (
+            <div
+              key={`${effect.type}-${index}`}
+              className="rounded border border-cyber-purple/20 bg-cyber-purple/5 px-2 py-1 text-[10px] text-cyber-purple"
+            >
+              {effectLabel(effect)} <span className="text-gray-600">({effect.turnsLeft}t)</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-1 text-[10px]">
+        <div>
+          <span className="text-gray-600">ATK</span>{' '}
+          <span className="ml-1 font-bold text-cyber-red">{fighter.attack}</span>
+        </div>
+        <div>
+          <span className="text-gray-600">DEF</span>{' '}
+          <span className="ml-1 font-bold text-cyber-blue">{fighter.defense}</span>
+        </div>
+        <div>
+          <span className="text-gray-600">CRIT%</span>{' '}
+          <span className="ml-1 font-bold text-cyber-yellow">{fighter.critChance}%</span>
+        </div>
+        <div>
+          <span className="text-gray-600">ELO</span>{' '}
+          <span className="ml-1 font-bold text-cyber-yellow">{fighter.pvpRating}</span>
+        </div>
+      </div>
+    </button>
+  )
+}
+
 export default function PvpMatch({
   myId,
   match: initialMatch,
-  challenger: initialChallenger,
-  defender: initialDefender,
+  teams: initialTeams,
   skills: initialSkills,
   activeEffects: initialEffects,
 }: Props) {
   const [match, setMatch] = useState(initialMatch)
-  const [challenger] = useState(initialChallenger)
-  const [defender, setDefender] = useState(initialDefender)
+  const [teams, setTeams] = useState(initialTeams)
   const [skills, setSkills] = useState(initialSkills)
   const [activeEffects, setActiveEffects] = useState(initialEffects)
+  const [selectedTargetId, setSelectedTargetId] = useState<number | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const logEndRef = useRef<HTMLDivElement>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const { errors } = usePage().props as any
+  const { errors } = usePage().props as { errors?: { message?: string } }
 
-  const isMyTurn = match.currentTurnId === myId
+  const myTeam = useMemo(
+    () => teams.find((team) => team.members.some((member) => member.id === myId)) || teams[0],
+    [teams, myId]
+  )
+  const opponentTeam = useMemo(
+    () => teams.find((team) => team.team !== myTeam?.team) || teams[1] || null,
+    [teams, myTeam]
+  )
+  const myFighter = useMemo(
+    () => myTeam?.members.find((member) => member.id === myId) || null,
+    [myTeam, myId]
+  )
+  const opponentAlive = useMemo(
+    () => (opponentTeam?.members || []).filter((member) => !member.isEliminated),
+    [opponentTeam]
+  )
+  const myEffects = useMemo(
+    () => activeEffects.filter((effect) => effect.targetCharId === myId),
+    [activeEffects, myId]
+  )
+  const isMyTurn = match.currentTurnId === myId && !myFighter?.isEliminated
   const isOver = match.status === 'completed' || match.status === 'cancelled'
   const isWaiting = match.status === 'waiting'
-  const amChallenger = challenger.id === myId
-  const myFighter = amChallenger ? challenger : defender
-  const opponentFighter = amChallenger ? defender : challenger
-  const myHp = amChallenger ? match.challengerHp : match.defenderHp
-  const myHpMax = amChallenger ? match.challengerHpMax : match.defenderHpMax
-  const opponentHp = amChallenger ? match.defenderHp : match.challengerHp
-  const opponentHpMax = amChallenger ? match.defenderHpMax : match.challengerHpMax
-  const myEffects = activeEffects.filter((effect) => effect.targetCharId === myId)
-  const opponentEffects = activeEffects.filter((effect) => effect.targetCharId === opponentFighter?.id)
+
+  useEffect(() => {
+    const fallbackTarget = opponentAlive[0]?.id || null
+    if (!selectedTargetId || !opponentAlive.some((member) => member.id === selectedTargetId)) {
+      setSelectedTargetId(fallbackTarget)
+    }
+  }, [opponentAlive, selectedTargetId])
 
   useEffect(() => {
     const poll = async () => {
@@ -210,11 +355,9 @@ export default function PvpMatch({
         const res = await fetch(`/pvp/match/${match.id}/state`)
         const data = await res.json()
         setMatch(data.match)
+        setTeams(data.teams || [])
         setSkills(data.skills || [])
         setActiveEffects(data.activeEffects || [])
-        if (data.defender && !defender) {
-          setDefender(data.defender)
-        }
       } catch {}
     }
 
@@ -222,14 +365,14 @@ export default function PvpMatch({
     return () => {
       if (pollRef.current) clearInterval(pollRef.current)
     }
-  }, [match.id, defender])
+  }, [match.id])
 
   useEffect(() => {
     setMatch(initialMatch)
+    setTeams(initialTeams)
     setSkills(initialSkills)
     setActiveEffects(initialEffects)
-    if (initialDefender) setDefender(initialDefender)
-  }, [initialMatch, initialSkills, initialEffects, initialDefender])
+  }, [initialMatch, initialTeams, initialSkills, initialEffects])
 
   useEffect(() => {
     logEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -238,216 +381,332 @@ export default function PvpMatch({
   const handleAttack = () => {
     if (!isMyTurn || isSubmitting) return
     setIsSubmitting(true)
-    router.post(`/pvp/match/${match.id}/attack`, {}, {
-      preserveScroll: true,
-      onFinish: () => setIsSubmitting(false),
-    })
+    router.post(
+      `/pvp/match/${match.id}/attack`,
+      { targetId: selectedTargetId },
+      {
+        preserveScroll: true,
+        onFinish: () => setIsSubmitting(false),
+      }
+    )
   }
 
-  const handleSkill = (skillId: number) => {
+  const handleSkill = (skillId: number, needsTarget: boolean) => {
     if (!isMyTurn || isSubmitting) return
     setIsSubmitting(true)
-    router.post(`/pvp/match/${match.id}/skill`, { skillId }, {
-      preserveScroll: true,
-      onFinish: () => setIsSubmitting(false),
-    })
+    router.post(
+      `/pvp/match/${match.id}/skill`,
+      {
+        skillId,
+        targetId: needsTarget ? selectedTargetId : null,
+      },
+      {
+        preserveScroll: true,
+        onFinish: () => setIsSubmitting(false),
+      }
+    )
   }
 
   const handleForfeit = () => {
-    if (confirm('Abandonner le combat ? Tu perdras du ELO.')) {
+    if (confirm('Abandonner le combat ? Toute ton equipe perdra ce match.')) {
       router.post(`/pvp/match/${match.id}/forfeit`)
     }
   }
 
+  const turnOrder = useMemo(() => {
+    return [...teams.flatMap((team) => team.members)].sort((a, b) => a.slot - b.slot || a.id - b.id)
+  }, [teams])
+
   return (
     <GameLayout>
-      <div className="max-w-5xl mx-auto">
+      <div className="mx-auto max-w-6xl">
         {errors?.message && (
           <div className="mb-4 rounded-lg border border-cyber-red/30 bg-cyber-red/10 p-3 text-xs text-cyber-red">
             {errors.message}
           </div>
         )}
 
-        {isWaiting && (
-          <div className="text-center py-20">
-            <div className="text-6xl mb-6 animate-pulse">⚔️</div>
-            <h2 className="text-xl font-bold text-cyber-yellow tracking-widest mb-4">
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.35em] text-gray-600">
+              {queueLabel[match.queueMode]} • {match.teamSize}v{match.teamSize}
+            </div>
+            <h1 className="mt-1 text-xl font-bold tracking-widest text-cyber-red">MATCH PVP</h1>
+          </div>
+          {!isOver && (
+            <div className="text-right text-xs text-gray-500">
+              <div>
+                Mode: <span className="text-cyber-yellow">{queueLabel[match.queueMode]}</span>
+              </div>
+              {!isWaiting && match.currentTurnId && (
+                <div>
+                  Tour:{' '}
+                  <span className="text-white">
+                    {teams
+                      .flatMap((team) => team.members)
+                      .find((member) => member.id === match.currentTurnId)?.name || '...'}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {isWaiting && myTeam && (
+          <div className="py-12 text-center">
+            <div className="mb-6 text-6xl animate-pulse">⚔️</div>
+            <h2 className="mb-4 text-xl font-bold tracking-widest text-cyber-yellow">
               EN ATTENTE D&apos;ADVERSAIRE...
             </h2>
-            <div className="flex items-center justify-center gap-2 mb-6">
-              <div className="w-2 h-2 rounded-full bg-cyber-yellow animate-bounce" style={{ animationDelay: '0ms' }} />
-              <div className="w-2 h-2 rounded-full bg-cyber-yellow animate-bounce" style={{ animationDelay: '200ms' }} />
-              <div className="w-2 h-2 rounded-full bg-cyber-yellow animate-bounce" style={{ animationDelay: '400ms' }} />
+            <div className="mb-2 text-sm text-gray-400">
+              {queueLabel[match.queueMode]} • Estimation {formatEta(match.queueEstimateSeconds)}
             </div>
-            <p className="text-xs text-gray-600 mb-6">
-              {challenger.name} (ELO {challenger.pvpRating}) — Recherche d&apos;un adversaire...
-            </p>
+            <div className="mx-auto mt-6 max-w-xl rounded-lg border border-gray-800 bg-cyber-dark p-4 text-left">
+              <div className="mb-3 text-[10px] uppercase tracking-widest text-gray-600">
+                Ton equipe
+              </div>
+              <div className="grid gap-2 md:grid-cols-2">
+                {myTeam.members.map((fighter) => (
+                  <FighterCard
+                    key={fighter.id}
+                    fighter={fighter}
+                    isCurrentTurn={false}
+                    isMe={fighter.id === myId}
+                    isSelected={false}
+                    effects={activeEffects.filter((effect) => effect.targetCharId === fighter.id)}
+                  />
+                ))}
+              </div>
+            </div>
             <button
               onClick={() => router.post('/pvp/leave-queue')}
-              className="px-6 py-2 border border-gray-700 text-gray-500 rounded text-xs hover:text-gray-300 hover:border-gray-500 transition-all"
+              className="mt-6 rounded border border-gray-700 px-6 py-2 text-xs text-gray-500 transition-all hover:border-gray-500 hover:text-gray-300"
             >
-              ANNULER
+              ANNULER LA FILE
             </button>
           </div>
         )}
 
-        {match.status === 'in_progress' && defender && (
+        {match.status === 'in_progress' && myTeam && opponentTeam && (
           <>
-            <div className="text-center mb-4">
-              <span className={`text-xs px-4 py-1.5 rounded-full border ${isMyTurn ? 'bg-cyber-green/10 border-cyber-green/50 text-cyber-green' : 'bg-cyber-red/10 border-cyber-red/30 text-cyber-red'}`}>
-                {isMyTurn ? 'TON TOUR' : `Tour de ${opponentFighter?.name}...`}
+            <div className="mb-4 text-center">
+              <span
+                className={`rounded-full border px-4 py-1.5 text-xs ${
+                  isMyTurn
+                    ? 'border-cyber-green/50 bg-cyber-green/10 text-cyber-green'
+                    : 'border-cyber-red/30 bg-cyber-red/10 text-cyber-red'
+                }`}
+              >
+                {isMyTurn
+                  ? 'TON TOUR'
+                  : `Tour de ${teams.flatMap((team) => team.members).find((member) => member.id === match.currentTurnId)?.name || '...'}`}
               </span>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-              <div className={`bg-cyber-dark border rounded-lg p-4 ${isMyTurn ? 'border-cyber-green/50' : 'border-gray-800'}`}>
-                <h3 className="text-cyber-blue font-bold text-center text-sm mb-3 tracking-widest">
-                  {myFighter?.name} (TOI)
-                </h3>
-                <div className="mb-3">
-                  <div className="flex justify-between text-[10px] text-gray-500 mb-1">
-                    <span>HP</span>
-                    <span>{myHp}/{myHpMax}</span>
+            <div className="mb-6 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
+              <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.2fr_0.9fr_1.2fr]">
+                <div className="rounded-lg border border-cyber-blue/30 bg-cyber-dark p-4">
+                  <div className="mb-3 flex items-center justify-between">
+                    <h3 className="text-sm font-bold uppercase tracking-widest text-cyber-blue">
+                      Equipe Alpha
+                    </h3>
+                    <div className="text-[10px] text-gray-500">ELO moy. {myTeam.averageRating}</div>
                   </div>
-                  <div className="h-4 bg-cyber-black rounded-full overflow-hidden border border-cyber-green/20">
-                    <div
-                      className="h-full bg-gradient-to-r from-cyber-green to-cyber-blue transition-all duration-500"
-                      style={{ width: `${(myHp / myHpMax) * 100}%` }}
-                    />
-                  </div>
-                </div>
-                {myEffects.length > 0 && (
-                  <div className="mb-3 space-y-1">
-                    {myEffects.map((effect, index) => (
-                      <div key={`${effect.type}-${index}`} className="rounded border border-cyber-green/20 bg-cyber-green/5 px-2 py-1 text-[10px] text-cyber-green">
-                        {effectLabel(effect)} <span className="text-gray-600">({effect.turnsLeft}t)</span>
-                      </div>
+                  <div className="space-y-2">
+                    {myTeam.members.map((fighter) => (
+                      <FighterCard
+                        key={fighter.id}
+                        fighter={fighter}
+                        isCurrentTurn={match.currentTurnId === fighter.id}
+                        isMe={fighter.id === myId}
+                        isSelected={false}
+                        effects={activeEffects.filter(
+                          (effect) => effect.targetCharId === fighter.id
+                        )}
+                      />
                     ))}
                   </div>
-                )}
-                <div className="grid grid-cols-2 gap-1 text-[10px]">
-                  <div className="text-center"><span className="text-gray-600">ATK</span> <span className="text-cyber-red font-bold ml-1">{myFighter?.attack}</span></div>
-                  <div className="text-center"><span className="text-gray-600">DEF</span> <span className="text-cyber-blue font-bold ml-1">{myFighter?.defense}</span></div>
-                  <div className="text-center"><span className="text-gray-600">CRIT%</span> <span className="text-cyber-yellow font-bold ml-1">{myFighter?.critChance}%</span></div>
-                  <div className="text-center"><span className="text-gray-600">ELO</span> <span className="text-cyber-yellow font-bold ml-1">{myFighter?.pvpRating}</span></div>
                 </div>
-              </div>
 
-              <div className="flex flex-col items-center gap-4">
-                <div className="text-4xl font-bold text-cyber-pink neon-text-pink tracking-widest">VS</div>
+                <div className="flex flex-col gap-4">
+                  <div className="text-center text-4xl font-bold tracking-widest text-cyber-pink neon-text-pink">
+                    VS
+                  </div>
 
-                <div className="space-y-2 w-full">
-                  <button
-                    onClick={handleAttack}
-                    disabled={!isMyTurn || isSubmitting}
-                    className={`w-full py-3 rounded border font-bold uppercase tracking-widest text-sm transition-all ${
-                      isMyTurn && !isSubmitting
-                        ? 'bg-cyber-red/20 border-cyber-red text-cyber-red hover:bg-cyber-red/30 animate-pulse'
-                        : 'bg-gray-900 border-gray-800 text-gray-700 cursor-not-allowed'
-                    }`}
-                  >
-                    {isSubmitting ? 'ACTION...' : isMyTurn ? '[ ATTAQUER ]' : 'EN ATTENTE...'}
-                  </button>
-
-                  {skills.length > 0 && (
+                  <div className="rounded-lg border border-gray-800 bg-cyber-dark p-4">
+                    <div className="mb-3 text-[10px] uppercase tracking-widest text-gray-600">
+                      Ordre de tour
+                    </div>
                     <div className="space-y-1">
-                      <div className="text-[9px] text-cyber-purple uppercase tracking-widest text-center">Competences Speciales</div>
-                      {skills.map((skill) => {
-                        const onCooldown = skill.currentCooldown > 0
-                        const disabled = onCooldown || !isMyTurn || isSubmitting
-                        return (
+                      {turnOrder.map((fighter) => (
+                        <div
+                          key={fighter.id}
+                          className={`rounded border px-2 py-1 text-xs ${
+                            fighter.isEliminated
+                              ? 'border-gray-800 text-gray-700'
+                              : match.currentTurnId === fighter.id
+                                ? 'border-cyber-yellow/40 bg-cyber-yellow/10 text-cyber-yellow'
+                                : fighter.id === myId
+                                  ? 'border-cyber-blue/30 bg-cyber-blue/5 text-cyber-blue'
+                                  : 'border-gray-800 text-gray-400'
+                          }`}
+                        >
+                          {fighter.name}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {opponentAlive.length > 0 && (
+                    <div className="rounded-lg border border-gray-800 bg-cyber-dark p-4">
+                      <div className="mb-2 text-[10px] uppercase tracking-widest text-gray-600">
+                        Cible
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {opponentAlive.map((fighter) => (
                           <button
-                            key={skill.id}
+                            key={fighter.id}
                             type="button"
-                            onClick={() => !disabled && handleSkill(skill.id)}
-                            disabled={disabled}
-                            title={skill.description}
-                            className={`w-full rounded border px-2 py-2 text-xs transition-all ${
-                              disabled
-                                ? 'bg-gray-900/50 border-gray-800 text-gray-700 cursor-not-allowed'
-                                : 'bg-cyber-purple/10 border-cyber-purple/30 text-cyber-purple hover:bg-cyber-purple/20'
+                            onClick={() => setSelectedTargetId(fighter.id)}
+                            className={`rounded border px-3 py-1 text-xs transition-all ${
+                              selectedTargetId === fighter.id
+                                ? 'border-cyber-red/50 bg-cyber-red/10 text-cyber-red'
+                                : 'border-gray-700 text-gray-400 hover:border-cyber-red/30 hover:text-cyber-red'
                             }`}
                           >
-                            <span className="font-bold">{skill.name}</span>
-                            <span className="ml-1 text-[10px] text-gray-600">
-                              {onCooldown ? `(${skill.currentCooldown} tours)` : `CD:${skill.cooldown}`}
-                            </span>
+                            {fighter.name}
                           </button>
-                        )
-                      })}
+                        ))}
+                      </div>
                     </div>
                   )}
 
-                  <button
-                    onClick={handleForfeit}
-                    className="w-full text-[10px] py-2 text-gray-700 hover:text-cyber-red transition-colors"
-                  >
-                    ABANDONNER
-                  </button>
-                </div>
-              </div>
+                  <div className="space-y-2">
+                    <button
+                      onClick={handleAttack}
+                      disabled={!isMyTurn || isSubmitting || !selectedTargetId}
+                      className={`w-full rounded border py-3 text-sm font-bold uppercase tracking-widest transition-all ${
+                        isMyTurn && !isSubmitting && selectedTargetId
+                          ? 'border-cyber-red bg-cyber-red/20 text-cyber-red hover:bg-cyber-red/30'
+                          : 'cursor-not-allowed border-gray-800 bg-gray-900 text-gray-700'
+                      }`}
+                    >
+                      {isSubmitting ? 'ACTION...' : isMyTurn ? '[ ATTAQUER ]' : 'EN ATTENTE...'}
+                    </button>
 
-              <div className={`bg-cyber-dark border rounded-lg p-4 ${!isMyTurn ? 'border-cyber-red/50' : 'border-gray-800'}`}>
-                <h3 className="text-cyber-red font-bold text-center text-sm mb-3 tracking-widest">
-                  {opponentFighter?.name}
-                </h3>
-                <div className="mb-3">
-                  <div className="flex justify-between text-[10px] text-gray-500 mb-1">
-                    <span>HP</span>
-                    <span>{opponentHp}/{opponentHpMax}</span>
-                  </div>
-                  <div className="h-4 bg-cyber-black rounded-full overflow-hidden border border-cyber-red/20">
-                    <div
-                      className="h-full bg-gradient-to-r from-cyber-red to-cyber-orange transition-all duration-500"
-                      style={{ width: `${(opponentHp / opponentHpMax) * 100}%` }}
-                    />
+                    {skills.length > 0 && (
+                      <div className="space-y-1">
+                        <div className="text-center text-[9px] uppercase tracking-widest text-cyber-purple">
+                          Competences Speciales
+                        </div>
+                        {skills.map((skill) => {
+                          const onCooldown = skill.currentCooldown > 0
+                          const needsTarget = ![
+                            'heal_percent',
+                            'guaranteed_crit',
+                            'shield',
+                            'buff_all',
+                          ].includes(skill.effectType)
+                          const disabled =
+                            onCooldown ||
+                            !isMyTurn ||
+                            isSubmitting ||
+                            (needsTarget && !selectedTargetId)
+
+                          return (
+                            <button
+                              key={skill.id}
+                              type="button"
+                              onClick={() => !disabled && handleSkill(skill.id, needsTarget)}
+                              disabled={disabled}
+                              title={skill.description}
+                              className={`w-full rounded border px-2 py-2 text-xs transition-all ${
+                                disabled
+                                  ? 'cursor-not-allowed border-gray-800 bg-gray-900/50 text-gray-700'
+                                  : 'border-cyber-purple/30 bg-cyber-purple/10 text-cyber-purple hover:bg-cyber-purple/20'
+                              }`}
+                            >
+                              <span className="font-bold">{skill.name}</span>
+                              <span className="ml-1 text-[10px] text-gray-600">
+                                {onCooldown
+                                  ? `(${skill.currentCooldown} tours)`
+                                  : `CD:${skill.cooldown}`}
+                              </span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
+
+                    <button
+                      onClick={handleForfeit}
+                      className="w-full py-2 text-[10px] text-gray-700 transition-colors hover:text-cyber-red"
+                    >
+                      ABANDONNER
+                    </button>
                   </div>
                 </div>
-                {opponentEffects.length > 0 && (
-                  <div className="mb-3 space-y-1">
-                    {opponentEffects.map((effect, index) => (
-                      <div key={`${effect.type}-${index}`} className="rounded border border-cyber-red/20 bg-cyber-red/5 px-2 py-1 text-[10px] text-cyber-red">
-                        {effectLabel(effect)} <span className="text-gray-600">({effect.turnsLeft}t)</span>
-                      </div>
+
+                <div className="rounded-lg border border-cyber-red/30 bg-cyber-dark p-4">
+                  <div className="mb-3 flex items-center justify-between">
+                    <h3 className="text-sm font-bold uppercase tracking-widest text-cyber-red">
+                      Equipe Omega
+                    </h3>
+                    <div className="text-[10px] text-gray-500">
+                      ELO moy. {opponentTeam.averageRating}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    {opponentTeam.members.map((fighter) => (
+                      <FighterCard
+                        key={fighter.id}
+                        fighter={fighter}
+                        isCurrentTurn={match.currentTurnId === fighter.id}
+                        isMe={false}
+                        isSelected={selectedTargetId === fighter.id}
+                        effects={activeEffects.filter(
+                          (effect) => effect.targetCharId === fighter.id
+                        )}
+                        onSelect={() => setSelectedTargetId(fighter.id)}
+                      />
                     ))}
                   </div>
-                )}
-                <div className="grid grid-cols-2 gap-1 text-[10px]">
-                  <div className="text-center"><span className="text-gray-600">ATK</span> <span className="text-cyber-red font-bold ml-1">{opponentFighter?.attack}</span></div>
-                  <div className="text-center"><span className="text-gray-600">DEF</span> <span className="text-cyber-blue font-bold ml-1">{opponentFighter?.defense}</span></div>
-                  <div className="text-center"><span className="text-gray-600">CRIT%</span> <span className="text-cyber-yellow font-bold ml-1">{opponentFighter?.critChance}%</span></div>
-                  <div className="text-center"><span className="text-gray-600">ELO</span> <span className="text-cyber-yellow font-bold ml-1">{opponentFighter?.pvpRating}</span></div>
                 </div>
               </div>
-            </div>
 
-            <div className="bg-cyber-dark border border-gray-800 rounded-lg p-4">
-              <h3 className="text-[10px] text-gray-600 uppercase tracking-widest mb-2">Combat Log</h3>
-              <div className="space-y-1 max-h-80 overflow-y-auto">
-                {match.log.map((entry, index) => (
-                  <LogLine key={index} entry={entry} myId={myId} />
-                ))}
-                <div ref={logEndRef} />
+              <div className="rounded-lg border border-gray-800 bg-cyber-dark p-4 xl:sticky xl:top-24">
+                <h3 className="mb-2 text-[10px] uppercase tracking-widest text-gray-600">
+                  Combat Log
+                </h3>
+                <div className="max-h-80 space-y-1 overflow-y-auto xl:max-h-[36rem]">
+                  {match.log.map((entry, index) => (
+                    <LogLine key={index} entry={entry} myId={myId} />
+                  ))}
+                  <div ref={logEndRef} />
+                </div>
               </div>
             </div>
           </>
         )}
 
-        {isOver && match.winnerId && (
-          <div className="text-center py-16">
-            <h2 className={`text-3xl font-bold tracking-widest mb-4 ${match.winnerId === myId ? 'text-cyber-green' : 'text-cyber-red'}`}>
-              {match.winnerId === myId ? 'VICTOIRE!' : 'DEFAITE'}
+        {isOver && myTeam && (
+          <div className="py-16 text-center">
+            <h2
+              className={`mb-4 text-3xl font-bold tracking-widest ${match.winnerTeam === myTeam.team ? 'text-cyber-green' : 'text-cyber-red'}`}
+            >
+              {match.winnerTeam === myTeam.team ? 'VICTOIRE!' : 'DEFAITE'}
             </h2>
-            <div className="space-y-2 mb-6">
-              <div className={`text-lg font-bold ${match.winnerId === myId ? 'text-cyber-green' : 'text-cyber-red'}`}>
-                {match.winnerId === myId ? '+' : '-'}{match.ratingChange} ELO
-              </div>
+            <div
+              className={`mb-6 text-lg font-bold ${match.winnerTeam === myTeam.team ? 'text-cyber-green' : 'text-cyber-red'}`}
+            >
+              {match.winnerTeam === myTeam.team ? '+' : '-'}
+              {match.ratingChange} ELO
             </div>
 
             {match.log.length > 0 && (
-              <div className="max-w-xl mx-auto bg-cyber-dark border border-gray-800 rounded-lg p-4 mb-6 text-left">
-                <h3 className="text-[10px] text-gray-600 uppercase tracking-widest mb-2">Replay</h3>
-                <div className="space-y-1 max-h-56 overflow-y-auto">
+              <div className="mx-auto mb-6 max-w-xl rounded-lg border border-gray-800 bg-cyber-dark p-4 text-left">
+                <h3 className="mb-2 text-[10px] uppercase tracking-widest text-gray-600">Replay</h3>
+                <div className="max-h-56 space-y-1 overflow-y-auto">
                   {match.log.map((entry, index) => (
                     <LogLine key={index} entry={entry} myId={myId} />
                   ))}
@@ -457,7 +716,7 @@ export default function PvpMatch({
 
             <button
               onClick={() => router.visit('/pvp')}
-              className="px-8 py-3 bg-cyber-blue/20 border border-cyber-blue text-cyber-blue font-bold uppercase tracking-widest rounded hover:bg-cyber-blue/30 transition-all"
+              className="rounded border border-cyber-blue bg-cyber-blue/20 px-8 py-3 font-bold uppercase tracking-widest text-cyber-blue transition-all hover:bg-cyber-blue/30"
             >
               [ RETOUR A L&apos;ARENE ]
             </button>
