@@ -58,6 +58,15 @@ const TYPE_LABELS: Record<string, string> = {
   upgrade: 'AMELIORATION',
 }
 
+const formatEffect = (item: Item) => {
+  if (!item.effectType || item.effectValue === null) return null
+  if (item.effectType === 'permanent_click') {
+    return `+${item.effectValue}% CPC permanent`
+  }
+
+  return `+${item.effectValue} ${item.effectType.replace(/_/g, ' ')}`
+}
+
 export default function Shop({ character, listings }: Props) {
   const [quantities, setQuantities] = useState<Record<number, string>>({})
   const categories = ['weapon', 'armor', 'implant', 'consumable', 'upgrade']
@@ -140,9 +149,9 @@ export default function Shop({ character, listings }: Props) {
 
                     <p className="text-xs text-gray-500 mb-3">{listing.item.description}</p>
 
-                    {listing.item.effectType && (
+                    {formatEffect(listing.item) && (
                       <div className="text-xs text-cyber-green mb-3">
-                        Effet: +{listing.item.effectValue} {listing.item.effectType.replace(/_/g, ' ')}
+                        Effet: {formatEffect(listing.item)}
                       </div>
                     )}
 

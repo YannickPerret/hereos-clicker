@@ -84,7 +84,7 @@ export default class InventoryController {
     return response.redirect('/inventory')
   }
 
-  async use({ params, request, auth, response, session }: HttpContext) {
+  async use({ params, auth, response, session }: HttpContext) {
     const character = await Character.query()
       .where('userId', auth.user!.id)
       .firstOrFail()
@@ -99,10 +99,7 @@ export default class InventoryController {
       return response.redirect('/inventory')
     }
 
-    const requestedQuantity = Math.max(1, Math.floor(Number(request.input('quantity', 1)) || 1))
-    const quantity = invItem.item.type === 'upgrade'
-      ? Math.min(requestedQuantity, invItem.quantity)
-      : 1
+    const quantity = 1
 
     // Apply effect
     if (invItem.item.effectType === 'hp_restore') {
@@ -119,7 +116,9 @@ export default class InventoryController {
       }
       await character.save()
     } else if (invItem.item.effectType === 'permanent_click') {
-      character.creditsPerClick += (invItem.item.effectValue || 0) * quantity
+      const percent = Math.max(1, invItem.item.effectValue || 0)
+      const increase = Math.max(1, Math.ceil(character.creditsPerClick * (percent / 100)))
+      character.creditsPerClick += increase
       await character.save()
     } else if (invItem.item.effectType === 'talent_respec') {
       await TalentService.respec(character)

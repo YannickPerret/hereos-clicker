@@ -1,5 +1,4 @@
 import { router, usePage } from '@inertiajs/react'
-import { useState } from 'react'
 import GameLayout from '~/components/layout'
 
 interface Item {
@@ -77,7 +76,6 @@ const EFFECT_LABELS: Record<string, string> = {
 
 export default function Inventory({ character, inventory, equipBonuses, talentBonuses }: Props) {
   const { props } = usePage<{ errors?: { message?: string } }>()
-  const [useQuantities, setUseQuantities] = useState<Record<number, string>>({})
   const equipped = inventory.filter((i) => i.isEquipped)
   const backpack = inventory.filter((i) => !i.isEquipped)
   const groupedBackpack = TYPE_ORDER
@@ -89,28 +87,13 @@ export default function Inventory({ character, inventory, equipBonuses, talentBo
     }))
     .filter((group) => group.entries.length > 0)
 
-  const getUseQuantity = (inventoryId: number, maxQuantity: number) => {
-    const value = useQuantities[inventoryId] ?? '1'
-    const parsed = Number.parseInt(value, 10)
-    if (!Number.isFinite(parsed) || parsed <= 0) return 1
-    return Math.min(parsed, maxQuantity)
-  }
-
-  const setUseQuantity = (inventoryId: number, quantity: number, maxQuantity: number) => {
-    setUseQuantities((current) => ({
-      ...current,
-      [inventoryId]: String(Math.max(1, Math.min(Math.floor(quantity), maxQuantity))),
-    }))
-  }
-
-  const setUseQuantityInput = (inventoryId: number, value: string, maxQuantity: number) => {
-    if (value === '') {
-      setUseQuantities((current) => ({ ...current, [inventoryId]: '' }))
-      return
+  const formatEffect = (entry: InventoryEntry) => {
+    if (!entry.item.effectType || entry.item.effectValue === null) return null
+    if (entry.item.effectType === 'permanent_click') {
+      return `CPC: +${entry.item.effectValue}%`
     }
 
-    const parsed = Number.parseInt(value, 10)
-    setUseQuantity(inventoryId, Number.isFinite(parsed) ? parsed : 1, maxQuantity)
+    return `${EFFECT_LABELS[entry.item.effectType]}: +${entry.item.effectValue}`
   }
 
   return (
@@ -140,9 +123,11 @@ export default function Inventory({ character, inventory, equipBonuses, talentBo
                         <div className={`text-sm font-bold ${RARITY_TEXT[item.item.rarity]}`}>
                           {item.item.name}
                         </div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          {item.item.effectType && EFFECT_LABELS[item.item.effectType]}: +{item.item.effectValue}
-                        </div>
+                        {formatEffect(item) && (
+                          <div className="text-xs text-gray-500 mt-1">
+                            {formatEffect(item)}
+                          </div>
+                        )}
                         <button
                           onClick={() => router.post(`/inventory/${item.id}/unequip`)}
                           className="text-[10px] text-cyber-red mt-2 hover:underline uppercase"
@@ -215,9 +200,6 @@ export default function Inventory({ character, inventory, equipBonuses, talentBo
 
                   <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
                     {group.entries.map((entry) => {
-                      const canBulkUseUpgrade = entry.item.type === 'upgrade' && entry.quantity > 1
-                      const useQuantity = getUseQuantity(entry.id, entry.quantity)
-
                       return (
                         <div
                           key={entry.id}
@@ -236,47 +218,8 @@ export default function Inventory({ character, inventory, equipBonuses, talentBo
                           <p className="text-[10px] text-gray-500 mb-2 line-clamp-2">{entry.item.description}</p>
                           <div className="flex justify-between items-center text-[10px]">
                             <span className="uppercase text-gray-600">{TYPE_LABELS[entry.item.type]}</span>
-                            {entry.item.effectType && (
-                              <span className="text-cyber-green">
-                                {EFFECT_LABELS[entry.item.effectType]}: +{entry.item.effectValue}
-                              </span>
-                            )}
+                            {formatEffect(entry) && <span className="text-cyber-green">{formatEffect(entry)}</span>}
                           </div>
-
-                          {canBulkUseUpgrade && (
-                            <div className="mt-2">
-                              <div className="flex items-center gap-1.5">
-                                <button
-                                  type="button"
-                                  onClick={() => setUseQuantity(entry.id, useQuantity - 1, entry.quantity)}
-                                  disabled={useQuantity <= 1}
-                                  className="h-8 w-8 rounded border border-gray-700 bg-cyber-black text-xs font-bold text-gray-300 transition hover:border-cyber-green/50 hover:text-cyber-green disabled:cursor-not-allowed disabled:opacity-40"
-                                >
-                                  -
-                                </button>
-                                <input
-                                  type="number"
-                                  min={1}
-                                  max={entry.quantity}
-                                  inputMode="numeric"
-                                  value={useQuantities[entry.id] ?? '1'}
-                                  onChange={(e) => setUseQuantityInput(entry.id, e.target.value, entry.quantity)}
-                                  className="h-8 flex-1 rounded border border-gray-800 bg-cyber-black px-2 text-center text-xs font-bold text-white focus:border-cyber-green/50 focus:outline-none"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => setUseQuantity(entry.id, useQuantity + 1, entry.quantity)}
-                                  disabled={useQuantity >= entry.quantity}
-                                  className="h-8 w-8 rounded border border-gray-700 bg-cyber-black text-xs font-bold text-gray-300 transition hover:border-cyber-green/50 hover:text-cyber-green disabled:cursor-not-allowed disabled:opacity-40"
-                                >
-                                  +
-                                </button>
-                              </div>
-                              <div className="mt-1 text-[10px] uppercase tracking-widest text-gray-600">
-                                Utiliser x{useQuantity}
-                              </div>
-                            </div>
-                          )}
 
                           <div className="flex gap-1 mt-2">
                             {entry.item.type !== 'consumable' && entry.item.type !== 'upgrade' && (
@@ -289,10 +232,10 @@ export default function Inventory({ character, inventory, equipBonuses, talentBo
                             )}
                             {(entry.item.type === 'consumable' || entry.item.type === 'upgrade') && (
                               <button
-                                onClick={() => router.post(`/inventory/${entry.id}/use`, { quantity: canBulkUseUpgrade ? useQuantity : 1 })}
+                                onClick={() => router.post(`/inventory/${entry.id}/use`)}
                                 className="flex-1 text-[10px] py-1 bg-cyber-green/10 border border-cyber-green/30 text-cyber-green rounded hover:bg-cyber-green/20 transition-all uppercase"
                               >
-                                {canBulkUseUpgrade ? `Utiliser x${useQuantity}` : 'Utiliser'}
+                                Utiliser
                               </button>
                             )}
                           </div>
