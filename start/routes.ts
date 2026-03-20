@@ -146,11 +146,16 @@ router
     router.post('/admin/characters/:characterId/delete', [AdminController, 'deleteCharacter'])
     router.post('/admin/characters/:characterId/reset-talents', [AdminController, 'resetTalents'])
     router.post('/admin/characters/:characterId/give-credits', [AdminController, 'giveCredits'])
+    router.post('/admin/characters/:characterId/quests/add', [AdminController, 'addCharacterQuest'])
 
     // Inventory management
     router.post('/admin/characters/:characterId/add-item', [AdminController, 'addItem'])
     router.post('/admin/inventory/:inventoryId/remove', [AdminController, 'removeItem'])
     router.post('/admin/inventory/:inventoryId/quantity', [AdminController, 'updateItemQuantity'])
+    router.post('/admin/character-quests/:id/update', [AdminController, 'updateCharacterQuest'])
+    router.post('/admin/character-quests/:id/delete', [AdminController, 'deleteCharacterQuest'])
+    router.post('/admin/dungeon-runs/:id/update', [AdminController, 'updateDungeonRun'])
+    router.post('/admin/dungeon-runs/:id/delete', [AdminController, 'deleteDungeonRun'])
 
     // Seasons
     router.get('/admin/seasons', [AdminController, 'seasons'])

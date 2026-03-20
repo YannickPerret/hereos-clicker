@@ -1,6 +1,8 @@
 import type { HttpContext } from '@adonisjs/core/http'
+import { DateTime } from 'luxon'
 import User from '#models/user'
 import Character from '#models/character'
+import CharacterQuest from '#models/character_quest'
 import Role from '#models/role'
 import Item from '#models/item'
 import InventoryItem from '#models/inventory_item'
@@ -12,6 +14,7 @@ import Enemy from '#models/enemy'
 import EnemyLootTable from '#models/enemy_loot_table'
 import SystemMessage from '#models/system_message'
 import DailyRewardConfig from '#models/daily_reward_config'
+import DungeonRun from '#models/dungeon_run'
 import Season from '#models/season'
 import Quest from '#models/quest'
 import BlackMarketService from '#services/black_market_service'
@@ -25,6 +28,25 @@ type AdminQuestReward = {
 }
 
 export default class AdminController {
+  private async releasePartyFromDungeonRun(run: DungeonRun) {
+    if (!run.partyId) {
+      return
+    }
+
+    const { default: Party } = await import('#models/party')
+    const party = await Party.find(run.partyId)
+
+    if (!party || party.dungeonRunId !== run.id) {
+      return
+    }
+
+    party.status = 'waiting'
+    party.dungeonRunId = null
+    party.dungeonFloorId = null
+    party.countdownStart = null
+    await party.save()
+  }
+
   private normalizeQuestInput(request: HttpContext['request'], fallback: Partial<Quest> = {}) {
     const key = String(request.input('key', fallback.key || '')).trim().toLowerCase().replace(/\s+/g, '_')
     const questType = request.input('questType', fallback.questType || 'main') === 'seasonal'
@@ -327,7 +349,24 @@ export default class AdminController {
     await character.load('inventoryItems', (query) => query.preload('item'))
     await character.load('characterTalents')
 
-    const items = await Item.query().orderBy('type').orderBy('name')
+    const [items, quests, characterQuests, dungeonRuns] = await Promise.all([
+      Item.query().orderBy('type').orderBy('name'),
+      Quest.query()
+        .preload('season')
+        .orderBy('questType', 'asc')
+        .orderBy('arcTitle', 'asc')
+        .orderBy('sortOrder', 'asc')
+        .orderBy('id', 'asc'),
+      CharacterQuest.query()
+        .where('characterId', character.id)
+        .preload('quest', (query) => query.preload('season'))
+        .orderBy('updatedAt', 'desc'),
+      DungeonRun.query()
+        .where('characterId', character.id)
+        .preload('dungeonFloor')
+        .orderBy('startedAt', 'desc')
+        .limit(12),
+    ])
 
     return inertia.render('admin/character', {
       character: {
@@ -345,8 +384,41 @@ export default class AdminController {
           isEquipped: inv.isEquipped,
         })),
         talentCount: character.characterTalents.length,
+        quests: characterQuests.map((entry) => ({
+          id: entry.id,
+          questId: entry.questId,
+          title: entry.quest.title,
+          arcTitle: entry.quest.arcTitle,
+          questType: entry.quest.questType,
+          seasonName: entry.quest.season?.name || null,
+          status: entry.status,
+          progress: entry.progress,
+          targetValue: entry.quest.targetValue,
+          objectiveType: entry.quest.objectiveType,
+        })),
+        dungeonRuns: dungeonRuns.map((run) => ({
+          id: run.id,
+          dungeonFloorId: run.dungeonFloorId,
+          floorName: run.dungeonFloor.name,
+          floorNumber: run.dungeonFloor.floorNumber,
+          status: run.status,
+          enemiesDefeated: run.enemiesDefeated,
+          currentEnemyHp: run.currentEnemyHp,
+          currentEnemyId: run.currentEnemyId,
+          partyId: run.partyId,
+          startedAt: run.startedAt.toISO(),
+          endedAt: run.endedAt?.toISO() || null,
+        })),
       },
       items: items.map((i) => i.serialize()),
+      questOptions: quests.map((quest) => ({
+        id: quest.id,
+        title: quest.title,
+        arcTitle: quest.arcTitle,
+        questType: quest.questType,
+        seasonName: quest.season?.name || null,
+        targetValue: quest.targetValue,
+      })),
     })
   }
 
@@ -367,6 +439,9 @@ export default class AdminController {
       'talentPoints',
       'critChance',
       'critDamage',
+      'pvpRating',
+      'pvpWins',
+      'pvpLosses',
     ])
 
     character.name = fields.name ?? character.name
@@ -382,6 +457,9 @@ export default class AdminController {
     character.talentPoints = Math.max(0, Number(fields.talentPoints) || 0)
     character.critChance = Math.max(0, Math.min(100, Number(fields.critChance) || character.critChance))
     character.critDamage = Math.max(100, Number(fields.critDamage) || character.critDamage)
+    character.pvpRating = Math.max(0, Number(fields.pvpRating) || 0)
+    character.pvpWins = Math.max(0, Number(fields.pvpWins) || 0)
+    character.pvpLosses = Math.max(0, Number(fields.pvpLosses) || 0)
 
     await character.save()
 
@@ -446,15 +524,22 @@ export default class AdminController {
     return response.redirect(`/admin/characters/${character.id}`)
   }
 
-  async removeItem({ params, response, session }: HttpContext) {
+  async removeItem({ params, request, response, session }: HttpContext) {
     const inv = await InventoryItem.findOrFail(params.inventoryId)
     await inv.load('item')
     const name = inv.item.name
     const charId = inv.characterId
+    const quantityToRemove = Math.max(1, Number(request.input('quantity', 1)) || 1)
 
-    await inv.delete()
+    if (quantityToRemove >= inv.quantity) {
+      await inv.delete()
+      session.flash('success', `${name} retire de l'inventaire`)
+      return response.redirect(`/admin/characters/${charId}`)
+    }
 
-    session.flash('success', `${name} retire de l'inventaire`)
+    inv.quantity -= quantityToRemove
+    await inv.save()
+    session.flash('success', `${quantityToRemove}x ${name} retire de l'inventaire`)
     return response.redirect(`/admin/characters/${charId}`)
   }
 
@@ -481,6 +566,105 @@ export default class AdminController {
     const action = amount >= 0 ? 'donnes a' : 'retires de'
     session.flash('success', `${Math.abs(amount)} credits ${action} ${character.name}`)
     return response.redirect().back()
+  }
+
+  async addCharacterQuest({ params, request, response, session }: HttpContext) {
+    const character = await Character.findOrFail(params.characterId)
+    const questId = Number(request.input('questId'))
+    const status = request.input('status') === 'completed' ? 'completed' : 'active'
+    const quest = await Quest.findOrFail(questId)
+
+    const existing = await CharacterQuest.query()
+      .where('characterId', character.id)
+      .where('questId', quest.id)
+      .first()
+
+    if (existing) {
+      session.flash('errors', { message: 'Cette quete est deja assignee a ce joueur' })
+      return response.redirect(`/admin/characters/${character.id}`)
+    }
+
+    const progressInput = Number(request.input('progress', 0)) || 0
+    const progress = status === 'completed'
+      ? quest.targetValue
+      : Math.max(0, Math.min(quest.targetValue, progressInput))
+
+    await CharacterQuest.create({
+      characterId: character.id,
+      questId: quest.id,
+      status,
+      progress,
+      startedAt: DateTime.now(),
+      completedAt: status === 'completed' ? DateTime.now() : null,
+    })
+
+    session.flash('success', `Quete ${quest.title} ajoutee a ${character.name}`)
+    return response.redirect(`/admin/characters/${character.id}`)
+  }
+
+  async updateCharacterQuest({ params, request, response, session }: HttpContext) {
+    const state = await CharacterQuest.query().where('id', params.id).preload('quest').firstOrFail()
+    const status = request.input('status') === 'completed' ? 'completed' : 'active'
+    const progressInput = Number(request.input('progress', state.progress)) || 0
+
+    state.status = status
+    state.progress = status === 'completed'
+      ? state.quest.targetValue
+      : Math.max(0, Math.min(state.quest.targetValue, progressInput))
+    state.completedAt = status === 'completed' ? DateTime.now() : null
+    await state.save()
+
+    session.flash('success', `Quete ${state.quest.title} mise a jour`)
+    return response.redirect(`/admin/characters/${state.characterId}`)
+  }
+
+  async deleteCharacterQuest({ params, response, session }: HttpContext) {
+    const state = await CharacterQuest.query().where('id', params.id).preload('quest').firstOrFail()
+    const characterId = state.characterId
+    const title = state.quest.title
+
+    await state.delete()
+
+    session.flash('success', `Quete ${title} retiree du joueur`)
+    return response.redirect(`/admin/characters/${characterId}`)
+  }
+
+  async updateDungeonRun({ params, request, response, session }: HttpContext) {
+    const run = await DungeonRun.query().where('id', params.id).preload('dungeonFloor').firstOrFail()
+    const nextStatus = ['in_progress', 'victory', 'defeat', 'fled'].includes(request.input('status'))
+      ? request.input('status')
+      : run.status
+
+    run.status = nextStatus
+    run.enemiesDefeated = Math.max(0, Number(request.input('enemiesDefeated', run.enemiesDefeated)) || 0)
+    run.currentEnemyHp = Math.max(0, Number(request.input('currentEnemyHp', run.currentEnemyHp)) || 0)
+    run.currentEnemyId = request.input('currentEnemyId', run.currentEnemyId) === ''
+      ? null
+      : Number(request.input('currentEnemyId', run.currentEnemyId))
+
+    if (run.status === 'in_progress') {
+      run.endedAt = null
+    } else if (!run.endedAt) {
+      run.endedAt = DateTime.now()
+      await this.releasePartyFromDungeonRun(run)
+    }
+
+    await run.save()
+
+    session.flash('success', `Run ${run.dungeonFloor.name} mis a jour`)
+    return response.redirect(`/admin/characters/${run.characterId}`)
+  }
+
+  async deleteDungeonRun({ params, response, session }: HttpContext) {
+    const run = await DungeonRun.query().where('id', params.id).preload('dungeonFloor').firstOrFail()
+    const characterId = run.characterId
+    const floorName = run.dungeonFloor.name
+
+    await this.releasePartyFromDungeonRun(run)
+    await run.delete()
+
+    session.flash('success', `Run ${floorName} supprime`)
+    return response.redirect(`/admin/characters/${characterId}`)
   }
 
   // ── Seasons management ──
