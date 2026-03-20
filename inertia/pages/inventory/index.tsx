@@ -62,6 +62,8 @@ const TYPE_LABELS: Record<string, string> = {
   upgrade: 'UPGRADE',
 }
 
+const TYPE_ORDER = ['weapon', 'armor', 'consumable', 'implant', 'upgrade'] as const
+
 const EFFECT_LABELS: Record<string, string> = {
   attack_boost: 'ATK',
   defense_boost: 'DEF',
@@ -76,6 +78,14 @@ export default function Inventory({ character, inventory, equipBonuses, talentBo
   const { props } = usePage<{ errors?: { message?: string } }>()
   const equipped = inventory.filter((i) => i.isEquipped)
   const backpack = inventory.filter((i) => !i.isEquipped)
+  const groupedBackpack = TYPE_ORDER
+    .map((type) => ({
+      type,
+      entries: backpack
+        .filter((entry) => entry.item.type === type)
+        .sort((a, b) => a.item.name.localeCompare(b.item.name)),
+    }))
+    .filter((group) => group.entries.length > 0)
 
   return (
     <GameLayout>
@@ -165,48 +175,63 @@ export default function Inventory({ character, inventory, equipBonuses, talentBo
               <p className="text-gray-600 text-sm">Inventaire vide. Visitez le Shop ou explorez les Donjons.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
-              {backpack.map((entry) => (
-                <div
-                  key={entry.id}
-                  className={`border rounded-lg p-3 hover:scale-105 transition-transform ${RARITY_COLORS[entry.item.rarity]}`}
-                >
-                  <div className="flex justify-between items-start mb-1">
-                    <span className={`text-xs font-bold ${RARITY_TEXT[entry.item.rarity]}`}>
-                      {entry.item.name}
+            <div className="space-y-5">
+              {groupedBackpack.map((group) => (
+                <div key={group.type}>
+                  <div className="mb-3 flex items-center justify-between border-b border-gray-800 pb-2">
+                    <h3 className="text-xs uppercase tracking-widest text-gray-500">
+                      {TYPE_LABELS[group.type]}
+                    </h3>
+                    <span className="text-[10px] text-gray-700">
+                      {group.entries.length} objet{group.entries.length > 1 ? 's' : ''}
                     </span>
-                    {entry.quantity > 1 && (
-                      <span className="text-[10px] bg-cyber-black px-1.5 py-0.5 rounded text-gray-400">
-                        x{entry.quantity}
-                      </span>
-                    )}
                   </div>
-                  <p className="text-[10px] text-gray-500 mb-2 line-clamp-2">{entry.item.description}</p>
-                  <div className="flex justify-between items-center text-[10px]">
-                    <span className="uppercase text-gray-600">{TYPE_LABELS[entry.item.type]}</span>
-                    {entry.item.effectType && (
-                      <span className="text-cyber-green">
-                        {EFFECT_LABELS[entry.item.effectType]}: +{entry.item.effectValue}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex gap-1 mt-2">
-                    {entry.item.type !== 'consumable' && entry.item.type !== 'upgrade' && (
-                      <button
-                        onClick={() => router.post(`/inventory/${entry.id}/equip`)}
-                        className="flex-1 text-[10px] py-1 bg-cyber-blue/10 border border-cyber-blue/30 text-cyber-blue rounded hover:bg-cyber-blue/20 transition-all uppercase"
+
+                  <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
+                    {group.entries.map((entry) => (
+                      <div
+                        key={entry.id}
+                        className={`border rounded-lg p-3 hover:scale-105 transition-transform ${RARITY_COLORS[entry.item.rarity]}`}
                       >
-                        Equiper
-                      </button>
-                    )}
-                    {(entry.item.type === 'consumable' || entry.item.type === 'upgrade') && (
-                      <button
-                        onClick={() => router.post(`/inventory/${entry.id}/use`)}
-                        className="flex-1 text-[10px] py-1 bg-cyber-green/10 border border-cyber-green/30 text-cyber-green rounded hover:bg-cyber-green/20 transition-all uppercase"
-                      >
-                        Utiliser
-                      </button>
-                    )}
+                        <div className="flex justify-between items-start mb-1">
+                          <span className={`text-xs font-bold ${RARITY_TEXT[entry.item.rarity]}`}>
+                            {entry.item.name}
+                          </span>
+                          {entry.quantity > 1 && (
+                            <span className="text-[10px] bg-cyber-black px-1.5 py-0.5 rounded text-gray-400">
+                              x{entry.quantity}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-gray-500 mb-2 line-clamp-2">{entry.item.description}</p>
+                        <div className="flex justify-between items-center text-[10px]">
+                          <span className="uppercase text-gray-600">{TYPE_LABELS[entry.item.type]}</span>
+                          {entry.item.effectType && (
+                            <span className="text-cyber-green">
+                              {EFFECT_LABELS[entry.item.effectType]}: +{entry.item.effectValue}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex gap-1 mt-2">
+                          {entry.item.type !== 'consumable' && entry.item.type !== 'upgrade' && (
+                            <button
+                              onClick={() => router.post(`/inventory/${entry.id}/equip`)}
+                              className="flex-1 text-[10px] py-1 bg-cyber-blue/10 border border-cyber-blue/30 text-cyber-blue rounded hover:bg-cyber-blue/20 transition-all uppercase"
+                            >
+                              Equiper
+                            </button>
+                          )}
+                          {(entry.item.type === 'consumable' || entry.item.type === 'upgrade') && (
+                            <button
+                              onClick={() => router.post(`/inventory/${entry.id}/use`)}
+                              className="flex-1 text-[10px] py-1 bg-cyber-green/10 border border-cyber-green/30 text-cyber-green rounded hover:bg-cyber-green/20 transition-all uppercase"
+                            >
+                              Utiliser
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               ))}
