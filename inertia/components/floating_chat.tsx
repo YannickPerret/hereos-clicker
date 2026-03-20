@@ -559,6 +559,18 @@ function ChatWidget({
     router.visit(`/profile/${encodeURIComponent(characterName)}`)
   }
 
+  const handleAddFriend = (characterName: string) => {
+    setUserMenu(null)
+    router.post(
+      '/friends/request',
+      { characterName },
+      {
+        preserveScroll: true,
+        preserveState: true,
+      }
+    )
+  }
+
   const handleUnavailableAction = (label: string) => {
     setFeedback({
       type: 'info',
@@ -948,11 +960,10 @@ function ChatWidget({
           </button>
           <button
             type="button"
-            onClick={() => handleUnavailableAction('Ajout en ami')}
+            onClick={() => handleAddFriend(userMenu.characterName)}
             className="flex w-full items-center justify-between rounded px-2 py-1.5 text-left text-[11px] text-gray-300 transition hover:bg-cyber-green/10 hover:text-white"
           >
             <span>Ajouter en ami</span>
-            <span className="text-[9px] uppercase text-gray-600">Bientot</span>
           </button>
           <button
             type="button"

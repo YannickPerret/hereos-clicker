@@ -12,6 +12,7 @@ const TalentController = () => import('#controllers/talent_controller')
 const PartyController = () => import('#controllers/party_controller')
 const PvpController = () => import('#controllers/pvp_controller')
 const MissionController = () => import('#controllers/mission_controller')
+const FriendsController = () => import('#controllers/friends_controller')
 const QuestController = () => import('#controllers/quest_controller')
 const CompanionController = () => import('#controllers/companion_controller')
 const ChatController = () => import('#controllers/chat_controller')
@@ -104,6 +105,16 @@ router
     router.post('/missions/:missionId/claim', [MissionController, 'claim'])
 
     // Quetes principales
+    // Amis
+    router.get('/friends', [FriendsController, 'index'])
+    router.get('/friends/requests', [FriendsController, 'requests'])
+    router.post('/friends/request', [FriendsController, 'send'])
+    router.post('/friends/:id/accept', [FriendsController, 'accept'])
+    router.post('/friends/:id/decline', [FriendsController, 'decline'])
+    router.post('/friends/:id/cancel', [FriendsController, 'cancel'])
+    router.post('/friends/:id/remove', [FriendsController, 'remove'])
+    router.post('/friends/requests/:id/accept', [FriendsController, 'acceptRequest'])
+    router.post('/friends/requests/:id/decline', [FriendsController, 'declineRequest'])
     router.get('/quests', [QuestController, 'index'])
 
     // Compagnons

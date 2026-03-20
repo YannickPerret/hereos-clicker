@@ -64,6 +64,7 @@ interface Props {
   equippedItems: EquippedItem[]
   talents: Talent[]
   companions: Companion[]
+  friendStatus: 'self' | 'none' | 'incoming' | 'outgoing' | 'friend'
 }
 
 const SPEC_CONFIG: Record<string, { label: string; color: string; border: string }> = {
@@ -114,7 +115,13 @@ const BONUS_LABELS: Record<string, string> = {
   loot_bonus: 'Bonus Loot',
 }
 
-export default function PublicProfile({ character, equippedItems, talents, companions }: Props) {
+export default function PublicProfile({
+  character,
+  equippedItems,
+  talents,
+  companions,
+  friendStatus,
+}: Props) {
   const spec = character.chosenSpec ? SPEC_CONFIG[character.chosenSpec] : null
   const equipmentSlots = [
     'weapon',
@@ -138,13 +145,45 @@ export default function PublicProfile({ character, equippedItems, talents, compa
               {character.name}
             </h1>
           </div>
-          <button
-            type="button"
-            onClick={() => router.visit('/play')}
-            className="rounded border border-gray-800 px-3 py-1.5 text-[10px] uppercase tracking-widest text-gray-500 transition hover:border-gray-600 hover:text-white"
-          >
-            Retour
-          </button>
+          <div className="flex items-center gap-2">
+            {friendStatus === 'none' && (
+              <button
+                type="button"
+                onClick={() =>
+                  router.post(
+                    '/friends/request',
+                    { characterName: character.name },
+                    { preserveScroll: true }
+                  )
+                }
+                className="rounded border border-cyber-green/30 bg-cyber-green/10 px-3 py-1.5 text-[10px] uppercase tracking-widest text-cyber-green transition hover:bg-cyber-green/20"
+              >
+                Ajouter en ami
+              </button>
+            )}
+            {friendStatus === 'incoming' && (
+              <div className="rounded border border-cyber-orange/30 bg-cyber-orange/10 px-3 py-1.5 text-[10px] uppercase tracking-widest text-cyber-orange">
+                Demande entrante
+              </div>
+            )}
+            {friendStatus === 'outgoing' && (
+              <div className="rounded border border-cyber-blue/30 bg-cyber-blue/10 px-3 py-1.5 text-[10px] uppercase tracking-widest text-cyber-blue">
+                Demande envoyee
+              </div>
+            )}
+            {friendStatus === 'friend' && (
+              <div className="rounded border border-cyber-green/30 bg-cyber-green/10 px-3 py-1.5 text-[10px] uppercase tracking-widest text-cyber-green">
+                Deja ami
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => router.visit('/play')}
+              className="rounded border border-gray-800 px-3 py-1.5 text-[10px] uppercase tracking-widest text-gray-500 transition hover:border-gray-600 hover:text-white"
+            >
+              Retour
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">

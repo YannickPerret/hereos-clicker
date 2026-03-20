@@ -9,6 +9,7 @@ import QuestService from '#services/quest_service'
 import CompanionService from '#services/companion_service'
 import PartyMember from '#models/party_member'
 import DungeonRun from '#models/dungeon_run'
+import Friendship from '#models/friendship'
 
 export default class PlayController {
   private async getLeaderboardData() {
@@ -225,7 +226,7 @@ export default class PlayController {
     return response.json(await this.getLeaderboardData())
   }
 
-  async profile({ params, inertia, response }: HttpContext) {
+  async profile({ params, inertia, response, auth }: HttpContext) {
     const characterName = decodeURIComponent(params.name)
 
     const character = await Character.query()
@@ -249,8 +250,42 @@ export default class PlayController {
       .where('characterId', character.id)
       .preload('companion')
 
+    const viewerCharacter = await Character.query().where('userId', auth.user!.id).first()
+    let friendStatus: 'self' | 'none' | 'incoming' | 'outgoing' | 'friend' = 'none'
+
+    if (viewerCharacter) {
+      if (viewerCharacter.id === character.id) {
+        friendStatus = 'self'
+      } else {
+        const friendship = await Friendship.query()
+          .where((query) => {
+            query
+              .where((inner) => {
+                inner
+                  .where('requesterCharacterId', viewerCharacter.id)
+                  .where('addresseeCharacterId', character.id)
+              })
+              .orWhere((inner) => {
+                inner
+                  .where('requesterCharacterId', character.id)
+                  .where('addresseeCharacterId', viewerCharacter.id)
+              })
+          })
+          .orderBy('id', 'desc')
+          .first()
+
+        if (friendship?.status === 'accepted') {
+          friendStatus = 'friend'
+        } else if (friendship?.status === 'pending') {
+          friendStatus =
+            friendship.requesterCharacterId === viewerCharacter.id ? 'outgoing' : 'incoming'
+        }
+      }
+    }
+
     return inertia.render('profile/show', {
       character: character.serialize(),
+      friendStatus,
       equippedItems: equippedItems.map((entry) => ({
         ...entry.serialize(),
         item: entry.item.serialize(),
