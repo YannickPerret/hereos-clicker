@@ -1,4 +1,4 @@
-import { router } from '@inertiajs/react'
+import { router, usePage } from '@inertiajs/react'
 import GameLayout from '~/components/layout'
 
 interface MissionData {
@@ -20,6 +20,31 @@ interface MissionData {
 interface Props {
   character: { id: number; name: string; credits: number }
   missions: MissionData[]
+  dailyReward: {
+    currentStreak: number
+    highestStreak: number
+    claimedToday: boolean
+    canClaimToday: boolean
+    nextClaimStreak: number
+    todayRewardDay: number | null
+    resetsAt: string | null
+    rewards: {
+      id: number
+      dayNumber: number
+      rewardType: string
+      rewardValue: number
+      rewardItemId: number | null
+      rewardItemName: string | null
+    }[]
+    nextReward: {
+      id: number
+      dayNumber: number
+      rewardType: string
+      rewardValue: number
+      rewardItemId: number | null
+      rewardItemName: string | null
+    } | null
+  } | null
 }
 
 const TYPE_COLORS: Record<string, string> = {
@@ -37,13 +62,97 @@ const REWARD_ICONS: Record<string, string> = {
   item: '📦',
 }
 
-export default function Missions({ character, missions }: Props) {
+function rewardLabel(rewardType: string, rewardValue: number, rewardItemName: string | null = null) {
+  if (rewardType === 'item') return `${rewardValue}x ${rewardItemName || 'item'}`
+  return `+${rewardValue.toLocaleString()} ${rewardType}`
+}
+
+export default function Missions({ character, missions, dailyReward }: Props) {
+  const { props } = usePage<{ errors?: { message?: string }; success?: string }>()
   const allClaimed = missions.every((m) => m.claimed)
   const completedCount = missions.filter((m) => m.completed).length
 
   return (
     <GameLayout>
       <div className="max-w-2xl mx-auto">
+        {props.errors?.message && (
+          <div className="mb-4 bg-cyber-red/10 border border-cyber-red/30 rounded-lg p-3 text-sm text-cyber-red">
+            {props.errors.message}
+          </div>
+        )}
+        {props.success && (
+          <div className="mb-4 bg-cyber-green/10 border border-cyber-green/30 rounded-lg p-3 text-sm text-cyber-green">
+            {props.success as string}
+          </div>
+        )}
+
+        {dailyReward && (
+          <div className="mb-6 bg-cyber-dark border border-cyber-yellow/30 rounded-lg p-4">
+            <div className="flex items-start justify-between gap-4 mb-4">
+              <div>
+                <div className="text-[10px] uppercase tracking-[0.3em] text-cyber-yellow mb-1">
+                  Recompense Journaliere
+                </div>
+                <div className="text-2xl font-bold text-white">
+                  Streak {dailyReward.currentStreak}
+                </div>
+                <div className="text-xs text-gray-500">
+                  Meilleur streak: {dailyReward.highestStreak}
+                </div>
+              </div>
+
+              <div className="text-right">
+                <div className="text-[10px] uppercase tracking-widest text-gray-500 mb-1">
+                  {dailyReward.claimedToday ? 'Reclamee aujourd hui' : `Prochain claim: ${dailyReward.nextClaimStreak}`}
+                </div>
+                <div className="text-sm font-bold text-cyber-yellow">
+                  {dailyReward.nextReward
+                    ? rewardLabel(dailyReward.nextReward.rewardType, dailyReward.nextReward.rewardValue, dailyReward.nextReward.rewardItemName)
+                    : 'Aucune recompense'}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+              {dailyReward.rewards.map((reward) => {
+                const isCurrent = reward.dayNumber === dailyReward.todayRewardDay
+                const isReached = dailyReward.currentStreak >= reward.dayNumber
+
+                return (
+                  <div
+                    key={reward.id}
+                    className={`rounded-lg border p-3 ${
+                      isCurrent
+                        ? 'border-cyber-yellow bg-cyber-yellow/10'
+                        : isReached
+                          ? 'border-cyber-green/30 bg-cyber-green/5'
+                          : 'border-gray-800 bg-cyber-black/40'
+                    }`}
+                  >
+                    <div className="text-[10px] uppercase tracking-widest text-gray-500 mb-1">Jour {reward.dayNumber}</div>
+                    <div className={`text-xs font-bold ${isCurrent ? 'text-cyber-yellow' : isReached ? 'text-cyber-green' : 'text-gray-400'}`}>
+                      {rewardLabel(reward.rewardType, reward.rewardValue, reward.rewardItemName)}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            {dailyReward.canClaimToday ? (
+              <button
+                onClick={() => router.post('/missions/daily-reward/claim')}
+                className="w-full py-2 bg-cyber-yellow/20 border border-cyber-yellow text-cyber-yellow text-xs font-bold uppercase tracking-widest rounded hover:bg-cyber-yellow/30 transition-all"
+              >
+                [ RECLAMER LA RECOMPENSE DU JOUR ]
+              </button>
+            ) : (
+              <div className="text-center text-xs text-gray-500">
+                Reviens apres le reset quotidien pour continuer ton streak.
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold text-cyber-purple tracking-widest">MISSIONS QUOTIDIENNES</h1>
           <span className="text-xs text-gray-600">{completedCount}/{missions.length} terminees</span>

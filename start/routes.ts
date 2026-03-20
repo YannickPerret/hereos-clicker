@@ -64,8 +64,12 @@ router.group(() => {
   // Party
   router.get('/party', [PartyController, 'index'])
   router.get('/party/state/:partyId', [PartyController, 'state'])
+  router.get('/party/invitations', [PartyController, 'invitations'])
   router.post('/party/create', [PartyController, 'create'])
   router.post('/party/join', [PartyController, 'join'])
+  router.post('/party/invite', [PartyController, 'invite'])
+  router.post('/party/invitations/:inviteId/accept', [PartyController, 'acceptInvite'])
+  router.post('/party/invitations/:inviteId/decline', [PartyController, 'declineInvite'])
   router.post('/party/ready', [PartyController, 'ready'])
   router.post('/party/leave', [PartyController, 'leave'])
   router.post('/party/start-dungeon', [PartyController, 'startDungeon'])
@@ -81,6 +85,7 @@ router.group(() => {
 
   // Missions quotidiennes
   router.get('/missions', [MissionController, 'index'])
+  router.post('/missions/daily-reward/claim', [MissionController, 'claimDailyReward'])
   router.post('/missions/:missionId/claim', [MissionController, 'claim'])
 
   // Compagnons
@@ -152,6 +157,12 @@ router.group(() => {
   router.post('/admin/system-messages/:id/update', [AdminController, 'updateSystemMessage'])
   router.post('/admin/system-messages/:id/toggle', [AdminController, 'toggleSystemMessage'])
   router.post('/admin/system-messages/:id/delete', [AdminController, 'deleteSystemMessage'])
+
+  // Daily rewards
+  router.get('/admin/daily-rewards', [AdminController, 'dailyRewards'])
+  router.post('/admin/daily-rewards/create', [AdminController, 'createDailyReward'])
+  router.post('/admin/daily-rewards/:id/update', [AdminController, 'updateDailyReward'])
+  router.post('/admin/daily-rewards/:id/delete', [AdminController, 'deleteDailyReward'])
 }).use([middleware.auth(), middleware.role({ roles: ['admin', 'moderator'] })])
 
 // Redirect root

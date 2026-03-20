@@ -3,6 +3,7 @@ import { randomBytes } from 'node:crypto'
 import Character from '#models/character'
 import Party from '#models/party'
 import PartyMember from '#models/party_member'
+import PartyInvite from '#models/party_invite'
 import DungeonFloor from '#models/dungeon_floor'
 import DungeonRun from '#models/dungeon_run'
 import Enemy from '#models/enemy'
@@ -10,17 +11,29 @@ import ChatChannel from '#models/chat_channel'
 import transmit from '@adonisjs/transmit/services/main'
 
 export default class PartyController {
-  async index({ inertia, auth }: HttpContext) {
-    const character = await Character.query()
-      .where('userId', auth.user!.id)
-      .firstOrFail()
+  private isMissingInviteTable(error: unknown) {
+    return error instanceof Error && error.message.toLowerCase().includes('party_invites')
+  }
 
-    // Check if already in an active party
-    const membership = await PartyMember.query()
-      .where('characterId', character.id)
+  private async getCurrentCharacter(userId: number) {
+    return Character.query()
+      .where('userId', userId)
+      .firstOrFail()
+  }
+
+  private async getActiveMembership(characterId: number) {
+    return PartyMember.query()
+      .where('characterId', characterId)
       .whereHas('party', (q) => q.whereIn('status', ['waiting', 'countdown', 'in_dungeon']))
       .preload('party', (q) => q.preload('members', (mq) => mq.preload('character')))
       .first()
+  }
+
+  async index({ inertia, auth }: HttpContext) {
+    const character = await this.getCurrentCharacter(auth.user!.id)
+
+    // Check if already in an active party
+    const membership = await this.getActiveMembership(character.id)
 
     const floors = await DungeonFloor.query().orderBy('floorNumber', 'asc')
 
@@ -42,9 +55,7 @@ export default class PartyController {
 
   /** JSON API: poll party state */
   async state({ params, auth, response }: HttpContext) {
-    const character = await Character.query()
-      .where('userId', auth.user!.id)
-      .firstOrFail()
+    const character = await this.getCurrentCharacter(auth.user!.id)
 
     const party = await Party.query()
       .where('id', params.partyId)
@@ -135,15 +146,10 @@ export default class PartyController {
   }
 
   async create({ request, auth, response, session }: HttpContext) {
-    const character = await Character.query()
-      .where('userId', auth.user!.id)
-      .firstOrFail()
+    const character = await this.getCurrentCharacter(auth.user!.id)
 
     // Check not already in party
-    const existing = await PartyMember.query()
-      .where('characterId', character.id)
-      .whereHas('party', (q) => q.whereIn('status', ['waiting', 'countdown', 'in_dungeon']))
-      .first()
+    const existing = await this.getActiveMembership(character.id)
 
     if (existing) {
       session.flash('errors', { message: 'Deja dans un groupe' })
@@ -167,6 +173,11 @@ export default class PartyController {
       isReady: true,
     })
 
+    await PartyInvite.query()
+      .where('invitedCharacterId', character.id)
+      .where('status', 'pending')
+      .update({ status: 'expired' })
+
     // Auto-create party chat channel
     const channelName = `party-${party.id}`
     const existingChannel = await ChatChannel.findBy('name', channelName)
@@ -184,9 +195,7 @@ export default class PartyController {
   }
 
   async join({ request, auth, response, session }: HttpContext) {
-    const character = await Character.query()
-      .where('userId', auth.user!.id)
-      .firstOrFail()
+    const character = await this.getCurrentCharacter(auth.user!.id)
 
     const code = request.input('code', '').toUpperCase()
     const party = await Party.query()
@@ -217,6 +226,11 @@ export default class PartyController {
       isReady: false,
     })
 
+    await PartyInvite.query()
+      .where('invitedCharacterId', character.id)
+      .where('status', 'pending')
+      .update({ status: 'expired' })
+
     // Notify party
     transmit.broadcast(`party/${party.id}`, {
       event: 'member_joined',
@@ -226,10 +240,197 @@ export default class PartyController {
     return response.redirect('/party')
   }
 
+  async invitations({ auth, response }: HttpContext) {
+    const character = await this.getCurrentCharacter(auth.user!.id)
+
+    try {
+      const invites = await PartyInvite.query()
+        .where('invitedCharacterId', character.id)
+        .where('status', 'pending')
+        .whereHas('party', (q) => q.where('status', 'waiting'))
+        .preload('party', (q) => q.preload('members'))
+        .preload('invitedBy')
+        .orderBy('createdAt', 'desc')
+
+      return response.json(invites.map((invite) => ({
+        id: invite.id,
+        partyId: invite.partyId,
+        partyName: invite.party.name,
+        partyCode: invite.party.code,
+        invitedByName: invite.invitedBy.name,
+        memberCount: invite.party.members.length,
+        maxSize: invite.party.maxSize,
+        createdAt: invite.createdAt.toISO(),
+      })))
+    } catch (error) {
+      if (this.isMissingInviteTable(error)) {
+        return response.json([])
+      }
+
+      throw error
+    }
+  }
+
+  async invite({ request, auth, response }: HttpContext) {
+    const character = await this.getCurrentCharacter(auth.user!.id)
+    const membership = await this.getActiveMembership(character.id)
+
+    if (!membership || membership.party.leaderId !== character.id) {
+      return response.forbidden({ error: 'Seul le leader peut inviter.' })
+    }
+
+    if (membership.party.status !== 'waiting') {
+      return response.badRequest({ error: 'Impossible d\'inviter pendant un donjon ou un countdown.' })
+    }
+
+    if (membership.party.members.length >= membership.party.maxSize) {
+      return response.badRequest({ error: 'Le groupe est deja plein.' })
+    }
+
+    const targetName = request.input('characterName', '').trim()
+    if (!targetName) {
+      return response.badRequest({ error: 'Nom du personnage requis.' })
+    }
+
+    const invitedCharacter = await Character.query()
+      .whereRaw('LOWER(name) = ?', [targetName.toLowerCase()])
+      .first()
+
+    if (!invitedCharacter) {
+      return response.notFound({ error: 'Personnage introuvable.' })
+    }
+
+    if (invitedCharacter.id === character.id) {
+      return response.badRequest({ error: 'Tu ne peux pas t\'inviter toi-meme.' })
+    }
+
+    const invitedMembership = await this.getActiveMembership(invitedCharacter.id)
+    if (invitedMembership) {
+      return response.badRequest({ error: 'Ce joueur est deja dans un groupe.' })
+    }
+
+    try {
+      const existingInvite = await PartyInvite.query()
+        .where('partyId', membership.party.id)
+        .where('invitedCharacterId', invitedCharacter.id)
+        .where('status', 'pending')
+        .first()
+
+      if (existingInvite) {
+        return response.badRequest({ error: 'Invitation deja envoyee.' })
+      }
+
+      await PartyInvite.create({
+        partyId: membership.party.id,
+        invitedByCharacterId: character.id,
+        invitedCharacterId: invitedCharacter.id,
+        status: 'pending',
+      })
+    } catch (error) {
+      if (this.isMissingInviteTable(error)) {
+        return response.status(503).json({ error: 'Les invitations ne sont pas encore activees. Lance la migration.' })
+      }
+
+      throw error
+    }
+
+    return response.json({
+      ok: true,
+      message: `Invitation envoyee a ${invitedCharacter.name}.`,
+    })
+  }
+
+  async acceptInvite({ params, auth, response }: HttpContext) {
+    const character = await this.getCurrentCharacter(auth.user!.id)
+    const existingMembership = await this.getActiveMembership(character.id)
+    if (existingMembership) {
+      return response.badRequest({ error: 'Tu es deja dans un groupe.' })
+    }
+
+    let invite: PartyInvite | null
+    try {
+      invite = await PartyInvite.query()
+        .where('id', params.inviteId)
+        .where('invitedCharacterId', character.id)
+        .where('status', 'pending')
+        .preload('party', (q) => q.preload('members'))
+        .first()
+    } catch (error) {
+      if (this.isMissingInviteTable(error)) {
+        return response.status(503).json({ error: 'Les invitations ne sont pas encore activees. Lance la migration.' })
+      }
+
+      throw error
+    }
+
+    if (!invite) {
+      return response.notFound({ error: 'Invitation introuvable.' })
+    }
+
+    if (invite.party.status !== 'waiting') {
+      invite.status = 'expired'
+      await invite.save()
+      return response.badRequest({ error: 'Cette invitation n\'est plus valide.' })
+    }
+
+    if (invite.party.members.length >= invite.party.maxSize) {
+      invite.status = 'expired'
+      await invite.save()
+      return response.badRequest({ error: 'Le groupe est deja plein.' })
+    }
+
+    await PartyMember.create({
+      partyId: invite.partyId,
+      characterId: character.id,
+      isReady: false,
+    })
+
+    invite.status = 'accepted'
+    await invite.save()
+
+    await PartyInvite.query()
+      .where('invitedCharacterId', character.id)
+      .where('status', 'pending')
+      .update({ status: 'expired' })
+
+    transmit.broadcast(`party/${invite.partyId}`, {
+      event: 'member_joined',
+      characterName: character.name,
+    })
+
+    return response.json({ ok: true, redirectTo: '/party' })
+  }
+
+  async declineInvite({ params, auth, response }: HttpContext) {
+    const character = await this.getCurrentCharacter(auth.user!.id)
+
+    let invite: PartyInvite | null
+    try {
+      invite = await PartyInvite.query()
+        .where('id', params.inviteId)
+        .where('invitedCharacterId', character.id)
+        .where('status', 'pending')
+        .first()
+    } catch (error) {
+      if (this.isMissingInviteTable(error)) {
+        return response.status(503).json({ error: 'Les invitations ne sont pas encore activees. Lance la migration.' })
+      }
+
+      throw error
+    }
+
+    if (!invite) {
+      return response.notFound({ error: 'Invitation introuvable.' })
+    }
+
+    invite.status = 'declined'
+    await invite.save()
+
+    return response.json({ ok: true })
+  }
+
   async ready({ auth, response }: HttpContext) {
-    const character = await Character.query()
-      .where('userId', auth.user!.id)
-      .firstOrFail()
+    const character = await this.getCurrentCharacter(auth.user!.id)
 
     const membership = await PartyMember.query()
       .where('characterId', character.id)
@@ -249,9 +450,7 @@ export default class PartyController {
   }
 
   async leave({ auth, response }: HttpContext) {
-    const character = await Character.query()
-      .where('userId', auth.user!.id)
-      .firstOrFail()
+    const character = await this.getCurrentCharacter(auth.user!.id)
 
     const membership = await PartyMember.query()
       .where('characterId', character.id)
@@ -288,9 +487,7 @@ export default class PartyController {
   }
 
   async startDungeon({ request, auth, response, session }: HttpContext) {
-    const character = await Character.query()
-      .where('userId', auth.user!.id)
-      .firstOrFail()
+    const character = await this.getCurrentCharacter(auth.user!.id)
 
     const membership = await PartyMember.query()
       .where('characterId', character.id)

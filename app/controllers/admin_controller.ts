@@ -8,6 +8,7 @@ import ShopListing from '#models/shop_listing'
 import Enemy from '#models/enemy'
 import EnemyLootTable from '#models/enemy_loot_table'
 import SystemMessage from '#models/system_message'
+import DailyRewardConfig from '#models/daily_reward_config'
 
 export default class AdminController {
   async dashboard({ inertia, auth }: HttpContext) {
@@ -553,5 +554,89 @@ export default class AdminController {
 
     session.flash('success', 'Message systeme supprime')
     return response.redirect('/admin/system-messages')
+  }
+
+  // ── Daily rewards ──
+
+  async dailyRewards({ inertia }: HttpContext) {
+    const rewards = await DailyRewardConfig.query().preload('rewardItem').orderBy('dayNumber', 'asc')
+    const items = await Item.query().orderBy('name', 'asc')
+
+    return inertia.render('admin/daily_rewards', {
+      rewards: rewards.map((reward) => ({
+        ...reward.serialize(),
+        rewardItemName: reward.rewardItem?.name || null,
+      })),
+      items: items.map((item) => item.serialize()),
+    })
+  }
+
+  async createDailyReward({ request, response, session }: HttpContext) {
+    const dayNumber = Math.max(1, Number(request.input('dayNumber', 1)))
+    const rewardType = request.input('rewardType', 'credits')
+    const rewardValue = Math.max(1, Number(request.input('rewardValue', 1)))
+    const rewardItemId = request.input('rewardItemId')
+    const isActive = request.input('isActive') === 'true' || request.input('isActive') === true
+
+    if (rewardType === 'item' && !rewardItemId) {
+      session.flash('errors', { message: 'Choisis un item pour une recompense de type item' })
+      return response.redirect('/admin/daily-rewards')
+    }
+
+    await DailyRewardConfig.updateOrCreate(
+      { dayNumber },
+      {
+        rewardType,
+        rewardValue,
+        rewardItemId: rewardType === 'item' && rewardItemId ? Number(rewardItemId) : null,
+        isActive,
+      }
+    )
+
+    session.flash('success', `Recompense journaliere J${dayNumber} enregistree`)
+    return response.redirect('/admin/daily-rewards')
+  }
+
+  async updateDailyReward({ params, request, response, session }: HttpContext) {
+    const reward = await DailyRewardConfig.findOrFail(params.id)
+    const dayNumber = Math.max(1, Number(request.input('dayNumber', reward.dayNumber)))
+    const rewardType = request.input('rewardType', reward.rewardType)
+    const rewardValue = Math.max(1, Number(request.input('rewardValue', reward.rewardValue)))
+    const rewardItemId = request.input('rewardItemId')
+
+    if (rewardType === 'item' && !rewardItemId) {
+      session.flash('errors', { message: 'Choisis un item pour une recompense de type item' })
+      return response.redirect('/admin/daily-rewards')
+    }
+
+    const duplicateDay = await DailyRewardConfig.query()
+      .where('dayNumber', dayNumber)
+      .whereNot('id', reward.id)
+      .first()
+
+    if (duplicateDay) {
+      session.flash('errors', { message: `Le jour ${dayNumber} existe deja` })
+      return response.redirect('/admin/daily-rewards')
+    }
+
+    reward.dayNumber = dayNumber
+    reward.rewardType = rewardType
+    reward.rewardValue = rewardValue
+    reward.rewardItemId = rewardType === 'item' && rewardItemId ? Number(rewardItemId) : null
+    reward.isActive = request.input('isActive') === 'true' || request.input('isActive') === true
+
+    await reward.save()
+
+    session.flash('success', `Recompense J${reward.dayNumber} mise a jour`)
+    return response.redirect('/admin/daily-rewards')
+  }
+
+  async deleteDailyReward({ params, response, session }: HttpContext) {
+    const reward = await DailyRewardConfig.findOrFail(params.id)
+    const dayNumber = reward.dayNumber
+    await reward.delete()
+
+    session.flash('success', `Recompense J${dayNumber} supprimee`)
+    return response.redirect('/admin/daily-rewards')
   }
 }

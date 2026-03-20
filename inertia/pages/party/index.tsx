@@ -49,6 +49,8 @@ interface Props {
 export default function PartyIndex({ character, currentParty: initialParty, floors }: Props) {
   const createForm = useForm({ name: '' })
   const joinForm = useForm({ code: '' })
+  const [inviteName, setInviteName] = useState('')
+  const [inviteFeedback, setInviteFeedback] = useState<string | null>(null)
   const [selectedFloor, setSelectedFloor] = useState<number | null>(null)
   const [currentParty, setCurrentParty] = useState(initialParty)
   const [error, setError] = useState<string | null>(null)
@@ -153,6 +155,33 @@ export default function PartyIndex({ character, currentParty: initialParty, floo
   const allReady = currentParty.members.every((m) => m.isReady)
   const myMember = currentParty.members.find((m) => m.characterId === character.id)
   const { errors } = usePage().props as any
+  const sendInvite = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!inviteName.trim()) return
+
+    setInviteFeedback(null)
+    try {
+      const res = await fetch('/party/invite', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-XSRF-TOKEN': decodeURIComponent(document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] || ''),
+        },
+        body: JSON.stringify({ characterName: inviteName }),
+      })
+
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setInviteFeedback(data.error || 'Invitation impossible')
+        return
+      }
+
+      setInviteFeedback(data.message || 'Invitation envoyee')
+      setInviteName('')
+    } catch {
+      setInviteFeedback('Erreur reseau')
+    }
+  }
 
   return (
     <GameLayout>
@@ -258,6 +287,36 @@ export default function PartyIndex({ character, currentParty: initialParty, floo
               [ QUITTER ]
             </button>
           </div>
+
+          {currentParty.isLeader && countdown === null && (
+            <div className="mt-4 border-t border-cyber-orange/10 pt-4">
+              <div className="mb-2 text-[10px] uppercase tracking-[0.3em] text-cyber-orange">
+                Inviter un joueur
+              </div>
+              <form onSubmit={sendInvite} className="flex flex-col gap-2 sm:flex-row">
+                <input
+                  type="text"
+                  value={inviteName}
+                  onChange={(e) => setInviteName(e.target.value)}
+                  placeholder="Nom du personnage..."
+                  className="flex-1 rounded border border-cyber-orange/20 bg-cyber-black px-4 py-2.5 text-sm text-white focus:border-cyber-orange focus:outline-none"
+                  maxLength={50}
+                />
+                <button
+                  type="submit"
+                  disabled={!inviteName.trim()}
+                  className="rounded border border-cyber-orange bg-cyber-orange/15 px-4 py-2.5 text-xs font-bold uppercase tracking-widest text-cyber-orange transition-all hover:bg-cyber-orange/25 disabled:opacity-50"
+                >
+                  [ INVITER ]
+                </button>
+              </form>
+              {inviteFeedback && (
+                <div className={`mt-2 text-xs ${inviteFeedback.includes('envoyee') ? 'text-cyber-green' : 'text-cyber-red'}`}>
+                  {inviteFeedback}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Dungeon selection (leader only) */}

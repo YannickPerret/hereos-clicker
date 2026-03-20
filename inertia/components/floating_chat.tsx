@@ -20,6 +20,14 @@ function getCsrfToken() {
   return decodeURIComponent(document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] || '')
 }
 
+function getChatOpenStorageKey(username: string) {
+  return `floating-chat-open:${username}`
+}
+
+function getChatClosedAtStorageKey(username: string) {
+  return `floating-chat-closed-at:${username}`
+}
+
 export default function FloatingChat() {
   const { auth, partyChannel } = usePage().props as any
   if (!auth?.user) return null
@@ -28,7 +36,10 @@ export default function FloatingChat() {
 }
 
 function ChatWidget({ username, partyChannel }: { username: string; partyChannel: string | null }) {
-  const [isOpen, setIsOpen] = useState(false)
+  const [isOpen, setIsOpen] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return window.localStorage.getItem(getChatOpenStorageKey(username)) === '1'
+  })
   const [channels, setChannels] = useState<Channel[]>([])
   const [activeChannel, setActiveChannel] = useState('global')
   const [messages, setMessages] = useState<Message[]>([])
@@ -45,6 +56,33 @@ function ChatWidget({ username, partyChannel }: { username: string; partyChannel
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const closedAtRef = useRef<string | null>(
+    typeof window === 'undefined' ? null : window.localStorage.getItem(getChatClosedAtStorageKey(username))
+  )
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    window.localStorage.setItem(getChatOpenStorageKey(username), isOpen ? '1' : '0')
+  }, [isOpen, username])
+
+  const openChat = useCallback(() => {
+    setIsOpen(true)
+    setUnreadCount(0)
+    closedAtRef.current = null
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem(getChatClosedAtStorageKey(username))
+    }
+  }, [username])
+
+  const closeChat = useCallback(() => {
+    setIsOpen(false)
+    setUnreadCount(0)
+    const closedAt = new Date().toISOString()
+    closedAtRef.current = closedAt
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(getChatClosedAtStorageKey(username), closedAt)
+    }
+  }, [username])
 
   // Auto-inject party channel
   useEffect(() => {
@@ -93,12 +131,16 @@ function ChatWidget({ username, partyChannel }: { username: string; partyChannel
     fetch(`/chat/messages?channel=${activeChannel}`)
       .then((r) => r.json())
       .then((data) => {
-        setMessages((prev) => {
-          if (data.length > prev.length && !isOpen) {
-            setUnreadCount((c) => c + (data.length - prev.length))
-          }
-          return data
-        })
+        setMessages(data)
+        if (!isOpen && closedAtRef.current) {
+          const closedAtTs = new Date(closedAtRef.current).getTime()
+          const unread = data.filter((msg: Message) => new Date(msg.createdAt).getTime() > closedAtTs).length
+          setUnreadCount(unread)
+          return
+        }
+        if (isOpen) {
+          setUnreadCount(0)
+        }
       })
       .catch(() => {})
   }, [activeChannel, isOpen])
@@ -182,13 +224,13 @@ function ChatWidget({ username, partyChannel }: { username: string; partyChannel
       {/* Toggle Button */}
       {!isOpen && (
         <button
-          onClick={() => setIsOpen(true)}
+          onClick={openChat}
           className="fixed bottom-4 left-4 z-50 w-12 h-12 rounded-full bg-cyber-dark border-2 border-cyber-green/50 text-cyber-green flex items-center justify-center hover:bg-cyber-green/10 hover:border-cyber-green transition-all shadow-lg"
         >
           <span className="text-lg">💬</span>
           {unreadCount > 0 && (
             <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-cyber-red text-white text-[9px] flex items-center justify-center font-bold">
-              {unreadCount > 9 ? '9+' : unreadCount}
+              {unreadCount >= 10 ? '10+' : unreadCount}
             </span>
           )}
         </button>
@@ -217,7 +259,7 @@ function ChatWidget({ username, partyChannel }: { username: string; partyChannel
                 {activeChannel === partyChannel ? '👥 GROUPE' : `#${activeChannel}`}
               </button>
               <button
-                onClick={() => setIsOpen(false)}
+                onClick={closeChat}
                 className="text-gray-600 hover:text-cyber-red text-xs ml-1 transition-colors"
               >
                 ✕

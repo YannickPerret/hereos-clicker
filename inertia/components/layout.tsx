@@ -1,6 +1,7 @@
 import { Link, usePage } from '@inertiajs/react'
 import { type ReactNode, useState } from 'react'
 import FloatingChat from '~/components/floating_chat'
+import NotificationCenter from '~/components/notification_center'
 
 const ROLE_COLORS: Record<string, string> = {
   admin: 'text-cyber-red',
@@ -122,6 +123,7 @@ export default function GameLayout({ children }: { children: ReactNode }) {
         {children}
       </main>
 
+      <NotificationCenter />
       <FloatingChat />
     </div>
   )

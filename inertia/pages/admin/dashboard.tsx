@@ -71,6 +71,13 @@ export default function AdminDashboard({ currentUser, stats, topCredits }: Props
             <h3 className="text-sm font-bold text-cyber-green tracking-widest mb-1">MESSAGES SYSTEME</h3>
             <p className="text-xs text-gray-600">Messages automatiques dans le chat</p>
           </Link>
+          <Link
+            href="/admin/daily-rewards"
+            className="bg-cyber-dark border border-cyber-yellow/30 rounded-lg p-6 hover:border-cyber-yellow/60 hover:bg-cyber-yellow/5 transition-all"
+          >
+            <h3 className="text-sm font-bold text-cyber-yellow tracking-widest mb-1">RECOMPENSES JOURNALIERES</h3>
+            <p className="text-xs text-gray-600">Configuration du streak quotidien et des gains</p>
+          </Link>
         </div>
 
         {/* Top Credits */}
