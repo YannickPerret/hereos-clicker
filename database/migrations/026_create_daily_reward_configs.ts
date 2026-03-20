@@ -23,7 +23,7 @@ export default class extends BaseSchema {
         })
       }
 
-      const now = new Date()
+      const now = new Date().toISOString()
       const defaults = [
         { day_number: 1, reward_type: 'credits', reward_value: 250, reward_item_id: null, is_active: true, created_at: now, updated_at: now },
         { day_number: 2, reward_type: 'credits', reward_value: 500, reward_item_id: null, is_active: true, created_at: now, updated_at: now },
