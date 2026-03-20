@@ -44,6 +44,9 @@ export default class DungeonRun extends BaseModel {
   @column()
   declare activeEffects: string
 
+  @column()
+  declare afkPenalties: string
+
   @column.dateTime({ autoCreate: true })
   declare startedAt: DateTime
 

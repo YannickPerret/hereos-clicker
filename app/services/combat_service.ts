@@ -22,6 +22,11 @@ interface ActiveEffect {
 }
 
 export default class CombatService {
+  private static readonly DEFAULT_TURN_MS = 30000
+  private static readonly AFK_TURN_MS = 5000
+  private static readonly DEATH_REVIVE_HP = 10
+  private static readonly DEATH_CREDITS_LOSS_PERCENT = 10
+
   static async startRun(character: Character, floorId: number) {
     const floor = await DungeonFloor.findOrFail(floorId)
 
@@ -64,6 +69,54 @@ export default class CombatService {
     return { damage: baseDamage, isCrit: false }
   }
 
+  private static getAfkPenalties(run: DungeonRun): Record<string, number> {
+    return JSON.parse(run.afkPenalties || '{}')
+  }
+
+  private static setAfkPenalties(run: DungeonRun, penalties: Record<string, number>) {
+    run.afkPenalties = JSON.stringify(penalties)
+  }
+
+  private static markCharacterAfk(run: DungeonRun, characterId: number): number {
+    const penalties = this.getAfkPenalties(run)
+    const key = String(characterId)
+    penalties[key] = (penalties[key] || 0) + 1
+    this.setAfkPenalties(run, penalties)
+    return penalties[key]
+  }
+
+  private static isCharacterAfkPenalized(run: DungeonRun, characterId: number) {
+    const penalties = this.getAfkPenalties(run)
+    return (penalties[String(characterId)] || 0) > 0
+  }
+
+  private static getTurnDurationMs(run: DungeonRun, characterId: number | null) {
+    if (!characterId) {
+      return this.DEFAULT_TURN_MS
+    }
+
+    return this.isCharacterAfkPenalized(run, characterId) ? this.AFK_TURN_MS : this.DEFAULT_TURN_MS
+  }
+
+  private static setTurnDeadline(run: DungeonRun, characterId: number | null) {
+    run.turnDeadline = characterId ? Date.now() + this.getTurnDurationMs(run, characterId) : null
+  }
+
+  private static applyDeathPenalty(character: Character) {
+    const creditsLost = Math.min(
+      character.credits,
+      Math.floor(character.credits * (this.DEATH_CREDITS_LOSS_PERCENT / 100))
+    )
+
+    character.credits = Math.max(0, character.credits - creditsLost)
+    character.hpCurrent = Math.min(character.hpMax, this.DEATH_REVIVE_HP)
+
+    return {
+      creditsLost,
+      revivedHp: character.hpCurrent,
+    }
+  }
+
   /** Auto-attack for timed out player — callable from controller */
   static async performAutoAttackPublic(character: Character, run: DungeonRun) {
     return this.performAutoAttack(character, run)
@@ -71,14 +124,25 @@ export default class CombatService {
 
   /** Auto-attack for timed out player (basic attack, no crits) */
   private static async performAutoAttack(character: Character, run: DungeonRun) {
+    const persistentLog = JSON.parse(run.combatLog || '[]')
+    const afkCount = this.markCharacterAfk(run, character.id)
+    persistentLog.push({
+      action: 'player_afk',
+      characterName: character.name,
+      characterId: character.id,
+      afkCount,
+      nextTurnSeconds: Math.floor(this.AFK_TURN_MS / 1000),
+    })
+
     if (character.hpCurrent <= 0) {
       const nextTurnId = await this.getNextTurnId(run, character.id)
       if (nextTurnId) {
         run.currentTurnId = nextTurnId
-        run.turnDeadline = Date.now() + 30000
+        this.setTurnDeadline(run, nextTurnId)
       } else {
         await this.handlePartyDefeat(run)
       }
+      run.combatLog = JSON.stringify(persistentLog)
       await run.save()
       return
     }
@@ -88,7 +152,6 @@ export default class CombatService {
     const rawDmg = Math.max(1, (character.attack + bonuses.attackBonus) - enemy.defense)
     run.currentEnemyHp = Math.max(0, run.currentEnemyHp - rawDmg)
 
-    const persistentLog = JSON.parse(run.combatLog || '[]')
     persistentLog.push({
       action: 'player_attack',
       damage: rawDmg,
@@ -104,7 +167,7 @@ export default class CombatService {
     const nextTurnId = await this.getNextTurnId(run, character.id)
     if (nextTurnId) {
       run.currentTurnId = nextTurnId
-      run.turnDeadline = Date.now() + 30000
+      this.setTurnDeadline(run, nextTurnId)
     } else {
       await this.handlePartyDefeat(run)
     }
@@ -217,7 +280,7 @@ export default class CombatService {
 
       for (const member of members) {
         if (member.character.hpCurrent <= 0) {
-          member.character.hpCurrent = Math.floor(member.character.hpMax * 0.25)
+          this.applyDeathPenalty(member.character)
           await member.character.save()
         }
       }
@@ -300,7 +363,16 @@ export default class CombatService {
         const hasAliveMember = remainingAliveMembers.some((member) => member.character.hpCurrent > 0)
         if (!hasAliveMember) {
           await this.handlePartyDefeat(run)
-          log.push({ action: 'defeat', defenderId: target.id, defenderName: target.name })
+          log.push({
+            action: 'defeat',
+            defenderId: target.id,
+            defenderName: target.name,
+            creditsLost: Math.min(
+              target.credits,
+              Math.floor(target.credits * (this.DEATH_CREDITS_LOSS_PERCENT / 100))
+            ),
+            revivedHp: Math.min(target.hpMax, this.DEATH_REVIVE_HP),
+          })
         }
 
         return effects
@@ -308,8 +380,14 @@ export default class CombatService {
 
       run.status = 'defeat'
       run.endedAt = DateTime.now()
-      target.hpCurrent = Math.floor(target.hpMax * 0.25)
-      log.push({ action: 'defeat', defenderId: target.id, defenderName: target.name })
+      const penalty = this.applyDeathPenalty(target)
+      log.push({
+        action: 'defeat',
+        defenderId: target.id,
+        defenderName: target.name,
+        creditsLost: penalty.creditsLost,
+        revivedHp: penalty.revivedHp,
+      })
     }
 
     await target.save()
@@ -491,7 +569,7 @@ export default class CombatService {
         const nextTurnId = await this.getNextTurnId(run, character.id)
         if (nextTurnId) {
           run.currentTurnId = nextTurnId
-          run.turnDeadline = Date.now() + 30000
+          this.setTurnDeadline(run, nextTurnId)
         } else {
           await this.handlePartyDefeat(run)
         }
@@ -1025,7 +1103,7 @@ export default class CombatService {
         const nextTurnId = await this.getNextTurnId(run, character.id)
         if (nextTurnId) {
           run.currentTurnId = nextTurnId
-          run.turnDeadline = Date.now() + 30000
+          this.setTurnDeadline(run, nextTurnId)
         } else {
           await this.handlePartyDefeat(run)
         }
@@ -1130,7 +1208,7 @@ export default class CombatService {
         const nextTurnId = await this.getNextTurnId(run, character.id)
         if (nextTurnId) {
           run.currentTurnId = nextTurnId
-          run.turnDeadline = Date.now() + 30000
+          this.setTurnDeadline(run, nextTurnId)
         } else {
           await this.handlePartyDefeat(run)
         }

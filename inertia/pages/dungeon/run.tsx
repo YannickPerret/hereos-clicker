@@ -23,6 +23,9 @@ interface Props {
     enemiesDefeated: number
     dungeonFloorId: number
     partyId: number | null
+    currentTurnId: number | null
+    turnDeadline: number | null
+    afkPenalties?: string
   }
   floor: { name: string; floorNumber: number }
   currentEnemy: {
@@ -94,6 +97,12 @@ interface CombatLogEntry {
   stolen?: number
   message?: string
   auto?: boolean
+  characterName?: string
+  characterId?: number
+  afkCount?: number
+  nextTurnSeconds?: number
+  creditsLost?: number
+  revivedHp?: number
 }
 
 const TIER_COLORS: Record<number, string> = {
@@ -101,6 +110,16 @@ const TIER_COLORS: Record<number, string> = {
   2: 'text-cyber-blue',
   3: 'text-cyber-purple',
   4: 'text-cyber-yellow',
+}
+
+function parseAfkPenalties(raw?: string) {
+  if (!raw) return {}
+
+  try {
+    return JSON.parse(raw) as Record<string, number>
+  } catch {
+    return {}
+  }
 }
 
 function CombatLog({ log, className = '' }: { log: CombatLogEntry[]; className?: string }) {
@@ -125,6 +144,20 @@ function CombatLog({ log, className = '' }: { log: CombatLogEntry[]; className?:
                       CRITIQUE!
                     </span>
                   )}
+                </div>
+              )
+            case 'player_afk':
+              return (
+                <div
+                  key={i}
+                  className="text-xs p-2 rounded bg-cyber-orange/10 border border-cyber-orange/40"
+                >
+                  <span className="text-cyber-orange font-bold">
+                    {entry.characterName || 'Un joueur'} est passe AFK
+                  </span>
+                  <span className="text-gray-400 ml-1">
+                    Tours suivants limites a {entry.nextTurnSeconds || 5}s
+                  </span>
                 </div>
               )
             case 'enemy_attack':
@@ -254,6 +287,13 @@ function CombatLog({ log, className = '' }: { log: CombatLogEntry[]; className?:
                   className="text-xs p-2 rounded bg-cyber-red/20 border border-cyber-red/50 text-center"
                 >
                   <span className="text-cyber-red font-bold tracking-widest">DEFAITE</span>
+                  {(entry.creditsLost !== undefined || entry.revivedHp !== undefined) && (
+                    <span className="ml-2 text-gray-300">
+                      {entry.creditsLost !== undefined && `-${entry.creditsLost}c`}
+                      {entry.creditsLost !== undefined && entry.revivedHp !== undefined && ' • '}
+                      {entry.revivedHp !== undefined && `retour a ${entry.revivedHp} HP`}
+                    </span>
+                  )}
                 </div>
               )
             default:
@@ -287,6 +327,9 @@ export default function DungeonRun({
   const { combatLog } = usePage().props as any
   const isGroupRun = !!run.partyId
   const isMyTurn = !run.partyId || run.currentTurnId === character.id
+  const afkPenalties = parseAfkPenalties(run.afkPenalties)
+  const currentTurnIsAfk =
+    run.currentTurnId !== null && (afkPenalties[String(run.currentTurnId)] || 0) > 0
 
   // Sync from Inertia props
   useEffect(() => {
@@ -350,6 +393,11 @@ export default function DungeonRun({
             {isMyTurn
               ? 'TON TOUR — ATTAQUE!'
               : `Tour de ${partyMembers.find((m) => m.id === run.currentTurnId)?.name || '...'}...`}
+            {currentTurnIsAfk && (
+              <span className="ml-2 rounded-full border border-cyber-orange/40 bg-cyber-orange/10 px-2 py-0.5 text-[10px] font-bold text-cyber-orange">
+                AFK 5S
+              </span>
+            )}
             {turnTimer !== null && (
               <span
                 className={`ml-2 font-bold ${turnTimer <= 5 ? 'text-cyber-red animate-pulse' : ''}`}
@@ -378,6 +426,11 @@ export default function DungeonRun({
               <div className={`font-bold ${m.hpCurrent <= 0 ? 'text-cyber-red' : 'text-white'}`}>
                 {m.name}
                 {m.hpCurrent <= 0 && <span className="ml-1 text-cyber-red">KO</span>}
+                {(afkPenalties[String(m.id)] || 0) > 0 && (
+                  <span className="ml-2 rounded border border-cyber-orange/40 bg-cyber-orange/10 px-1.5 py-0.5 text-[9px] font-bold text-cyber-orange">
+                    AFK
+                  </span>
+                )}
               </div>
               <div className="text-[10px] text-gray-500">LVL {m.level}</div>
               <div className={`text-[10px] ${m.hpCurrent <= 0 ? 'text-cyber-red' : 'text-cyber-green'}`}>
@@ -412,7 +465,7 @@ export default function DungeonRun({
             {run.status === 'victory'
               ? 'Tu as nettoye cet etage. Le loot a ete ajoute a ton inventaire.'
               : run.status === 'defeat'
-                ? "Tes implants t'ont ramene. Tu perds le loot non recupere."
+                ? "Tes implants t'ont ramene. Tu perds 10% de tes credits et tu reviens a 10 PV."
                 : "Tu t'es echappe. Pas de honte a survivre."}
           </p>
           <button
@@ -695,6 +748,11 @@ export default function DungeonRun({
                     >
                       {m.name}
                     </span>
+                    {(afkPenalties[String(m.id)] || 0) > 0 && (
+                      <span className="rounded border border-cyber-orange/40 bg-cyber-orange/10 px-1.5 py-0.5 text-[9px] font-bold text-cyber-orange">
+                        AFK
+                      </span>
+                    )}
                   </div>
                   <span className="text-cyber-green text-[10px]">
                     {m.hpCurrent}/{m.hpMax}
@@ -770,6 +828,15 @@ export default function DungeonRun({
                         </span>
                       </>
                     )}
+                    {entry.action === 'player_afk' && (
+                      <>
+                        <span className="text-cyber-orange font-bold">{entry.characterName}</span>
+                        <span className="text-gray-500 ml-1">passe AFK</span>
+                        <span className="text-cyber-orange ml-1">
+                          tours suivants a {entry.nextTurnSeconds || 5}s
+                        </span>
+                      </>
+                    )}
                     {entry.action === 'enemy_attack' && (
                       <>
                         <span className="text-cyber-red font-bold">{enemy?.name || 'Ennemi'}</span>
@@ -834,7 +901,11 @@ export default function DungeonRun({
                       <span className="text-cyber-green font-bold tracking-widest">VICTOIRE!</span>
                     )}
                     {entry.action === 'defeat' && (
-                      <span className="text-cyber-red font-bold tracking-widest">DEFAITE</span>
+                      <span className="text-cyber-red font-bold tracking-widest">
+                        DEFAITE
+                        {entry.creditsLost !== undefined && ` -${entry.creditsLost}c`}
+                        {entry.revivedHp !== undefined && ` retour ${entry.revivedHp} HP`}
+                      </span>
                     )}
                   </div>
                 ))

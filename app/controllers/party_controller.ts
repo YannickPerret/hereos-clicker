@@ -98,6 +98,7 @@ export default class PartyController {
           currentTurnId: party.leaderId,
           turnDeadline: Date.now() + 30000,
           combatLog: '[]',
+          afkPenalties: '{}',
         })
 
         party.status = 'in_dungeon'
