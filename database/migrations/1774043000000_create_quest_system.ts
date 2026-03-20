@@ -124,21 +124,23 @@ export default class extends BaseSchema {
     })
 
     this.defer(async (db) => {
+      const now = new Date().toISOString()
+
       for (const quest of MAIN_ARC_QUESTS) {
         const existing = await db.from('quests').where('key', quest.key).first()
 
         if (existing) {
           await db.from('quests').where('id', existing.id).update({
             ...quest,
-            updated_at: new Date(),
+            updated_at: now,
           })
           continue
         }
 
         await db.table('quests').insert({
           ...quest,
-          created_at: new Date(),
-          updated_at: new Date(),
+          created_at: now,
+          updated_at: now,
         })
       }
     })
