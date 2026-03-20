@@ -1,4 +1,3 @@
-import { DateTime } from 'luxon'
 import { BaseModel, belongsTo, column } from '@adonisjs/lucid/orm'
 import type { BelongsTo } from '@adonisjs/lucid/types/relations'
 import Character from '#models/character'
@@ -29,8 +28,8 @@ export default class PvpMatchParticipant extends BaseModel {
   @column()
   declare isEliminated: boolean
 
-  @column.dateTime({ autoCreate: true })
-  declare createdAt: DateTime
+  @column()
+  declare createdAt: number
 
   @belongsTo(() => PvpMatch, { foreignKey: 'matchId' })
   declare match: BelongsTo<typeof PvpMatch>
