@@ -1,3 +1,4 @@
+import { DateTime } from 'luxon'
 import { BaseModel, belongsTo, column } from '@adonisjs/lucid/orm'
 import type { BelongsTo } from '@adonisjs/lucid/types/relations'
 import Item from '#models/item'
@@ -21,11 +22,11 @@ export default class DailyRewardConfig extends BaseModel {
   @column()
   declare isActive: boolean
 
-  @column()
-  declare createdAt: number
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
 
-  @column()
-  declare updatedAt: number
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
 
   @belongsTo(() => Item, { foreignKey: 'rewardItemId' })
   declare rewardItem: BelongsTo<typeof Item>
