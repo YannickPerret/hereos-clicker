@@ -138,8 +138,12 @@ export default function GameLayout({ children }: { children: ReactNode }) {
               </span>
             </button>
 
-            <Link href="/play" className="text-xl font-bold text-cyber-blue neon-text tracking-widest">
-              HEREOS
+            <Link href="/play" className="flex items-center">
+              <img
+                src="/images/hereos_logo.webp"
+                alt="HEREOS"
+                className="h-10 w-auto object-contain"
+              />
             </Link>
           </div>
 

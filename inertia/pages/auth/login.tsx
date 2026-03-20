@@ -22,9 +22,11 @@ export default function Login() {
       />
 
       <div className="w-full max-w-md relative z-10">
-        <h1 className="text-5xl font-bold text-center text-cyber-blue neon-text mb-2 tracking-[0.3em]">
-          HEREOS
-        </h1>
+        <img
+          src="/images/hereos_logo.webp"
+          alt="HEREOS"
+          className="mx-auto mb-3 h-28 w-auto object-contain"
+        />
         <p className="text-center text-gray-500 mb-8 text-sm tracking-widest uppercase">
           Cyberpunk Clicker // Connexion
         </p>
