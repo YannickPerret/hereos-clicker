@@ -58,9 +58,21 @@ const TYPE_LABELS: Record<string, string> = {
   clothes_face: 'VISAGE',
   clothes_outer: 'HAUT',
   clothes_legs: 'BAS',
-  consumable: 'CONSOMMABLE',
-  upgrade: 'AMELIORATION',
+  consumable: 'CONSO',
+  upgrade: 'UPGRADE',
 }
+
+const TYPE_ORDER = [
+  'weapon',
+  'armor',
+  'implant',
+  'clothes_hair',
+  'clothes_face',
+  'clothes_outer',
+  'clothes_legs',
+  'consumable',
+  'upgrade',
+] as const
 
 const formatEffect = (item: Item) => {
   if (!item.effectType || item.effectValue === null) return null
@@ -73,17 +85,17 @@ const formatEffect = (item: Item) => {
 
 export default function Shop({ character, listings }: Props) {
   const [quantities, setQuantities] = useState<Record<number, string>>({})
-  const categories = [
-    'weapon',
-    'armor',
-    'implant',
-    'clothes_hair',
-    'clothes_face',
-    'clothes_outer',
-    'clothes_legs',
-    'consumable',
-    'upgrade',
-  ]
+  const [filter, setFilter] = useState<string>('all')
+  const categoryCounts = Object.fromEntries(
+    TYPE_ORDER.map((type) => [
+      type,
+      listings.filter((listing) => listing.item.type === type).length,
+    ])
+  ) as Record<string, number>
+  const visibleCategories = TYPE_ORDER.filter((type) => {
+    if (filter !== 'all' && filter !== type) return false
+    return categoryCounts[type] > 0
+  })
 
   const getQuantity = (listingId: number) => {
     const value = quantities[listingId] ?? '1'
@@ -123,126 +135,160 @@ export default function Shop({ character, listings }: Props) {
         </div>
       </div>
 
-      {categories.map((cat) => {
-        const items = listings.filter((l) => l.item.type === cat)
-        if (items.length === 0) return null
+      <div className="mb-6 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => setFilter('all')}
+          className={`rounded border px-3 py-2 text-[10px] font-bold uppercase tracking-widest transition-all ${
+            filter === 'all'
+              ? 'border-cyber-pink/60 bg-cyber-pink/10 text-cyber-pink'
+              : 'border-gray-800 bg-cyber-dark text-gray-500 hover:border-cyber-pink/30 hover:text-cyber-pink'
+          }`}
+        >
+          Toutes ({listings.length})
+        </button>
+        {TYPE_ORDER.map((type) => (
+          <button
+            key={type}
+            type="button"
+            onClick={() => setFilter(type)}
+            className={`rounded border px-3 py-2 text-[10px] font-bold uppercase tracking-widest transition-all ${
+              filter === type
+                ? 'border-cyber-blue/60 bg-cyber-blue/10 text-cyber-blue'
+                : 'border-gray-800 bg-cyber-dark text-gray-500 hover:border-cyber-blue/30 hover:text-cyber-blue'
+            } ${categoryCounts[type] === 0 ? 'opacity-40' : ''}`}
+          >
+            {TYPE_LABELS[type]} ({categoryCounts[type]})
+          </button>
+        ))}
+      </div>
 
-        return (
-          <div key={cat} className="mb-8">
-            <h2 className="text-sm uppercase tracking-widest text-gray-500 mb-3 border-b border-gray-800 pb-2">
-              {TYPE_LABELS[cat]}
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {items.map((listing) => {
-                const quantity = getQuantity(listing.id)
-                const totalPrice = listing.price * quantity
-                const canAfford = character.credits >= totalPrice
-                const outOfStock = listing.stock !== null && listing.stock <= 0
-                const hasEnoughStock = listing.stock === null || listing.stock >= quantity
-                const maxQuantity = listing.stock ?? Number.POSITIVE_INFINITY
+      {visibleCategories.length === 0 ? (
+        <div className="rounded-lg border border-gray-800 bg-cyber-dark p-12 text-center">
+          <p className="text-sm text-gray-600">Aucun item disponible dans cette categorie.</p>
+        </div>
+      ) : (
+        visibleCategories.map((cat) => {
+          const items = listings.filter((l) => l.item.type === cat)
+          if (items.length === 0) return null
 
-                return (
-                  <div
-                    key={listing.id}
-                    className={`bg-cyber-dark border rounded-lg p-4 transition-all ${RARITY_COLORS[listing.item.rarity]} ${RARITY_GLOW[listing.item.rarity]}`}
-                  >
-                    <div className="flex justify-between items-start mb-2">
-                      <div>
-                        <h3 className={`font-bold text-sm ${RARITY_TEXT[listing.item.rarity]}`}>
-                          {listing.item.name}
-                        </h3>
-                        <span className="text-[10px] uppercase text-gray-600">
-                          {listing.item.rarity}
-                        </span>
-                      </div>
-                      <div className="text-right">
-                        <div
-                          className={`text-sm font-bold ${canAfford ? 'text-cyber-yellow' : 'text-cyber-red'}`}
-                        >
-                          {listing.price.toLocaleString()}c
-                        </div>
-                        {listing.stock !== null && (
-                          <div className="text-[10px] text-gray-600">Stock: {listing.stock}</div>
-                        )}
-                      </div>
-                    </div>
+          return (
+            <div key={cat} className="mb-8">
+              <h2 className="text-sm uppercase tracking-widest text-gray-500 mb-3 border-b border-gray-800 pb-2">
+                {TYPE_LABELS[cat]}
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {items.map((listing) => {
+                  const quantity = getQuantity(listing.id)
+                  const totalPrice = listing.price * quantity
+                  const canAfford = character.credits >= totalPrice
+                  const outOfStock = listing.stock !== null && listing.stock <= 0
+                  const hasEnoughStock = listing.stock === null || listing.stock >= quantity
+                  const maxQuantity = listing.stock ?? Number.POSITIVE_INFINITY
 
-                    <p className="text-xs text-gray-500 mb-3">{listing.item.description}</p>
-
-                    {formatEffect(listing.item) && (
-                      <div className="text-xs text-cyber-green mb-3">
-                        Effet: {formatEffect(listing.item)}
-                      </div>
-                    )}
-
-                    <div className="mb-3">
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setQuantity(listing.id, quantity - 1)}
-                          disabled={quantity <= 1}
-                          className="h-9 w-9 rounded border border-gray-700 bg-cyber-black text-sm font-bold text-gray-300 transition hover:border-cyber-blue/50 hover:text-cyber-blue disabled:cursor-not-allowed disabled:opacity-40"
-                        >
-                          -
-                        </button>
-                        <input
-                          type="number"
-                          min={1}
-                          max={listing.stock ?? undefined}
-                          inputMode="numeric"
-                          value={quantities[listing.id] ?? '1'}
-                          onChange={(e) => setQuantityInput(listing.id, e.target.value)}
-                          className="h-9 flex-1 rounded border border-gray-800 bg-cyber-black px-3 text-center text-sm font-bold text-white focus:border-cyber-blue/50 focus:outline-none"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setQuantity(listing.id, quantity + 1)}
-                          disabled={quantity >= maxQuantity}
-                          className="h-9 w-9 rounded border border-gray-700 bg-cyber-black text-sm font-bold text-gray-300 transition hover:border-cyber-blue/50 hover:text-cyber-blue disabled:cursor-not-allowed disabled:opacity-40"
-                        >
-                          +
-                        </button>
-                      </div>
-                      <div className="mt-2 flex items-center justify-between text-[10px] uppercase tracking-widest text-gray-600">
-                        <span>Quantite: {quantity}</span>
-                        <span>Total: {totalPrice.toLocaleString()}c</span>
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={() =>
-                        router.post(
-                          `/shop/${listing.id}/buy`,
-                          { quantity },
-                          { preserveScroll: true }
-                        )
-                      }
-                      disabled={!canAfford || outOfStock || !hasEnoughStock}
-                      className={`w-full py-2 text-xs uppercase tracking-widest rounded font-bold transition-all ${
-                        outOfStock
-                          ? 'bg-gray-900 border border-gray-700 text-gray-700 cursor-not-allowed'
-                          : !hasEnoughStock
-                            ? 'bg-cyber-red/10 border border-cyber-red/30 text-cyber-red/50 cursor-not-allowed'
-                            : canAfford
-                              ? 'bg-cyber-yellow/10 border border-cyber-yellow/50 text-cyber-yellow hover:bg-cyber-yellow/20'
-                              : 'bg-cyber-red/10 border border-cyber-red/30 text-cyber-red/50 cursor-not-allowed'
-                      }`}
+                  return (
+                    <div
+                      key={listing.id}
+                      className={`bg-cyber-dark border rounded-lg p-4 transition-all ${RARITY_COLORS[listing.item.rarity]} ${RARITY_GLOW[listing.item.rarity]}`}
                     >
-                      {outOfStock
-                        ? '[ RUPTURE ]'
-                        : !hasEnoughStock
-                          ? '[ STOCK INSUFFISANT ]'
-                          : canAfford
-                            ? `[ ACHETER x${quantity} ]`
-                            : '[ FONDS INSUFFISANTS ]'}
-                    </button>
-                  </div>
-                )
-              })}
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <h3 className={`font-bold text-sm ${RARITY_TEXT[listing.item.rarity]}`}>
+                            {listing.item.name}
+                          </h3>
+                          <span className="text-[10px] uppercase text-gray-600">
+                            {listing.item.rarity}
+                          </span>
+                        </div>
+                        <div className="text-right">
+                          <div
+                            className={`text-sm font-bold ${canAfford ? 'text-cyber-yellow' : 'text-cyber-red'}`}
+                          >
+                            {listing.price.toLocaleString()}c
+                          </div>
+                          {listing.stock !== null && (
+                            <div className="text-[10px] text-gray-600">Stock: {listing.stock}</div>
+                          )}
+                        </div>
+                      </div>
+
+                      <p className="text-xs text-gray-500 mb-3">{listing.item.description}</p>
+
+                      {formatEffect(listing.item) && (
+                        <div className="text-xs text-cyber-green mb-3">
+                          Effet: {formatEffect(listing.item)}
+                        </div>
+                      )}
+
+                      <div className="mb-3">
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setQuantity(listing.id, quantity - 1)}
+                            disabled={quantity <= 1}
+                            className="h-9 w-9 rounded border border-gray-700 bg-cyber-black text-sm font-bold text-gray-300 transition hover:border-cyber-blue/50 hover:text-cyber-blue disabled:cursor-not-allowed disabled:opacity-40"
+                          >
+                            -
+                          </button>
+                          <input
+                            type="number"
+                            min={1}
+                            max={listing.stock ?? undefined}
+                            inputMode="numeric"
+                            value={quantities[listing.id] ?? '1'}
+                            onChange={(e) => setQuantityInput(listing.id, e.target.value)}
+                            className="h-9 flex-1 rounded border border-gray-800 bg-cyber-black px-3 text-center text-sm font-bold text-white focus:border-cyber-blue/50 focus:outline-none"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setQuantity(listing.id, quantity + 1)}
+                            disabled={quantity >= maxQuantity}
+                            className="h-9 w-9 rounded border border-gray-700 bg-cyber-black text-sm font-bold text-gray-300 transition hover:border-cyber-blue/50 hover:text-cyber-blue disabled:cursor-not-allowed disabled:opacity-40"
+                          >
+                            +
+                          </button>
+                        </div>
+                        <div className="mt-2 flex items-center justify-between text-[10px] uppercase tracking-widest text-gray-600">
+                          <span>Quantite: {quantity}</span>
+                          <span>Total: {totalPrice.toLocaleString()}c</span>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() =>
+                          router.post(
+                            `/shop/${listing.id}/buy`,
+                            { quantity },
+                            { preserveScroll: true }
+                          )
+                        }
+                        disabled={!canAfford || outOfStock || !hasEnoughStock}
+                        className={`w-full py-2 text-xs uppercase tracking-widest rounded font-bold transition-all ${
+                          outOfStock
+                            ? 'bg-gray-900 border border-gray-700 text-gray-700 cursor-not-allowed'
+                            : !hasEnoughStock
+                              ? 'bg-cyber-red/10 border border-cyber-red/30 text-cyber-red/50 cursor-not-allowed'
+                              : canAfford
+                                ? 'bg-cyber-yellow/10 border border-cyber-yellow/50 text-cyber-yellow hover:bg-cyber-yellow/20'
+                                : 'bg-cyber-red/10 border border-cyber-red/30 text-cyber-red/50 cursor-not-allowed'
+                        }`}
+                      >
+                        {outOfStock
+                          ? '[ RUPTURE ]'
+                          : !hasEnoughStock
+                            ? '[ STOCK INSUFFISANT ]'
+                            : canAfford
+                              ? `[ ACHETER x${quantity} ]`
+                              : '[ FONDS INSUFFISANTS ]'}
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
-          </div>
-        )
-      })}
+          )
+        })
+      )}
     </GameLayout>
   )
 }
