@@ -1,4 +1,4 @@
-import { router } from '@inertiajs/react'
+import { router, usePage } from '@inertiajs/react'
 import GameLayout from '~/components/layout'
 
 interface Match {
@@ -60,6 +60,8 @@ const formatEta = (seconds: number) => {
 }
 
 export default function PvpArena({ character, activeMatch, recentMatches, rankings, queueOverview }: Props) {
+  const { props } = usePage<{ errors?: { message?: string }; success?: string }>()
+
   return (
     <GameLayout>
       <div className="max-w-6xl mx-auto">
@@ -80,6 +82,17 @@ export default function PvpArena({ character, activeMatch, recentMatches, rankin
             </div>
           </div>
         </div>
+
+        {props.errors?.message && (
+          <div className="mb-4 rounded-lg border border-cyber-red/50 bg-cyber-red/10 px-4 py-3 text-sm text-cyber-red">
+            {props.errors.message}
+          </div>
+        )}
+        {props.success && (
+          <div className="mb-4 rounded-lg border border-cyber-green/50 bg-cyber-green/10 px-4 py-3 text-sm text-cyber-green">
+            {props.success as string}
+          </div>
+        )}
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <div className="space-y-4 lg:col-span-1">

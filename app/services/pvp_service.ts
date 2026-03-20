@@ -265,6 +265,7 @@ export default class PvpService {
 
   private static async createParticipants(matchId: number, team: number, members: Character[]) {
     const created: PvpMatchParticipant[] = []
+    const createdAt = Date.now()
 
     for (const [index, member] of members.entries()) {
       created.push(await PvpMatchParticipant.create({
@@ -275,6 +276,7 @@ export default class PvpService {
         currentHp: member.hpMax,
         hpMax: member.hpMax,
         isEliminated: false,
+        createdAt,
       }))
     }
 
