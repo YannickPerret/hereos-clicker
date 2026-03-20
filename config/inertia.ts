@@ -14,6 +14,7 @@ export default defineConfig({
       const user = ctx.auth?.user
       if (user) {
         await user.load('role')
+        const activeCharacter = await Character.query().where('userId', user.id).first()
         return {
           user: {
             id: user.id,
@@ -22,6 +23,7 @@ export default defineConfig({
             role: user.role.name,
             roleLabel: user.role.label,
           },
+          activeCharacterName: activeCharacter?.name || null,
         }
       }
       return { user: null }

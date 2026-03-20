@@ -47,10 +47,24 @@ export default function FloatingChat() {
   const { auth, partyChannel } = usePage().props as any
   if (!auth?.user) return null
 
-  return <ChatWidget username={auth.user.username} partyChannel={partyChannel || null} />
+  return (
+    <ChatWidget
+      username={auth.user.username}
+      activeCharacterName={auth.activeCharacterName || null}
+      partyChannel={partyChannel || null}
+    />
+  )
 }
 
-function ChatWidget({ username, partyChannel }: { username: string; partyChannel: string | null }) {
+function ChatWidget({
+  username,
+  activeCharacterName,
+  partyChannel,
+}: {
+  username: string
+  activeCharacterName: string | null
+  partyChannel: string | null
+}) {
   const [isOpen, setIsOpen] = useState(() => {
     if (typeof window === 'undefined') return false
     return window.localStorage.getItem(getChatOpenStorageKey(username)) === '1'
@@ -273,7 +287,7 @@ function ChatWidget({ username, partyChannel }: { username: string; partyChannel
   }
 
   const openUserMenu = (event: React.MouseEvent<HTMLButtonElement>, characterName: string) => {
-    if (characterName === username) return
+    if (characterName === activeCharacterName || characterName === username) return
 
     const rect = event.currentTarget.getBoundingClientRect()
     setUserMenu({
@@ -532,7 +546,7 @@ function ChatWidget({ username, partyChannel }: { username: string; partyChannel
                     <span className="font-bold shrink-0 text-cyber-yellow">
                       {msg.characterName}:
                     </span>
-                  ) : msg.characterName === username ? (
+                  ) : msg.characterName === activeCharacterName || msg.characterName === username ? (
                     <span className="font-bold shrink-0 text-cyber-blue">
                       {msg.characterName}:
                     </span>
@@ -541,7 +555,7 @@ function ChatWidget({ username, partyChannel }: { username: string; partyChannel
                       type="button"
                       onClick={(event) => openUserMenu(event, msg.characterName)}
                       className={`font-bold shrink-0 transition-colors ${
-                        msg.characterName === username
+                        msg.characterName === activeCharacterName || msg.characterName === username
                           ? 'text-cyber-blue hover:text-cyber-blue/80'
                           : 'text-cyber-green hover:text-cyber-yellow'
                       }`}

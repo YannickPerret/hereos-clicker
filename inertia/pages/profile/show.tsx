@@ -44,10 +44,24 @@ interface Talent {
   effectValue: number
 }
 
+interface Companion {
+  id: number
+  companionId: number
+  name: string
+  description: string
+  rarity: string
+  bonusType: string
+  bonusValue: number
+  icon: string
+  isActive: boolean
+  level: number
+}
+
 interface Props {
   character: Character
   equippedItems: EquippedItem[]
   talents: Talent[]
+  companions: Companion[]
 }
 
 const SPEC_CONFIG: Record<string, { label: string; color: string; border: string }> = {
@@ -80,7 +94,17 @@ const EFFECT_LABELS: Record<string, string> = {
   xp_boost: 'XP',
 }
 
-export default function PublicProfile({ character, equippedItems, talents }: Props) {
+const BONUS_LABELS: Record<string, string> = {
+  cpc_flat: 'Credits/Click',
+  cps_flat: 'Credits/Sec',
+  atk_flat: 'Attaque',
+  def_flat: 'Defense',
+  crit_chance: 'Crit%',
+  hp_flat: 'HP Max',
+  loot_bonus: 'Bonus Loot',
+}
+
+export default function PublicProfile({ character, equippedItems, talents, companions }: Props) {
   const spec = character.chosenSpec ? SPEC_CONFIG[character.chosenSpec] : null
   const equippedByType = {
     weapon: equippedItems.find((entry) => entry.item.type === 'weapon') || null,
@@ -185,6 +209,42 @@ export default function PublicProfile({ character, equippedItems, talents }: Pro
                         </div>
                         <div className="mt-2 text-[10px] text-cyber-green">
                           {talent.effectType}: +{talent.effectValue}
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-lg border border-cyber-pink/20 bg-cyber-dark p-4">
+              <h2 className="mb-3 text-sm uppercase tracking-widest text-cyber-pink">Drones & Compagnons</h2>
+              {companions.length === 0 ? (
+                <div className="text-sm text-gray-600">Aucun drone equipe.</div>
+              ) : (
+                <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                  {companions
+                    .sort((a, b) => Number(b.isActive) - Number(a.isActive) || a.name.localeCompare(b.name))
+                    .map((companion) => (
+                      <div key={companion.id} className="rounded border border-gray-800 bg-cyber-black/30 p-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-start gap-2">
+                            <div className="text-xl leading-none">{companion.icon}</div>
+                            <div>
+                              <div className="text-xs font-bold text-white">{companion.name}</div>
+                              <div className="mt-1 text-[10px] text-gray-500 line-clamp-2">{companion.description}</div>
+                              <div className="mt-2 text-[10px] text-cyber-green">
+                                +{companion.bonusValue} {BONUS_LABELS[companion.bonusType] || companion.bonusType}
+                              </div>
+                              <div className="mt-1 text-[10px] uppercase tracking-widest text-gray-600">
+                                LVL {companion.level}
+                              </div>
+                            </div>
+                          </div>
+                          {companion.isActive && (
+                            <div className="rounded border border-cyber-green/30 bg-cyber-green/10 px-2 py-1 text-[10px] uppercase tracking-widest text-cyber-green">
+                              Actif
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))}
