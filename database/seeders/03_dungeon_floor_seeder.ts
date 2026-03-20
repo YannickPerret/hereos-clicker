@@ -22,6 +22,14 @@ export default class extends BaseSeeder {
 
       // Raid (3+)
       { name: 'The Void', description: 'Au-dela de la realite. Raid de 3+ runners obligatoire.', floorNumber: 6, minLevel: 15, enemyNames: ['Mech Walker', 'ARCHON - Rogue Superintelligence', 'Chrome Dragon'], bossName: 'The Void King', minPlayers: 3, maxPlayers: 4 },
+
+      // Mid / endgame escalation
+      { name: 'Pacifica Black Site', description: 'Un laboratoire noye sous Pacifica, rempli de glace noire et de survivants armes jusqu aux dents.', floorNumber: 7, minLevel: 20, enemyNames: ['Black ICE Hound', 'Maelstrom Ripper', 'Militech Suppressor'], bossName: null, minPlayers: 2, maxPlayers: 4 },
+      { name: 'Dogtown Kill Corridors', description: 'Couloirs militarises, drones de suppression, extraction impossible sans equipe solide.', floorNumber: 8, minLevel: 24, enemyNames: ['Black ICE Hound', 'Militech Suppressor', 'Arasaka Counter-Intel'], bossName: 'Cyberpsycho Dragoon', minPlayers: 2, maxPlayers: 4 },
+      { name: 'Arasaka Counterintel Vault', description: 'Un coffre-fort de contre-mesures humaines et numeriques. Tout ici veut t effacer.', floorNumber: 9, minLevel: 29, enemyNames: ['Militech Suppressor', 'Arasaka Counter-Intel', 'Sandevistan Duelist', 'Cyberpsycho Dragoon'], bossName: null, minPlayers: 2, maxPlayers: 4 },
+      { name: 'Cynosure Relay', description: 'Une station de relais oubliee ou les machines autonomes defendent encore des ordres morts.', floorNumber: 10, minLevel: 34, enemyNames: ['Arasaka Counter-Intel', 'Sandevistan Duelist', 'Cyberpsycho Dragoon', 'Cerberus Siege Frame'], bossName: 'Blackwall Seraph', minPlayers: 3, maxPlayers: 4 },
+      { name: 'Mikoshi Access Spine', description: 'La colonne d acces vers Mikoshi. Les corps tombent, les engrammes restent.', floorNumber: 11, minLevel: 40, enemyNames: ['Cerberus Siege Frame', 'Blackwall Seraph', 'Mikoshi Warden'], bossName: null, minPlayers: 3, maxPlayers: 4 },
+      { name: 'Blackwall Breach', description: 'Le dernier cran avant la rupture. Si vous ouvrez trop grand, quelque chose repond.', floorNumber: 12, minLevel: 48, enemyNames: ['Blackwall Seraph', 'Mikoshi Warden', 'Soulkiller Prime'], bossName: 'Soulkiller Prime', minPlayers: 4, maxPlayers: 4 },
     ] as const
 
     for (const floor of floors) {
