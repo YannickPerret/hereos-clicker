@@ -458,6 +458,18 @@ export default function DungeonRun({ character, run: initialRun, floor, currentE
                 T{enemy.tier}
               </span>
             </div>
+            
+            <div className="flex justify-center mb-4">
+              <img 
+                src={`/images/enemies/${enemy.icon}.svg`} 
+                alt={enemy.name} 
+                className="w-24 h-24 object-contain"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = 'none';
+                }}
+              />
+            </div>
+
             <p className="text-[10px] text-gray-600 mb-3">{enemy.description}</p>
             <div className="mb-3">
               <div className="flex justify-between text-xs text-gray-500 mb-1">
