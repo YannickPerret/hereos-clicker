@@ -1,4 +1,5 @@
 import { router, usePage } from '@inertiajs/react'
+import { useEffect } from 'react'
 import GameLayout from '~/components/layout'
 
 interface Match {
@@ -62,6 +63,26 @@ const formatEta = (seconds: number) => {
 export default function PvpArena({ character, activeMatch, recentMatches, rankings, queueOverview }: Props) {
   const { props } = usePage<{ errors?: { message?: string }; success?: string }>()
 
+  useEffect(() => {
+    if (!activeMatch || activeMatch.status !== 'waiting') return
+
+    const poll = window.setInterval(() => {
+      router.reload({
+        only: ['activeMatch', 'queueOverview'],
+        preserveScroll: true,
+        preserveState: true,
+      })
+    }, 1500)
+
+    return () => window.clearInterval(poll)
+  }, [activeMatch?.id, activeMatch?.status])
+
+  useEffect(() => {
+    if (activeMatch?.status === 'in_progress') {
+      router.visit(`/pvp/match/${activeMatch.id}`)
+    }
+  }, [activeMatch?.id, activeMatch?.status])
+
   return (
     <GameLayout>
       <div className="max-w-6xl mx-auto">
@@ -104,12 +125,18 @@ export default function PvpArena({ character, activeMatch, recentMatches, rankin
                   <div className="text-xs uppercase tracking-widest text-gray-500">
                     {activeMatch.queueMode.toUpperCase()} • {activeMatch.teamSize}v{activeMatch.teamSize}
                   </div>
-                  <button
-                    onClick={() => router.visit(`/pvp/match/${activeMatch.id}`)}
-                    className="w-full rounded border border-cyber-yellow bg-cyber-yellow/20 py-3 text-sm font-bold uppercase tracking-widest text-cyber-yellow transition-all hover:bg-cyber-yellow/30"
-                  >
-                    [ REJOINDRE COMBAT ]
-                  </button>
+                  {activeMatch.status === 'waiting' ? (
+                    <div className="rounded border border-cyber-yellow/30 bg-cyber-yellow/10 px-4 py-3 text-sm font-bold uppercase tracking-widest text-cyber-yellow">
+                      [ RECHERCHE EN COURS... ]
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => router.visit(`/pvp/match/${activeMatch.id}`)}
+                      className="w-full rounded border border-cyber-yellow bg-cyber-yellow/20 py-3 text-sm font-bold uppercase tracking-widest text-cyber-yellow transition-all hover:bg-cyber-yellow/30"
+                    >
+                      [ REJOINDRE COMBAT ]
+                    </button>
+                  )}
                   {activeMatch.status === 'waiting' && (
                     <button
                       onClick={() => router.post('/pvp/leave-queue')}

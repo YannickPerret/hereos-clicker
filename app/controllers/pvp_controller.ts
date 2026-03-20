@@ -91,7 +91,7 @@ export default class PvpController {
         return response.redirect(`/pvp/match/${match.id}`)
       }
 
-      return response.redirect(`/pvp/match/${match.id}`)
+      return response.redirect('/pvp')
     } catch (error) {
       session.flash('errors', { message: error instanceof Error ? error.message : 'Impossible de rejoindre la file PvP' })
       return response.redirect('/pvp')
