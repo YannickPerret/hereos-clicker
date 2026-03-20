@@ -8,7 +8,7 @@ export default class ChatMessage extends BaseModel {
   declare id: number
 
   @column()
-  declare userId: number
+  declare userId: number | null
 
   @column()
   declare characterName: string

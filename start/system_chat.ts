@@ -20,7 +20,7 @@ async function startSystemMessages() {
       const timer = setInterval(async () => {
         try {
           const chatMsg = await ChatMessage.create({
-            userId: 0,
+            userId: null,
             characterName: '[SYSTEM]',
             channel: msg.channel,
             message: msg.message,
@@ -35,8 +35,12 @@ async function startSystemMessages() {
           }
 
           transmit.broadcast(`chat/${msg.channel}`, payload)
-        } catch {
-          // Silently ignore errors
+        } catch (error) {
+          console.error('Failed to publish system chat message', {
+            systemMessageId: msg.id,
+            channel: msg.channel,
+            error,
+          })
         }
       }, intervalMs)
 
