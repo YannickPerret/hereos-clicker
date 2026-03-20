@@ -27,6 +27,12 @@ interface ChatFeedback {
   message: string
 }
 
+interface MentionQueryState {
+  start: number
+  end: number
+  query: string
+}
+
 function getCsrfToken() {
   return decodeURIComponent(document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] || '')
 }
@@ -43,8 +49,33 @@ function getBlockedUsersStorageKey(username: string) {
   return `floating-chat-blocked-users:${username}`
 }
 
+function extractMentionQuery(value: string, caretPosition: number) {
+  const beforeCaret = value.slice(0, caretPosition)
+  const match = beforeCaret.match(/(^|\s)@([^\s@]{0,50})$/)
+  if (!match) return null
+
+  const query = match[2]
+  return {
+    start: beforeCaret.length - query.length - 1,
+    end: caretPosition,
+    query,
+  }
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function messageMentionsPlayer(message: string, playerNames: string[]) {
+  return playerNames.some((playerName) => {
+    const pattern = new RegExp(`(^|\\s)@${escapeRegExp(playerName)}(?=$|\\s|[.,!?;:])`, 'i')
+    return pattern.test(message)
+  })
+}
+
 export default function FloatingChat() {
-  const { auth, partyChannel } = usePage().props as any
+  const page = usePage() as any
+  const { auth, partyChannel } = page.props as any
   if (!auth?.user) return null
 
   return (
@@ -84,24 +115,53 @@ function ChatWidget({
   const [unreadCount, setUnreadCount] = useState(0)
   const [userMenu, setUserMenu] = useState<UserMenuState | null>(null)
   const [feedback, setFeedback] = useState<ChatFeedback | null>(null)
+  const [onlinePlayers, setOnlinePlayers] = useState<string[]>([])
+  const [mentionQuery, setMentionQuery] = useState<MentionQueryState | null>(null)
+  const [selectedMentionIndex, setSelectedMentionIndex] = useState(0)
+  const [mentionAlertCount, setMentionAlertCount] = useState(0)
   const [blockedUsers, setBlockedUsers] = useState<string[]>(() => {
     if (typeof window === 'undefined') return []
     try {
       const raw = window.localStorage.getItem(getBlockedUsersStorageKey(username))
       if (!raw) return []
       const parsed = JSON.parse(raw)
-      return Array.isArray(parsed) ? parsed.filter((entry): entry is string => typeof entry === 'string') : []
+      return Array.isArray(parsed)
+        ? parsed.filter((entry): entry is string => typeof entry === 'string')
+        : []
     } catch {
       return []
     }
   })
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
   const userMenuRef = useRef<HTMLDivElement>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const closedAtRef = useRef<string | null>(
-    typeof window === 'undefined' ? null : window.localStorage.getItem(getChatClosedAtStorageKey(username))
+    typeof window === 'undefined'
+      ? null
+      : window.localStorage.getItem(getChatClosedAtStorageKey(username))
   )
+  const lastProcessedMessageIdsRef = useRef<Record<string, number>>({})
+  const baseTitleRef = useRef(
+    typeof document === 'undefined' ? 'HereOS - Cyberpunk Clicker' : document.title
+  )
+  const mentionSuggestions = mentionQuery
+    ? onlinePlayers
+        .filter(
+          (playerName) =>
+            mentionQuery.query.length === 0 ||
+            playerName.toLowerCase().startsWith(mentionQuery.query.toLowerCase())
+        )
+        .slice(0, 6)
+    : []
+
+  const clearMentionAlert = useCallback(() => {
+    setMentionAlertCount(0)
+    if (typeof document !== 'undefined') {
+      document.title = baseTitleRef.current
+    }
+  }, [])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -132,14 +192,47 @@ function ChatWidget({
     return () => window.clearTimeout(timeout)
   }, [feedback])
 
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+
+    if (mentionAlertCount === 0) {
+      baseTitleRef.current = document.title
+      return
+    }
+
+    document.title = `(${mentionAlertCount}) Mention${mentionAlertCount > 1 ? 's' : ''} | ${baseTitleRef.current}`
+
+    return () => {
+      document.title = baseTitleRef.current
+    }
+  }, [mentionAlertCount])
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return
+
+    const handleVisibleFocus = () => {
+      if (!document.hidden) {
+        clearMentionAlert()
+      }
+    }
+
+    window.addEventListener('focus', handleVisibleFocus)
+    document.addEventListener('visibilitychange', handleVisibleFocus)
+    return () => {
+      window.removeEventListener('focus', handleVisibleFocus)
+      document.removeEventListener('visibilitychange', handleVisibleFocus)
+    }
+  }, [clearMentionAlert])
+
   const openChat = useCallback(() => {
     setIsOpen(true)
     setUnreadCount(0)
+    clearMentionAlert()
     closedAtRef.current = null
     if (typeof window !== 'undefined') {
       window.localStorage.removeItem(getChatClosedAtStorageKey(username))
     }
-  }, [username])
+  }, [clearMentionAlert, username])
 
   const closeChat = useCallback(() => {
     setIsOpen(false)
@@ -188,25 +281,131 @@ function ChatWidget({
       .catch(() => {})
   }, [])
 
+  const loadOnlinePlayers = useCallback(() => {
+    fetch('/chat/online')
+      .then((r) => r.json())
+      .then((data: unknown) => {
+        if (!Array.isArray(data)) return
+        setOnlinePlayers(data.filter((entry): entry is string => typeof entry === 'string'))
+      })
+      .catch(() => {})
+  }, [])
+
+  const sendPresenceHeartbeat = useCallback(() => {
+    const characterName = (activeCharacterName || username || '').trim()
+    if (!characterName) return
+
+    fetch('/chat/presence', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': getCsrfToken() },
+      body: JSON.stringify({ characterName }),
+    }).catch(() => {})
+  }, [activeCharacterName, username])
+
+  const syncMentionQuery = useCallback((value: string, caretPosition: number | null) => {
+    if (caretPosition === null) {
+      setMentionQuery(null)
+      return
+    }
+
+    const nextMentionQuery = extractMentionQuery(value, caretPosition)
+    setMentionQuery(nextMentionQuery)
+    setSelectedMentionIndex(0)
+  }, [])
+
+  const insertMention = useCallback(
+    (playerName: string) => {
+      if (!mentionQuery) return
+
+      const nextInput = `${input.slice(0, mentionQuery.start)}@${playerName} ${input.slice(mentionQuery.end)}`
+      const nextCaretPosition = mentionQuery.start + playerName.length + 2
+
+      setInput(nextInput)
+      setMentionQuery(null)
+      setSelectedMentionIndex(0)
+
+      window.requestAnimationFrame(() => {
+        inputRef.current?.focus()
+        inputRef.current?.setSelectionRange(nextCaretPosition, nextCaretPosition)
+      })
+    },
+    [input, mentionQuery]
+  )
+
   useEffect(() => {
     loadChannels()
     const interval = setInterval(loadChannels, 10000)
     return () => clearInterval(interval)
   }, [loadChannels])
 
+  useEffect(() => {
+    loadOnlinePlayers()
+    const interval = setInterval(loadOnlinePlayers, 10000)
+    return () => clearInterval(interval)
+  }, [loadOnlinePlayers])
+
+  useEffect(() => {
+    sendPresenceHeartbeat()
+
+    const interval = window.setInterval(sendPresenceHeartbeat, 15000)
+    const handleVisible = () => {
+      if (!document.hidden) {
+        sendPresenceHeartbeat()
+        loadOnlinePlayers()
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisible)
+    return () => {
+      window.clearInterval(interval)
+      document.removeEventListener('visibilitychange', handleVisible)
+    }
+  }, [loadOnlinePlayers, sendPresenceHeartbeat])
+
   // Load messages & poll
   const loadMessages = useCallback(() => {
     fetch(`/chat/messages?channel=${activeChannel}`)
       .then((r) => r.json())
-      .then((data) => {
+      .then((data: Message[]) => {
         setMessages(data)
+        const ownMentionTargets = [activeCharacterName, username].filter(
+          (value, index, values): value is string =>
+            Boolean(value) && values.indexOf(value) === index
+        )
+
+        const previousLastProcessedId = lastProcessedMessageIdsRef.current[activeChannel]
+        const latestMessageId = data.length > 0 ? data[data.length - 1].id : 0
+
+        if (previousLastProcessedId === undefined) {
+          lastProcessedMessageIdsRef.current[activeChannel] = latestMessageId
+        } else {
+          const newMessages = data.filter((msg) => msg.id > previousLastProcessedId)
+          if (newMessages.length > 0) {
+            lastProcessedMessageIdsRef.current[activeChannel] = latestMessageId
+
+            const mentionHits = newMessages.filter(
+              (msg) =>
+                msg.characterName !== '[SYSTEM]' &&
+                msg.characterName !== activeCharacterName &&
+                msg.characterName !== username &&
+                !blockedUsers.includes(msg.characterName) &&
+                messageMentionsPlayer(msg.message, ownMentionTargets)
+            )
+
+            if (mentionHits.length > 0 && (document.hidden || !isOpen)) {
+              setMentionAlertCount((current) => current + mentionHits.length)
+            }
+          }
+        }
+
         if (!isOpen && closedAtRef.current) {
           const closedAtTs = new Date(closedAtRef.current).getTime()
-          const unread = data.filter((msg: Message) => (
-            msg.characterName !== '[SYSTEM]' &&
-            !blockedUsers.includes(msg.characterName) &&
-            new Date(msg.createdAt).getTime() > closedAtTs
-          )).length
+          const unread = data.filter(
+            (msg: Message) =>
+              msg.characterName !== '[SYSTEM]' &&
+              !blockedUsers.includes(msg.characterName) &&
+              new Date(msg.createdAt).getTime() > closedAtTs
+          ).length
           setUnreadCount(unread)
           return
         }
@@ -215,12 +414,14 @@ function ChatWidget({
         }
       })
       .catch(() => {})
-  }, [activeChannel, blockedUsers, isOpen])
+  }, [activeChannel, activeCharacterName, blockedUsers, isOpen, username])
 
   useEffect(() => {
     loadMessages()
     pollRef.current = setInterval(loadMessages, 3000)
-    return () => { if (pollRef.current) clearInterval(pollRef.current) }
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current)
+    }
   }, [loadMessages])
 
   useEffect(() => {
@@ -240,6 +441,7 @@ function ChatWidget({
       body: JSON.stringify({ message: input, channel: activeChannel }),
     })
     setInput('')
+    setMentionQuery(null)
     loadMessages()
   }
 
@@ -298,11 +500,11 @@ function ChatWidget({
   }
 
   const toggleBlockedUser = (characterName: string) => {
-    setBlockedUsers((current) => (
+    setBlockedUsers((current) =>
       current.includes(characterName)
         ? current.filter((entry) => entry !== characterName)
         : [...current, characterName]
-    ))
+    )
 
     const isBlocked = blockedUsers.includes(characterName)
     setFeedback({
@@ -370,9 +572,53 @@ function ChatWidget({
     return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
   }
 
-  const visibleMessages = messages.filter((msg) => (
-    msg.characterName === '[SYSTEM]' || !blockedUsers.includes(msg.characterName)
-  ))
+  const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const nextValue = event.target.value
+    setInput(nextValue)
+    syncMentionQuery(nextValue, event.target.selectionStart)
+  }
+
+  const handleInputSelect = (event: React.SyntheticEvent<HTMLInputElement>) => {
+    syncMentionQuery(event.currentTarget.value, event.currentTarget.selectionStart)
+  }
+
+  const handleInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (mentionSuggestions.length === 0) {
+      if (event.key === 'Escape') {
+        setMentionQuery(null)
+      }
+      return
+    }
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault()
+      setSelectedMentionIndex((current) => (current + 1) % mentionSuggestions.length)
+      return
+    }
+
+    if (event.key === 'ArrowUp') {
+      event.preventDefault()
+      setSelectedMentionIndex(
+        (current) => (current - 1 + mentionSuggestions.length) % mentionSuggestions.length
+      )
+      return
+    }
+
+    if (event.key === 'Enter' || event.key === 'Tab') {
+      event.preventDefault()
+      insertMention(mentionSuggestions[selectedMentionIndex] || mentionSuggestions[0])
+      return
+    }
+
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      setMentionQuery(null)
+    }
+  }
+
+  const visibleMessages = messages.filter(
+    (msg) => msg.characterName === '[SYSTEM]' || !blockedUsers.includes(msg.characterName)
+  )
 
   return (
     <>
@@ -428,7 +674,10 @@ function ChatWidget({
               {channels.map((ch) => (
                 <button
                   key={ch.name}
-                  onClick={() => { setActiveChannel(ch.name); setShowChannelMenu(false) }}
+                  onClick={() => {
+                    setActiveChannel(ch.name)
+                    setShowChannelMenu(false)
+                  }}
                   className={`w-full text-left px-2 py-1 rounded text-[10px] transition-all ${
                     activeChannel === ch.name
                       ? ch.name === partyChannel
@@ -438,18 +687,26 @@ function ChatWidget({
                   }`}
                 >
                   {ch.name === partyChannel ? '👥 GROUPE' : `#${ch.name}`}
-                  {!ch.isPublic && ch.name !== partyChannel && <span className="text-cyber-yellow ml-1">🔒</span>}
+                  {!ch.isPublic && ch.name !== partyChannel && (
+                    <span className="text-cyber-yellow ml-1">🔒</span>
+                  )}
                 </button>
               ))}
               <div className="flex gap-1 pt-1 border-t border-gray-800">
                 <button
-                  onClick={() => { setShowCreateChannel(true); setShowChannelMenu(false) }}
+                  onClick={() => {
+                    setShowCreateChannel(true)
+                    setShowChannelMenu(false)
+                  }}
                   className="flex-1 text-[9px] px-1 py-1 rounded border border-cyber-green/20 text-cyber-green hover:bg-cyber-green/10"
                 >
                   + CREER
                 </button>
                 <button
-                  onClick={() => { setShowJoin(true); setShowChannelMenu(false) }}
+                  onClick={() => {
+                    setShowJoin(true)
+                    setShowChannelMenu(false)
+                  }}
                   className="flex-1 text-[9px] px-1 py-1 rounded border border-cyber-blue/20 text-cyber-blue hover:bg-cyber-blue/10"
                 >
                   REJOINDRE
@@ -460,12 +717,17 @@ function ChatWidget({
 
           {/* Create Channel Form */}
           {showCreateChannel && (
-            <form onSubmit={handleCreateChannel} className="bg-cyber-dark border-b border-gray-800 p-2 space-y-1.5 shrink-0">
+            <form
+              onSubmit={handleCreateChannel}
+              className="bg-cyber-dark border-b border-gray-800 p-2 space-y-1.5 shrink-0"
+            >
               <div className="text-[9px] text-gray-500 uppercase">Creer un salon</div>
               <input
                 type="text"
                 value={newChannelName}
-                onChange={(e) => setNewChannelName(e.target.value.toLowerCase().replace(/[^a-z0-9-_]/g, ''))}
+                onChange={(e) =>
+                  setNewChannelName(e.target.value.toLowerCase().replace(/[^a-z0-9-_]/g, ''))
+                }
                 placeholder="nom-du-salon"
                 maxLength={30}
                 className="w-full bg-cyber-black border border-gray-800 rounded px-2 py-1 text-[10px] text-white focus:border-cyber-green/50 focus:outline-none"
@@ -489,15 +751,29 @@ function ChatWidget({
                 )}
               </div>
               <div className="flex gap-1">
-                <button type="submit" className="text-[9px] px-2 py-1 rounded border border-cyber-green/30 text-cyber-green hover:bg-cyber-green/10">OK</button>
-                <button type="button" onClick={() => setShowCreateChannel(false)} className="text-[9px] px-2 py-1 text-gray-600">Annuler</button>
+                <button
+                  type="submit"
+                  className="text-[9px] px-2 py-1 rounded border border-cyber-green/30 text-cyber-green hover:bg-cyber-green/10"
+                >
+                  OK
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowCreateChannel(false)}
+                  className="text-[9px] px-2 py-1 text-gray-600"
+                >
+                  Annuler
+                </button>
               </div>
             </form>
           )}
 
           {/* Join Channel Form */}
           {showJoin && (
-            <form onSubmit={handleJoinChannel} className="bg-cyber-dark border-b border-gray-800 p-2 space-y-1.5 shrink-0">
+            <form
+              onSubmit={handleJoinChannel}
+              className="bg-cyber-dark border-b border-gray-800 p-2 space-y-1.5 shrink-0"
+            >
               <div className="text-[9px] text-gray-500 uppercase">Rejoindre un salon prive</div>
               <input
                 type="text"
@@ -514,42 +790,60 @@ function ChatWidget({
                 className="w-full bg-cyber-black border border-gray-800 rounded px-2 py-1 text-[10px] text-white focus:outline-none"
               />
               <div className="flex gap-1">
-                <button type="submit" className="text-[9px] px-2 py-1 rounded border border-cyber-blue/30 text-cyber-blue hover:bg-cyber-blue/10">REJOINDRE</button>
-                <button type="button" onClick={() => setShowJoin(false)} className="text-[9px] px-2 py-1 text-gray-600">Annuler</button>
+                <button
+                  type="submit"
+                  className="text-[9px] px-2 py-1 rounded border border-cyber-blue/30 text-cyber-blue hover:bg-cyber-blue/10"
+                >
+                  REJOINDRE
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowJoin(false)}
+                  className="text-[9px] px-2 py-1 text-gray-600"
+                >
+                  Annuler
+                </button>
               </div>
             </form>
           )}
 
           {feedback && (
-            <div className={`border-b px-3 py-2 text-[10px] uppercase tracking-widest shrink-0 ${
-              feedback.type === 'success'
-                ? 'border-cyber-green/20 bg-cyber-green/10 text-cyber-green'
-                : feedback.type === 'error'
-                  ? 'border-cyber-red/20 bg-cyber-red/10 text-cyber-red'
-                  : 'border-cyber-blue/20 bg-cyber-blue/10 text-cyber-blue'
-            }`}>
+            <div
+              className={`border-b px-3 py-2 text-[10px] uppercase tracking-widest shrink-0 ${
+                feedback.type === 'success'
+                  ? 'border-cyber-green/20 bg-cyber-green/10 text-cyber-green'
+                  : feedback.type === 'error'
+                    ? 'border-cyber-red/20 bg-cyber-red/10 text-cyber-red'
+                    : 'border-cyber-blue/20 bg-cyber-blue/10 text-cyber-blue'
+              }`}
+            >
               {feedback.message}
             </div>
           )}
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-3 font-mono space-y-0.5" style={{ fontSize: '11px' }}>
+          <div
+            className="flex-1 overflow-y-auto p-3 font-mono space-y-0.5"
+            style={{ fontSize: '11px' }}
+          >
             {visibleMessages.length === 0 ? (
               <div className="text-gray-700 text-center py-10 text-[10px]">
                 &gt; En attente de transmission..._
               </div>
             ) : (
               visibleMessages.map((msg) => (
-                <div key={msg.id} className={`flex gap-1.5 px-1 rounded ${msg.characterName === '[SYSTEM]' ? 'bg-cyber-yellow/5' : 'hover:bg-cyber-green/5'}`}>
+                <div
+                  key={msg.id}
+                  className={`flex gap-1.5 px-1 rounded ${msg.characterName === '[SYSTEM]' ? 'bg-cyber-yellow/5' : 'hover:bg-cyber-green/5'}`}
+                >
                   <span className="text-gray-700 shrink-0">[{formatTime(msg.createdAt)}]</span>
                   {msg.characterName === '[SYSTEM]' ? (
                     <span className="font-bold shrink-0 text-cyber-yellow">
                       {msg.characterName}:
                     </span>
-                  ) : msg.characterName === activeCharacterName || msg.characterName === username ? (
-                    <span className="font-bold shrink-0 text-cyber-blue">
-                      {msg.characterName}:
-                    </span>
+                  ) : msg.characterName === activeCharacterName ||
+                    msg.characterName === username ? (
+                    <span className="font-bold shrink-0 text-cyber-blue">{msg.characterName}:</span>
                   ) : (
                     <button
                       type="button"
@@ -563,7 +857,11 @@ function ChatWidget({
                       {msg.characterName}:
                     </button>
                   )}
-                  <span className={`break-all ${msg.characterName === '[SYSTEM]' ? 'text-cyber-yellow/80 italic' : 'text-gray-300'}`}>{msg.message}</span>
+                  <span
+                    className={`break-all ${msg.characterName === '[SYSTEM]' ? 'text-cyber-yellow/80 italic' : 'text-gray-300'}`}
+                  >
+                    {msg.message}
+                  </span>
                 </div>
               ))
             )}
@@ -571,11 +869,52 @@ function ChatWidget({
           </div>
 
           {/* Input */}
-          <form onSubmit={handleSend} className="border-t border-cyber-green/20 p-2 flex gap-2 shrink-0">
+          <form
+            onSubmit={handleSend}
+            className="relative border-t border-cyber-green/20 p-2 flex gap-2 shrink-0"
+          >
+            {mentionQuery && (
+              <div className="absolute bottom-full left-2 right-2 mb-2 overflow-hidden rounded-lg border border-cyber-green/20 bg-cyber-black/95 shadow-2xl backdrop-blur">
+                <div className="border-b border-cyber-green/10 px-3 py-2 text-[9px] uppercase tracking-[0.3em] text-gray-500">
+                  Joueurs en ligne
+                </div>
+                {mentionSuggestions.length > 0 ? (
+                  <div className="max-h-44 overflow-y-auto py-1">
+                    {mentionSuggestions.map((playerName, index) => (
+                      <button
+                        key={playerName}
+                        type="button"
+                        onMouseDown={(event) => event.preventDefault()}
+                        onClick={() => insertMention(playerName)}
+                        className={`flex w-full items-center justify-between px-3 py-2 text-left text-[11px] transition ${
+                          index === selectedMentionIndex
+                            ? 'bg-cyber-green/10 text-cyber-green'
+                            : 'text-gray-300 hover:bg-cyber-green/5 hover:text-white'
+                        }`}
+                      >
+                        <span>@{playerName}</span>
+                        <span className="text-[9px] uppercase tracking-widest text-gray-600">
+                          Online
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="px-3 py-3 text-[10px] uppercase tracking-widest text-gray-600">
+                    Aucun joueur en ligne ne correspond.
+                  </div>
+                )}
+              </div>
+            )}
             <input
+              ref={inputRef}
               type="text"
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={handleInputChange}
+              onClick={handleInputSelect}
+              onKeyUp={handleInputSelect}
+              onSelect={handleInputSelect}
+              onKeyDown={handleInputKeyDown}
               maxLength={500}
               placeholder={`Message dans ${activeChannel === partyChannel ? 'le groupe' : `#${activeChannel}`}...`}
               className="flex-1 bg-cyber-dark border border-gray-800 rounded px-2 py-1.5 text-[11px] text-white font-mono focus:border-cyber-green/30 focus:outline-none placeholder-gray-800"

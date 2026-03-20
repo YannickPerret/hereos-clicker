@@ -10,15 +10,18 @@ const ROLE_COLORS: Record<string, string> = {
 }
 
 export default function GameLayout({ children }: { children: ReactNode }) {
-  const { auth } = usePage().props as any
+  const { auth, blackMarket } = usePage().props as any
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const isStaff = auth?.user?.role === 'admin' || auth?.user?.role === 'moderator'
   const roleColor = ROLE_COLORS[auth?.user?.role] || ROLE_COLORS.user
   const roleLabel = auth?.user?.roleLabel || 'RUNNER'
+  const blackMarketMinLevel = Number(blackMarket?.minLevel || 12)
+  const hasBlackMarketAccess = Number(auth?.activeCharacterLevel || 0) >= blackMarketMinLevel
   const navLinks = [
     { href: '/play', label: 'CLICKER' },
     { href: '/inventory', label: 'INVENTAIRE' },
     { href: '/shop', label: 'SHOP' },
+    ...(hasBlackMarketAccess ? [{ href: '/black-market', label: 'MARCHE NOIR' }] : []),
     { href: '/talents', label: 'TALENTS' },
     { href: '/companions', label: 'DRONES' },
     { href: '/party', label: 'GROUPE' },

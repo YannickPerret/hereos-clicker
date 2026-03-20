@@ -4,20 +4,27 @@ import ChatMessage from '#models/chat_message'
 import ChatChannel from '#models/chat_channel'
 import PartyMember from '#models/party_member'
 import transmit from '@adonisjs/transmit/services/main'
+import ChatPresenceService from '#services/chat_presence_service'
 
 export default class ChatController {
+  private async resolveCurrentChatIdentity(userId: number, fallbackName: string) {
+    const character = await Character.query().where('userId', userId).first()
+
+    return character?.name || fallbackName
+  }
+
   /** API: get channels list */
   async channels({ response }: HttpContext) {
-    const channels = await ChatChannel.query()
-      .where('isPublic', true)
-      .orderBy('createdAt', 'asc')
+    const channels = await ChatChannel.query().where('isPublic', true).orderBy('createdAt', 'asc')
 
-    return response.json(channels.map((c) => ({
-      id: c.id,
-      name: c.name,
-      label: c.label,
-      isPublic: c.isPublic,
-    })))
+    return response.json(
+      channels.map((c) => ({
+        id: c.id,
+        name: c.name,
+        label: c.label,
+        isPublic: c.isPublic,
+      }))
+    )
   }
 
   /** API: get messages for a channel */
@@ -31,11 +38,26 @@ export default class ChatController {
     return response.json(messages.reverse().map((m) => m.serialize()))
   }
 
+  /** API: lightweight presence heartbeat */
+  async presence({ request, auth, response }: HttpContext) {
+    const requestedName = request.input('characterName', '').trim()
+    const fallbackName = auth.user!.username
+    const currentName =
+      requestedName || (await this.resolveCurrentChatIdentity(auth.user!.id, fallbackName))
+
+    ChatPresenceService.touch(auth.user!.id, currentName)
+
+    return response.json({ ok: true })
+  }
+
+  /** API: get online players for mention completion */
+  async online({ auth, response }: HttpContext) {
+    return response.json(ChatPresenceService.getOnlineCharacterNames(auth.user!.id))
+  }
+
   /** API: send a message */
   async send({ request, auth, response }: HttpContext) {
-    const character = await Character.query()
-      .where('userId', auth.user!.id)
-      .first()
+    const character = await Character.query().where('userId', auth.user!.id).first()
 
     const message = request.input('message', '').trim()
     const channel = request.input('channel', 'global')
@@ -55,10 +77,10 @@ export default class ChatController {
       // Party channels: check membership
       if (ch.name.startsWith('party-')) {
         const partyId = Number.parseInt(ch.name.replace('party-', ''), 10)
-        const character = await Character.query().where('userId', auth.user!.id).first()
-        const isMember = character
+        const currentCharacter = await Character.query().where('userId', auth.user!.id).first()
+        const isMember = currentCharacter
           ? await PartyMember.query()
-              .where('characterId', character.id)
+              .where('characterId', currentCharacter.id)
               .where('partyId', partyId)
               .first()
           : null
@@ -74,6 +96,7 @@ export default class ChatController {
     }
 
     const senderName = character?.name || auth.user!.username
+    ChatPresenceService.touch(auth.user!.id, senderName)
 
     const chatMsg = await ChatMessage.create({
       userId: auth.user!.id,
@@ -98,13 +121,19 @@ export default class ChatController {
 
   /** API: create a channel */
   async createChannel({ request, auth, response }: HttpContext) {
-    const name = request.input('name', '').trim().toLowerCase().replace(/[^a-z0-9-_]/g, '')
+    const name = request
+      .input('name', '')
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9-_]/g, '')
     const label = request.input('label', '').trim()
     const isPublic = request.input('isPublic', true)
     const password = request.input('password', '')
 
     if (!name || name.length < 2 || name.length > 30) {
-      return response.badRequest({ error: 'Nom de salon invalide (2-30 caracteres, lettres/chiffres)' })
+      return response.badRequest({
+        error: 'Nom de salon invalide (2-30 caracteres, lettres/chiffres)',
+      })
     }
 
     const existing = await ChatChannel.findBy('name', name)

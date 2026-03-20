@@ -1,5 +1,6 @@
 import { defineConfig } from '@adonisjs/inertia'
 import Character from '#models/character'
+import BlackMarketService from '#services/black_market_service'
 import PartyMember from '#models/party_member'
 
 export default defineConfig({
@@ -24,6 +25,7 @@ export default defineConfig({
             roleLabel: user.role.label,
           },
           activeCharacterName: activeCharacter?.name || null,
+          activeCharacterLevel: activeCharacter?.level || null,
         }
       }
       return { user: null }
@@ -43,6 +45,17 @@ export default defineConfig({
         return `party-${membership.party.id}`
       } catch {
         return null
+      }
+    },
+    blackMarket: async () => {
+      try {
+        return {
+          minLevel: await BlackMarketService.getMinLevel(),
+        }
+      } catch {
+        return {
+          minLevel: 12,
+        }
       }
     },
   },

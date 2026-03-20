@@ -78,6 +78,13 @@ export default function AdminDashboard({ currentUser, stats, topCredits }: Props
             <h3 className="text-sm font-bold text-cyber-yellow tracking-widest mb-1">RECOMPENSES JOURNALIERES</h3>
             <p className="text-xs text-gray-600">Configuration du streak quotidien et des gains</p>
           </Link>
+          <Link
+            href="/admin/black-market"
+            className="bg-cyber-dark border border-cyber-red/30 rounded-lg p-6 hover:border-cyber-red/60 hover:bg-cyber-red/5 transition-all"
+          >
+            <h3 className="text-sm font-bold text-cyber-red tracking-widest mb-1">MARCHE NOIR</h3>
+            <p className="text-xs text-gray-600">Niveau mini, rotation, catalogue fixers, cleaners</p>
+          </Link>
         </div>
 
         {/* Top Credits */}

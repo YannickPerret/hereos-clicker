@@ -4,11 +4,15 @@ import Character from '#models/character'
 import Role from '#models/role'
 import Item from '#models/item'
 import InventoryItem from '#models/inventory_item'
+import BlackMarketCatalogEntry from '#models/black_market_catalog_entry'
+import BlackMarketCleaner from '#models/black_market_cleaner'
+import BlackMarketSetting from '#models/black_market_setting'
 import ShopListing from '#models/shop_listing'
 import Enemy from '#models/enemy'
 import EnemyLootTable from '#models/enemy_loot_table'
 import SystemMessage from '#models/system_message'
 import DailyRewardConfig from '#models/daily_reward_config'
+import BlackMarketService from '#services/black_market_service'
 
 export default class AdminController {
   async dashboard({ inertia, auth }: HttpContext) {
@@ -638,5 +642,135 @@ export default class AdminController {
 
     session.flash('success', `Recompense J${dayNumber} supprimee`)
     return response.redirect('/admin/daily-rewards')
+  }
+
+  // ── Black Market ──
+
+  async blackMarket({ inertia }: HttpContext) {
+    const [settings, catalog, cleaners, items] = await Promise.all([
+      BlackMarketSetting.query().orderBy('key', 'asc'),
+      BlackMarketCatalogEntry.query().preload('item').orderBy('vendorKey', 'asc').orderBy('sortOrder', 'asc').orderBy('id', 'asc'),
+      BlackMarketCleaner.query().orderBy('sortOrder', 'asc').orderBy('id', 'asc'),
+      Item.query().orderBy('type', 'asc').orderBy('rarity', 'asc').orderBy('name', 'asc'),
+    ])
+
+    const settingsMap = new Map(settings.map((setting) => [setting.key, setting.value]))
+
+    return inertia.render('admin/black_market', {
+      settings: {
+        minLevel: Number(settingsMap.get('min_level') || await BlackMarketService.getMinLevel()),
+        rotationHours: Number(settingsMap.get('rotation_hours') || await BlackMarketService.getRotationHours()),
+      },
+      vendors: Object.entries(BlackMarketService.getVendorDefinitions()).map(([key, value]) => ({
+        key,
+        ...value,
+      })),
+      catalog: catalog.map((entry) => ({
+        ...entry.serialize(),
+        item: entry.item.serialize(),
+      })),
+      cleaners: cleaners.map((cleaner) => cleaner.serialize()),
+      items: items.map((item) => item.serialize()),
+    })
+  }
+
+  async updateBlackMarketSettings({ request, response, session }: HttpContext) {
+    const minLevel = Math.max(1, Number(request.input('minLevel', 12)) || 12)
+    const rotationHours = Math.max(1, Number(request.input('rotationHours', 12)) || 12)
+
+    await BlackMarketSetting.updateOrCreate({ key: 'min_level' }, { value: String(minLevel) })
+    await BlackMarketSetting.updateOrCreate({ key: 'rotation_hours' }, { value: String(rotationHours) })
+
+    session.flash('success', 'Configuration globale du marche noir mise a jour')
+    return response.redirect('/admin/black-market')
+  }
+
+  async createBlackMarketCatalogEntry({ request, response, session }: HttpContext) {
+    const itemId = Number(request.input('itemId'))
+    const vendorKey = String(request.input('vendorKey', 'ghostline'))
+
+    await BlackMarketCatalogEntry.create({
+      vendorKey,
+      itemId,
+      basePrice: Math.max(1000, Number(request.input('basePrice', 1000)) || 1000),
+      stock: Math.max(1, Number(request.input('stock', 1)) || 1),
+      heatValue: Math.max(0, Number(request.input('heatValue', 0)) || 0),
+      reputationRequired: Math.max(0, Number(request.input('reputationRequired', 0)) || 0),
+      requiredSpec: request.input('requiredSpec') || null,
+      isFeatured: request.input('isFeatured') === 'true' || request.input('isFeatured') === true,
+      isActive: request.input('isActive') === 'true' || request.input('isActive') === true,
+      sortOrder: Math.max(0, Number(request.input('sortOrder', 0)) || 0),
+    })
+
+    session.flash('success', 'Entree du catalogue noir ajoutee')
+    return response.redirect('/admin/black-market')
+  }
+
+  async updateBlackMarketCatalogEntry({ params, request, response, session }: HttpContext) {
+    const entry = await BlackMarketCatalogEntry.findOrFail(params.id)
+
+    entry.vendorKey = String(request.input('vendorKey', entry.vendorKey))
+    entry.itemId = Number(request.input('itemId', entry.itemId)) || entry.itemId
+    entry.basePrice = Math.max(1000, Number(request.input('basePrice', entry.basePrice)) || entry.basePrice)
+    entry.stock = Math.max(1, Number(request.input('stock', entry.stock)) || entry.stock)
+    entry.heatValue = Math.max(0, Number(request.input('heatValue', entry.heatValue)) || entry.heatValue)
+    entry.reputationRequired = Math.max(0, Number(request.input('reputationRequired', entry.reputationRequired)) || entry.reputationRequired)
+    entry.requiredSpec = request.input('requiredSpec') || null
+    entry.isFeatured = request.input('isFeatured') === 'true' || request.input('isFeatured') === true
+    entry.isActive = request.input('isActive') === 'true' || request.input('isActive') === true
+    entry.sortOrder = Math.max(0, Number(request.input('sortOrder', entry.sortOrder)) || entry.sortOrder)
+
+    await entry.save()
+
+    session.flash('success', 'Entree du catalogue noir mise a jour')
+    return response.redirect('/admin/black-market')
+  }
+
+  async deleteBlackMarketCatalogEntry({ params, response, session }: HttpContext) {
+    const entry = await BlackMarketCatalogEntry.findOrFail(params.id)
+    await entry.delete()
+
+    session.flash('success', 'Entree du catalogue noir supprimee')
+    return response.redirect('/admin/black-market')
+  }
+
+  async createBlackMarketCleaner({ request, response, session }: HttpContext) {
+    await BlackMarketCleaner.create({
+      key: String(request.input('key', '')).trim(),
+      name: String(request.input('name', '')).trim(),
+      description: String(request.input('description', '')).trim(),
+      basePrice: Math.max(1000, Number(request.input('basePrice', 1000)) || 1000),
+      heatReduction: Math.max(1, Number(request.input('heatReduction', 1)) || 1),
+      isActive: request.input('isActive') === 'true' || request.input('isActive') === true,
+      sortOrder: Math.max(0, Number(request.input('sortOrder', 0)) || 0),
+    })
+
+    session.flash('success', 'Cleaner du marche noir ajoute')
+    return response.redirect('/admin/black-market')
+  }
+
+  async updateBlackMarketCleaner({ params, request, response, session }: HttpContext) {
+    const cleaner = await BlackMarketCleaner.findOrFail(params.id)
+
+    cleaner.key = String(request.input('key', cleaner.key)).trim()
+    cleaner.name = String(request.input('name', cleaner.name)).trim()
+    cleaner.description = String(request.input('description', cleaner.description)).trim()
+    cleaner.basePrice = Math.max(1000, Number(request.input('basePrice', cleaner.basePrice)) || cleaner.basePrice)
+    cleaner.heatReduction = Math.max(1, Number(request.input('heatReduction', cleaner.heatReduction)) || cleaner.heatReduction)
+    cleaner.isActive = request.input('isActive') === 'true' || request.input('isActive') === true
+    cleaner.sortOrder = Math.max(0, Number(request.input('sortOrder', cleaner.sortOrder)) || cleaner.sortOrder)
+
+    await cleaner.save()
+
+    session.flash('success', 'Cleaner du marche noir mis a jour')
+    return response.redirect('/admin/black-market')
+  }
+
+  async deleteBlackMarketCleaner({ params, response, session }: HttpContext) {
+    const cleaner = await BlackMarketCleaner.findOrFail(params.id)
+    await cleaner.delete()
+
+    session.flash('success', 'Cleaner du marche noir supprime')
+    return response.redirect('/admin/black-market')
   }
 }
