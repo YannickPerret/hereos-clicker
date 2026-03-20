@@ -457,8 +457,19 @@ export default class CombatService {
       .where('spec', character.chosenSpec)
       .where('tierRequired', '<=', maxTier)
       .orderBy('tierRequired', 'asc')
+      .orderBy('id', 'asc')
 
-    return skills
+    const uniqueSkills: CombatSkill[] = []
+    const seen = new Set<string>()
+
+    for (const skill of skills) {
+      const key = `${skill.spec}:${skill.name}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      uniqueSkills.push(skill)
+    }
+
+    return uniqueSkills
   }
 
   static async getCombatPreview(character: Character, enemy: Enemy | null, run: DungeonRun) {
