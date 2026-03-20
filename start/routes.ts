@@ -32,6 +32,7 @@ router.group(() => {
 
   // Play / Clicker
   router.get('/play', [PlayController, 'index'])
+  router.get('/play/leaderboard-state', [PlayController, 'leaderboardState'])
   router.post('/play/character', [PlayController, 'createCharacter'])
   router.post('/play/click', [PlayController, 'click'])
   router.post('/play/tick', [PlayController, 'autoTick'])

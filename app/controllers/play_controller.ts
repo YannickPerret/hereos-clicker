@@ -7,14 +7,20 @@ import PartyMember from '#models/party_member'
 import DungeonRun from '#models/dungeon_run'
 
 export default class PlayController {
-  async index({ inertia, auth }: HttpContext) {
-    const characters = await Character.query().where('userId', auth.user!.id)
-    const activeCharacter = characters[0] || null
-
+  private async getLeaderboardData() {
     const leaderboard = await Character.query()
       .orderBy('credits', 'desc')
       .limit(10)
       .select('id', 'name', 'credits', 'level', 'totalClicks')
+
+    return leaderboard.map((character) => character.serialize())
+  }
+
+  async index({ inertia, auth }: HttpContext) {
+    const characters = await Character.query().where('userId', auth.user!.id)
+    const activeCharacter = characters[0] || null
+
+    const leaderboard = await this.getLeaderboardData()
 
     let bonuses = { clickBonus: 0, attackBonus: 0, defenseBonus: 0 }
     let talentBonuses = {
@@ -163,5 +169,9 @@ export default class PlayController {
 
     const result = await ClickerService.tick(character)
     return response.json(result)
+  }
+
+  async leaderboardState({ response }: HttpContext) {
+    return response.json(await this.getLeaderboardData())
   }
 }

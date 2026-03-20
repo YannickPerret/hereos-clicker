@@ -84,6 +84,7 @@ function formatCredits(n: number): string {
 
 export default function Play({ characters, activeCharacter, leaderboard, equippedItems, bonuses, effectiveCpc, effectiveCps, offlineCredits, party }: Props) {
   const [char, setChar] = useState(activeCharacter)
+  const [liveLeaderboard, setLiveLeaderboard] = useState(leaderboard)
   const [particles, setParticles] = useState<{ id: number; x: number; y: number; value: number }[]>([])
   const [clickScale, setClickScale] = useState(1)
   const [showOffline, setShowOffline] = useState(offlineCredits > 0)
@@ -93,6 +94,9 @@ export default function Play({ characters, activeCharacter, leaderboard, equippe
   useEffect(() => {
     setChar(activeCharacter)
   }, [activeCharacter])
+  useEffect(() => {
+    setLiveLeaderboard(leaderboard)
+  }, [leaderboard])
   const pendingClicks = useRef(0)
   const batchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const particleId = useRef(0)
@@ -204,6 +208,27 @@ export default function Play({ characters, activeCharacter, leaderboard, equippe
   )
 
   useEffect(() => () => { sendBatch() }, [sendBatch])
+
+  useEffect(() => {
+    let active = true
+
+    const loadLeaderboard = async () => {
+      try {
+        const response = await fetch('/play/leaderboard-state')
+        if (!response.ok) return
+        const data = await response.json()
+        if (active) {
+          setLiveLeaderboard(data)
+        }
+      } catch {}
+    }
+
+    const interval = setInterval(loadLeaderboard, 15000)
+    return () => {
+      active = false
+      clearInterval(interval)
+    }
+  }, [])
 
   // No character
   if (!char && characters.length === 0) {
@@ -372,7 +397,7 @@ export default function Play({ characters, activeCharacter, leaderboard, equippe
               Top Runners
             </h3>
             <div className="space-y-2">
-              {leaderboard.map((player, i) => (
+              {liveLeaderboard.map((player, i) => (
                 <div
                   key={player.id}
                   className={`flex items-center justify-between p-2 rounded text-xs ${
@@ -388,7 +413,7 @@ export default function Play({ characters, activeCharacter, leaderboard, equippe
                   <span className="text-cyber-yellow">{formatCredits(player.credits)}</span>
                 </div>
               ))}
-              {leaderboard.length === 0 && (
+              {liveLeaderboard.length === 0 && (
                 <p className="text-gray-600 text-xs text-center">Aucun joueur</p>
               )}
             </div>

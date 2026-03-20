@@ -1,4 +1,5 @@
 import { router, usePage } from '@inertiajs/react'
+import { useState } from 'react'
 import GameLayout from '~/components/layout'
 
 interface Item {
@@ -76,6 +77,7 @@ const EFFECT_LABELS: Record<string, string> = {
 
 export default function Inventory({ character, inventory, equipBonuses, talentBonuses }: Props) {
   const { props } = usePage<{ errors?: { message?: string } }>()
+  const [useQuantities, setUseQuantities] = useState<Record<number, string>>({})
   const equipped = inventory.filter((i) => i.isEquipped)
   const backpack = inventory.filter((i) => !i.isEquipped)
   const groupedBackpack = TYPE_ORDER
@@ -86,6 +88,30 @@ export default function Inventory({ character, inventory, equipBonuses, talentBo
         .sort((a, b) => a.item.name.localeCompare(b.item.name)),
     }))
     .filter((group) => group.entries.length > 0)
+
+  const getUseQuantity = (inventoryId: number, maxQuantity: number) => {
+    const value = useQuantities[inventoryId] ?? '1'
+    const parsed = Number.parseInt(value, 10)
+    if (!Number.isFinite(parsed) || parsed <= 0) return 1
+    return Math.min(parsed, maxQuantity)
+  }
+
+  const setUseQuantity = (inventoryId: number, quantity: number, maxQuantity: number) => {
+    setUseQuantities((current) => ({
+      ...current,
+      [inventoryId]: String(Math.max(1, Math.min(Math.floor(quantity), maxQuantity))),
+    }))
+  }
+
+  const setUseQuantityInput = (inventoryId: number, value: string, maxQuantity: number) => {
+    if (value === '') {
+      setUseQuantities((current) => ({ ...current, [inventoryId]: '' }))
+      return
+    }
+
+    const parsed = Number.parseInt(value, 10)
+    setUseQuantity(inventoryId, Number.isFinite(parsed) ? parsed : 1, maxQuantity)
+  }
 
   return (
     <GameLayout>
@@ -188,50 +214,91 @@ export default function Inventory({ character, inventory, equipBonuses, talentBo
                   </div>
 
                   <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
-                    {group.entries.map((entry) => (
-                      <div
-                        key={entry.id}
-                        className={`border rounded-lg p-3 hover:scale-105 transition-transform ${RARITY_COLORS[entry.item.rarity]}`}
-                      >
-                        <div className="flex justify-between items-start mb-1">
-                          <span className={`text-xs font-bold ${RARITY_TEXT[entry.item.rarity]}`}>
-                            {entry.item.name}
-                          </span>
-                          {entry.quantity > 1 && (
-                            <span className="text-[10px] bg-cyber-black px-1.5 py-0.5 rounded text-gray-400">
-                              x{entry.quantity}
+                    {group.entries.map((entry) => {
+                      const canBulkUseUpgrade = entry.item.type === 'upgrade' && entry.quantity > 1
+                      const useQuantity = getUseQuantity(entry.id, entry.quantity)
+
+                      return (
+                        <div
+                          key={entry.id}
+                          className={`border rounded-lg p-3 hover:scale-105 transition-transform ${RARITY_COLORS[entry.item.rarity]}`}
+                        >
+                          <div className="flex justify-between items-start mb-1">
+                            <span className={`text-xs font-bold ${RARITY_TEXT[entry.item.rarity]}`}>
+                              {entry.item.name}
                             </span>
+                            {entry.quantity > 1 && (
+                              <span className="text-[10px] bg-cyber-black px-1.5 py-0.5 rounded text-gray-400">
+                                x{entry.quantity}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-gray-500 mb-2 line-clamp-2">{entry.item.description}</p>
+                          <div className="flex justify-between items-center text-[10px]">
+                            <span className="uppercase text-gray-600">{TYPE_LABELS[entry.item.type]}</span>
+                            {entry.item.effectType && (
+                              <span className="text-cyber-green">
+                                {EFFECT_LABELS[entry.item.effectType]}: +{entry.item.effectValue}
+                              </span>
+                            )}
+                          </div>
+
+                          {canBulkUseUpgrade && (
+                            <div className="mt-2">
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => setUseQuantity(entry.id, useQuantity - 1, entry.quantity)}
+                                  disabled={useQuantity <= 1}
+                                  className="h-8 w-8 rounded border border-gray-700 bg-cyber-black text-xs font-bold text-gray-300 transition hover:border-cyber-green/50 hover:text-cyber-green disabled:cursor-not-allowed disabled:opacity-40"
+                                >
+                                  -
+                                </button>
+                                <input
+                                  type="number"
+                                  min={1}
+                                  max={entry.quantity}
+                                  inputMode="numeric"
+                                  value={useQuantities[entry.id] ?? '1'}
+                                  onChange={(e) => setUseQuantityInput(entry.id, e.target.value, entry.quantity)}
+                                  className="h-8 flex-1 rounded border border-gray-800 bg-cyber-black px-2 text-center text-xs font-bold text-white focus:border-cyber-green/50 focus:outline-none"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => setUseQuantity(entry.id, useQuantity + 1, entry.quantity)}
+                                  disabled={useQuantity >= entry.quantity}
+                                  className="h-8 w-8 rounded border border-gray-700 bg-cyber-black text-xs font-bold text-gray-300 transition hover:border-cyber-green/50 hover:text-cyber-green disabled:cursor-not-allowed disabled:opacity-40"
+                                >
+                                  +
+                                </button>
+                              </div>
+                              <div className="mt-1 text-[10px] uppercase tracking-widest text-gray-600">
+                                Utiliser x{useQuantity}
+                              </div>
+                            </div>
                           )}
+
+                          <div className="flex gap-1 mt-2">
+                            {entry.item.type !== 'consumable' && entry.item.type !== 'upgrade' && (
+                              <button
+                                onClick={() => router.post(`/inventory/${entry.id}/equip`)}
+                                className="flex-1 text-[10px] py-1 bg-cyber-blue/10 border border-cyber-blue/30 text-cyber-blue rounded hover:bg-cyber-blue/20 transition-all uppercase"
+                              >
+                                Equiper
+                              </button>
+                            )}
+                            {(entry.item.type === 'consumable' || entry.item.type === 'upgrade') && (
+                              <button
+                                onClick={() => router.post(`/inventory/${entry.id}/use`, { quantity: canBulkUseUpgrade ? useQuantity : 1 })}
+                                className="flex-1 text-[10px] py-1 bg-cyber-green/10 border border-cyber-green/30 text-cyber-green rounded hover:bg-cyber-green/20 transition-all uppercase"
+                              >
+                                {canBulkUseUpgrade ? `Utiliser x${useQuantity}` : 'Utiliser'}
+                              </button>
+                            )}
+                          </div>
                         </div>
-                        <p className="text-[10px] text-gray-500 mb-2 line-clamp-2">{entry.item.description}</p>
-                        <div className="flex justify-between items-center text-[10px]">
-                          <span className="uppercase text-gray-600">{TYPE_LABELS[entry.item.type]}</span>
-                          {entry.item.effectType && (
-                            <span className="text-cyber-green">
-                              {EFFECT_LABELS[entry.item.effectType]}: +{entry.item.effectValue}
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex gap-1 mt-2">
-                          {entry.item.type !== 'consumable' && entry.item.type !== 'upgrade' && (
-                            <button
-                              onClick={() => router.post(`/inventory/${entry.id}/equip`)}
-                              className="flex-1 text-[10px] py-1 bg-cyber-blue/10 border border-cyber-blue/30 text-cyber-blue rounded hover:bg-cyber-blue/20 transition-all uppercase"
-                            >
-                              Equiper
-                            </button>
-                          )}
-                          {(entry.item.type === 'consumable' || entry.item.type === 'upgrade') && (
-                            <button
-                              onClick={() => router.post(`/inventory/${entry.id}/use`)}
-                              className="flex-1 text-[10px] py-1 bg-cyber-green/10 border border-cyber-green/30 text-cyber-green rounded hover:bg-cyber-green/20 transition-all uppercase"
-                            >
-                              Utiliser
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 </div>
               ))}
