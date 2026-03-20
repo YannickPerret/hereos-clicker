@@ -8,8 +8,18 @@ interface Player {
   totalClicks: number
 }
 
+interface PvpPlayer {
+  id: number
+  name: string
+  pvpRating: number
+  pvpWins: number
+  pvpLosses: number
+  level: number
+}
+
 interface Props {
   players: Player[]
+  pvpRankings: PvpPlayer[]
 }
 
 function formatNumber(n: number): string {
@@ -18,14 +28,14 @@ function formatNumber(n: number): string {
   return n.toLocaleString()
 }
 
-export default function Leaderboard({ players }: Props) {
+export default function Leaderboard({ players, pvpRankings }: Props) {
   return (
     <GameLayout>
-      <h1 className="text-2xl font-bold text-cyber-yellow tracking-widest mb-6 text-center">
-        CLASSEMENT GLOBAL
-      </h1>
+      <div className="max-w-5xl mx-auto space-y-8">
+        <h1 className="text-2xl font-bold text-cyber-yellow tracking-widest mb-6 text-center">
+          CLASSEMENT GLOBAL
+        </h1>
 
-      <div className="max-w-3xl mx-auto">
         {/* Top 3 */}
         {players.length >= 3 && (
           <div className="grid grid-cols-3 gap-4 mb-8">
@@ -90,6 +100,32 @@ export default function Leaderboard({ players }: Props) {
               )}
             </tbody>
           </table>
+        </div>
+
+        <div className="rounded-lg border border-cyber-yellow/20 bg-cyber-dark p-4">
+          <h2 className="mb-3 text-sm uppercase tracking-widest text-cyber-yellow">Classement PvP</h2>
+          <div className="space-y-1">
+            {pvpRankings.map((entry, index) => (
+              <div key={entry.id} className="flex items-center justify-between rounded bg-cyber-black/30 p-2 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className={`font-bold ${index === 0 ? 'text-cyber-yellow' : index === 1 ? 'text-gray-300' : index === 2 ? 'text-cyber-orange' : 'text-gray-600'}`}>
+                    #{index + 1}
+                  </span>
+                  <span className="text-white">{entry.name}</span>
+                  <span className="text-gray-700">LVL {entry.level}</span>
+                </div>
+                <div className="text-right">
+                  <div className="font-bold text-cyber-yellow">{entry.pvpRating}</div>
+                  <div className="text-[9px] text-gray-600">{entry.pvpWins}W / {entry.pvpLosses}L</div>
+                </div>
+              </div>
+            ))}
+            {pvpRankings.length === 0 && (
+              <div className="py-4 text-center text-xs text-gray-700">
+                Aucun classement PvP disponible
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </GameLayout>

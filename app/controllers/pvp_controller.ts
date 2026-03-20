@@ -64,11 +64,6 @@ export default class PvpController {
       })
     }
 
-    const rankings = await Character.query()
-      .orderBy('pvpRating', 'desc')
-      .limit(20)
-      .select('id', 'name', 'pvpRating', 'pvpWins', 'pvpLosses', 'level')
-
     const queueOverview = await PvpService.getQueueOverview(character)
 
     return inertia.render('pvp/index', {
@@ -82,7 +77,6 @@ export default class PvpController {
           }
         : null,
       recentMatches: matchData,
-      rankings: rankings.map((r) => r.serialize()),
       queueOverview,
     })
   }

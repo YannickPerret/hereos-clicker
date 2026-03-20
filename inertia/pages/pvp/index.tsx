@@ -11,15 +11,6 @@ interface Match {
   queueMode: 'solo' | 'duo' | 'trio'
 }
 
-interface Ranking {
-  id: number
-  name: string
-  pvpRating: number
-  pvpWins: number
-  pvpLosses: number
-  level: number
-}
-
 interface QueueCard {
   mode: 'solo' | 'duo' | 'trio'
   label: string
@@ -51,7 +42,6 @@ interface Props {
     teamSize: number
   } | null
   recentMatches: Match[]
-  rankings: Ranking[]
   queueOverview: QueueCard[]
 }
 
@@ -60,7 +50,7 @@ const formatEta = (seconds: number) => {
   return `~${Math.ceil(seconds / 60)} min`
 }
 
-export default function PvpArena({ character, activeMatch, recentMatches, rankings, queueOverview }: Props) {
+export default function PvpArena({ character, activeMatch, recentMatches, queueOverview }: Props) {
   const { props } = usePage<{ errors?: { message?: string }; success?: string }>()
 
   useEffect(() => {
@@ -210,27 +200,6 @@ export default function PvpArena({ character, activeMatch, recentMatches, rankin
           </div>
 
           <div className="space-y-6 lg:col-span-1">
-            <div className="rounded-lg border border-cyber-yellow/20 bg-cyber-dark p-4">
-              <h3 className="mb-3 text-sm uppercase tracking-widest text-cyber-yellow">Classement PvP</h3>
-              <div className="space-y-1">
-                {rankings.map((entry, index) => (
-                  <div key={entry.id} className={`flex items-center justify-between rounded p-2 text-xs ${entry.id === character.id ? 'border border-cyber-blue/30 bg-cyber-blue/10' : 'bg-cyber-black/30'}`}>
-                    <div className="flex items-center gap-2">
-                      <span className={`font-bold ${index === 0 ? 'text-cyber-yellow' : index === 1 ? 'text-gray-300' : index === 2 ? 'text-cyber-orange' : 'text-gray-600'}`}>
-                        #{index + 1}
-                      </span>
-                      <span className="text-white">{entry.name}</span>
-                      <span className="text-gray-700">LVL {entry.level}</span>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-bold text-cyber-yellow">{entry.pvpRating}</div>
-                      <div className="text-[9px] text-gray-600">{entry.pvpWins}W / {entry.pvpLosses}L</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
             <div className="rounded-lg border border-gray-800 bg-cyber-dark p-4">
               <h3 className="mb-3 text-sm uppercase tracking-widest text-gray-400">Historique</h3>
               <div className="space-y-1">

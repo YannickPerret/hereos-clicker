@@ -272,8 +272,14 @@ export default class DungeonController {
       .limit(50)
       .select('id', 'name', 'credits', 'level', 'totalClicks')
 
+    const pvpRankings = await Character.query()
+      .orderBy('pvpRating', 'desc')
+      .limit(20)
+      .select('id', 'name', 'pvpRating', 'pvpWins', 'pvpLosses', 'level')
+
     return inertia.render('leaderboard/index', {
       players: topPlayers.map((p) => p.serialize()),
+      pvpRankings: pvpRankings.map((player) => player.serialize()),
     })
   }
 }
