@@ -145,6 +145,12 @@ router
     router.post('/admin/inventory/:inventoryId/remove', [AdminController, 'removeItem'])
     router.post('/admin/inventory/:inventoryId/quantity', [AdminController, 'updateItemQuantity'])
 
+    // Seasons
+    router.get('/admin/seasons', [AdminController, 'seasons'])
+    router.post('/admin/seasons/create', [AdminController, 'createSeason'])
+    router.post('/admin/seasons/:id/update', [AdminController, 'updateSeason'])
+    router.post('/admin/seasons/:id/delete', [AdminController, 'deleteSeason'])
+
     // Bug Reports (admin)
     router.get('/admin/reports', [BugReportController, 'adminIndex'])
     router.post('/admin/reports/:id/update', [BugReportController, 'adminUpdate'])

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { usePage } from '@inertiajs/react'
 import GameLayout from '~/components/layout'
 
 interface Player {
@@ -50,6 +51,24 @@ export default function Leaderboard({
   const [pvpHasMore, setPvpHasMore] = useState(initialPvpHasMore)
   const [pvpNextOffset, setPvpNextOffset] = useState(initialPvpNextOffset)
   const [pvpLoading, setPvpLoading] = useState(false)
+  const { props } = usePage<{
+    season?: {
+      active: {
+        id: number
+        name: string
+        theme: string
+        campaignTitle: string | null
+        storyIntro: string | null
+        startsAt: string | null
+        endsAt: string | null
+        isRankedPvpEnabled: boolean
+        isWorldBossEnabled: boolean
+        isPlayerMarketEnabled: boolean
+        isBlackMarketBonusEnabled: boolean
+      } | null
+    }
+  }>()
+  const activeSeason = props.season?.active ?? null
 
   const globalSentinelRef = useRef<HTMLDivElement | null>(null)
   const pvpSentinelRef = useRef<HTMLDivElement | null>(null)
@@ -130,6 +149,37 @@ export default function Leaderboard({
         <h1 className="mb-6 text-center text-2xl font-bold tracking-widest text-cyber-yellow">
           CLASSEMENTS
         </h1>
+
+        {activeSeason && (
+          <div className="mb-6 rounded-lg border border-cyber-yellow/20 bg-cyber-dark p-4">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <div className="text-[10px] uppercase tracking-[0.3em] text-cyber-yellow">
+                  Classement de saison
+                </div>
+                <div className="mt-1 text-lg font-bold text-white">{activeSeason.name}</div>
+                <div className="text-xs uppercase tracking-widest text-gray-500">
+                  {activeSeason.campaignTitle || activeSeason.theme}
+                </div>
+                {activeSeason.storyIntro && (
+                  <p className="mt-2 max-w-3xl text-sm text-gray-300">{activeSeason.storyIntro}</p>
+                )}
+              </div>
+              <div className="space-y-2 text-right">
+                <div className="text-[10px] uppercase tracking-widest text-gray-500">
+                  {activeSeason.startsAt ? new Date(activeSeason.startsAt).toLocaleString() : 'date libre'}
+                  {'  ->  '}
+                  {activeSeason.endsAt ? new Date(activeSeason.endsAt).toLocaleString() : 'sans fin'}
+                </div>
+                <div className="flex flex-wrap justify-end gap-2 text-[10px] uppercase tracking-widest">
+                  {activeSeason.isRankedPvpEnabled && <span className="rounded border border-cyber-yellow/40 px-2 py-1 text-cyber-yellow">Ladder PvP</span>}
+                  {activeSeason.isWorldBossEnabled && <span className="rounded border border-cyber-green/40 px-2 py-1 text-cyber-green">Boss mondial</span>}
+                  {activeSeason.isPlayerMarketEnabled && <span className="rounded border border-cyber-blue/40 px-2 py-1 text-cyber-blue">Marche joueur</span>}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
           <section className="rounded-lg border border-cyber-blue/20 bg-cyber-dark p-4">

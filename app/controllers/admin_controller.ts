@@ -12,7 +12,9 @@ import Enemy from '#models/enemy'
 import EnemyLootTable from '#models/enemy_loot_table'
 import SystemMessage from '#models/system_message'
 import DailyRewardConfig from '#models/daily_reward_config'
+import Season from '#models/season'
 import BlackMarketService from '#services/black_market_service'
+import SeasonService from '#services/season_service'
 
 export default class AdminController {
   async dashboard({ inertia, auth }: HttpContext) {
@@ -20,6 +22,17 @@ export default class AdminController {
     const totalCharacters = await Character.query().count('* as total')
     const totalItems = await Item.query().count('* as total')
     const topCredits = await Character.query().orderBy('credits', 'desc').limit(5)
+    let totalSeasons = 0
+    let activeSeason = null
+
+    try {
+      const seasonCount = await Season.query().count('* as total')
+      totalSeasons = Number(seasonCount[0]?.$extras.total || 0)
+      activeSeason = await SeasonService.getActiveSeason().catch(() => null)
+    } catch {
+      totalSeasons = 0
+      activeSeason = null
+    }
 
     await auth.user!.load('role')
 
@@ -32,8 +45,10 @@ export default class AdminController {
         totalUsers: Number(totalUsers[0].$extras.total),
         totalCharacters: Number(totalCharacters[0].$extras.total),
         totalItems: Number(totalItems[0].$extras.total),
+        totalSeasons,
       },
       topCredits: topCredits.map((c) => c.serialize()),
+      activeSeason: SeasonService.serializeSummary(activeSeason),
     })
   }
 
@@ -261,6 +276,129 @@ export default class AdminController {
     const action = amount >= 0 ? 'donnes a' : 'retires de'
     session.flash('success', `${Math.abs(amount)} credits ${action} ${character.name}`)
     return response.redirect().back()
+  }
+
+  // ── Seasons management ──
+
+  async seasons({ inertia }: HttpContext) {
+    const seasons = await Season.query()
+      .orderBy('sortOrder', 'desc')
+      .orderBy('startsAt', 'desc')
+      .orderBy('id', 'desc')
+
+    const activeSeason = await SeasonService.getActiveSeason().catch(() => null)
+
+    return inertia.render('admin/seasons', {
+      seasons: seasons.map((season) => ({
+        ...season.serialize(),
+      })),
+      activeSeason: SeasonService.serializeSummary(activeSeason),
+    })
+  }
+
+  async createSeason({ request, response, session }: HttpContext) {
+    const payload = SeasonService.normalizePayload(
+      request.only([
+        'key',
+        'name',
+        'slug',
+        'theme',
+        'campaignTitle',
+        'storyIntro',
+        'storyOutro',
+        'bannerImage',
+        'primaryColor',
+        'secondaryColor',
+        'status',
+        'sortOrder',
+        'isRankedPvpEnabled',
+        'isWorldBossEnabled',
+        'isPlayerMarketEnabled',
+        'isBlackMarketBonusEnabled',
+        'startsAt',
+        'endsAt',
+      ])
+    )
+
+    if (!payload.name || !payload.key || !payload.slug) {
+      session.flash('errors', { message: 'Nom, key et slug sont obligatoires' })
+      return response.redirect('/admin/seasons')
+    }
+
+    const keyExists = await Season.findBy('key', payload.key)
+    if (keyExists) {
+      session.flash('errors', { message: 'Une saison avec cette key existe deja' })
+      return response.redirect('/admin/seasons')
+    }
+
+    const slugExists = await Season.findBy('slug', payload.slug)
+    if (slugExists) {
+      session.flash('errors', { message: 'Une saison avec ce slug existe deja' })
+      return response.redirect('/admin/seasons')
+    }
+
+    await Season.create(payload)
+
+    session.flash('success', `Saison "${payload.name}" creee`)
+    return response.redirect('/admin/seasons')
+  }
+
+  async updateSeason({ params, request, response, session }: HttpContext) {
+    const season = await Season.findOrFail(params.id)
+    const payload = SeasonService.normalizePayload(
+      request.only([
+        'key',
+        'name',
+        'slug',
+        'theme',
+        'campaignTitle',
+        'storyIntro',
+        'storyOutro',
+        'bannerImage',
+        'primaryColor',
+        'secondaryColor',
+        'status',
+        'sortOrder',
+        'isRankedPvpEnabled',
+        'isWorldBossEnabled',
+        'isPlayerMarketEnabled',
+        'isBlackMarketBonusEnabled',
+        'startsAt',
+        'endsAt',
+      ])
+    )
+
+    if (!payload.name || !payload.key || !payload.slug) {
+      session.flash('errors', { message: 'Nom, key et slug sont obligatoires' })
+      return response.redirect('/admin/seasons')
+    }
+
+    const keyExists = await Season.query().where('key', payload.key).whereNot('id', season.id).first()
+    if (keyExists) {
+      session.flash('errors', { message: 'Une autre saison utilise deja cette key' })
+      return response.redirect('/admin/seasons')
+    }
+
+    const slugExists = await Season.query().where('slug', payload.slug).whereNot('id', season.id).first()
+    if (slugExists) {
+      session.flash('errors', { message: 'Une autre saison utilise deja ce slug' })
+      return response.redirect('/admin/seasons')
+    }
+
+    season.merge(payload)
+    await season.save()
+
+    session.flash('success', `Saison "${season.name}" mise a jour`)
+    return response.redirect('/admin/seasons')
+  }
+
+  async deleteSeason({ params, response, session }: HttpContext) {
+    const season = await Season.findOrFail(params.id)
+    const name = season.name
+    await season.delete()
+
+    session.flash('success', `Saison "${name}" supprimee`)
+    return response.redirect('/admin/seasons')
   }
 
   // ── Items & Shop management ──

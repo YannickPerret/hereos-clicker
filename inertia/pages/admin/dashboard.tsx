@@ -3,11 +3,20 @@ import GameLayout from '~/components/layout'
 
 interface Props {
   currentUser: { id: number; username: string; role: string }
-  stats: { totalUsers: number; totalCharacters: number; totalItems: number }
+  stats: { totalUsers: number; totalCharacters: number; totalItems: number; totalSeasons: number }
   topCredits: { id: number; name: string; credits: number; level: number }[]
+  activeSeason: {
+    id: number
+    name: string
+    theme: string
+    campaignTitle: string | null
+    status: string
+    startsAt: string | null
+    endsAt: string | null
+  } | null
 }
 
-export default function AdminDashboard({ currentUser, stats, topCredits }: Props) {
+export default function AdminDashboard({ currentUser, stats, topCredits, activeSeason }: Props) {
   return (
     <GameLayout>
       <div className="max-w-4xl mx-auto">
@@ -19,7 +28,7 @@ export default function AdminDashboard({ currentUser, stats, topCredits }: Props
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-2 gap-4 mb-8 md:grid-cols-4">
           <div className="bg-cyber-dark border border-cyber-blue/30 rounded-lg p-6 text-center">
             <div className="text-3xl font-bold text-cyber-blue">{stats.totalUsers}</div>
             <div className="text-xs text-gray-600 uppercase mt-1">Utilisateurs</div>
@@ -32,7 +41,32 @@ export default function AdminDashboard({ currentUser, stats, topCredits }: Props
             <div className="text-3xl font-bold text-cyber-pink">{stats.totalItems}</div>
             <div className="text-xs text-gray-600 uppercase mt-1">Items en jeu</div>
           </div>
+          <div className="bg-cyber-dark border border-cyber-yellow/30 rounded-lg p-6 text-center">
+            <div className="text-3xl font-bold text-cyber-yellow">{stats.totalSeasons}</div>
+            <div className="text-xs text-gray-600 uppercase mt-1">Saisons</div>
+          </div>
         </div>
+
+        {activeSeason && (
+          <div className="mb-8 rounded-lg border border-cyber-yellow/30 bg-cyber-dark p-4">
+            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+              <div>
+                <div className="text-[10px] uppercase tracking-widest text-cyber-yellow">
+                  Saison active
+                </div>
+                <div className="mt-1 text-lg font-bold text-white">{activeSeason.name}</div>
+                <div className="text-xs text-gray-500">
+                  {activeSeason.campaignTitle || activeSeason.theme}
+                </div>
+              </div>
+              <div className="text-[10px] uppercase tracking-widest text-gray-500">
+                {activeSeason.startsAt ? new Date(activeSeason.startsAt).toLocaleString() : 'date libre'}
+                {'  ->  '}
+                {activeSeason.endsAt ? new Date(activeSeason.endsAt).toLocaleString() : 'sans fin'}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Navigation */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
@@ -84,6 +118,13 @@ export default function AdminDashboard({ currentUser, stats, topCredits }: Props
           >
             <h3 className="text-sm font-bold text-cyber-red tracking-widest mb-1">MARCHE NOIR</h3>
             <p className="text-xs text-gray-600">Niveau mini, rotation, catalogue fixers, cleaners</p>
+          </Link>
+          <Link
+            href="/admin/seasons"
+            className="bg-cyber-dark border border-cyber-blue/30 rounded-lg p-6 hover:border-cyber-blue/60 hover:bg-cyber-blue/5 transition-all"
+          >
+            <h3 className="text-sm font-bold text-cyber-blue tracking-widest mb-1">SAISONS</h3>
+            <p className="text-xs text-gray-600">Histoire, campagne, toggles PvP, boss mondial et marche</p>
           </Link>
         </div>
 

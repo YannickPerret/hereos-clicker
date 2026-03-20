@@ -51,7 +51,26 @@ const formatEta = (seconds: number) => {
 }
 
 export default function PvpArena({ character, activeMatch, recentMatches, queueOverview }: Props) {
-  const { props } = usePage<{ errors?: { message?: string }; success?: string }>()
+  const { props } = usePage<{
+    errors?: { message?: string }
+    success?: string
+    season?: {
+      active: {
+        id: number
+        name: string
+        theme: string
+        campaignTitle: string | null
+        storyIntro: string | null
+        startsAt: string | null
+        endsAt: string | null
+        isRankedPvpEnabled: boolean
+        isWorldBossEnabled: boolean
+        isPlayerMarketEnabled: boolean
+        isBlackMarketBonusEnabled: boolean
+      } | null
+    }
+  }>()
+  const activeSeason = props.season?.active ?? null
 
   useEffect(() => {
     if (!activeMatch || activeMatch.status !== 'waiting') return
@@ -93,6 +112,38 @@ export default function PvpArena({ character, activeMatch, recentMatches, queueO
             </div>
           </div>
         </div>
+
+        {activeSeason && (
+          <div className="mb-6 rounded-lg border border-cyber-yellow/30 bg-cyber-dark p-4">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <div className="text-[10px] uppercase tracking-[0.3em] text-cyber-yellow">
+                  Saison active
+                </div>
+                <div className="mt-1 text-lg font-bold text-white">{activeSeason.name}</div>
+                <div className="text-xs uppercase tracking-widest text-gray-500">
+                  {activeSeason.campaignTitle || activeSeason.theme}
+                </div>
+                {activeSeason.storyIntro && (
+                  <p className="mt-2 max-w-3xl text-sm text-gray-300">{activeSeason.storyIntro}</p>
+                )}
+              </div>
+              <div className="space-y-2 text-right">
+                <div className="text-[10px] uppercase tracking-widest text-gray-500">
+                  {activeSeason.startsAt ? new Date(activeSeason.startsAt).toLocaleString() : 'date libre'}
+                  {'  ->  '}
+                  {activeSeason.endsAt ? new Date(activeSeason.endsAt).toLocaleString() : 'sans fin'}
+                </div>
+                <div className="flex flex-wrap justify-end gap-2 text-[10px] uppercase tracking-widest">
+                  {activeSeason.isRankedPvpEnabled && <span className="rounded border border-cyber-red/40 px-2 py-1 text-cyber-red">PvP ranked</span>}
+                  {activeSeason.isWorldBossEnabled && <span className="rounded border border-cyber-green/40 px-2 py-1 text-cyber-green">Boss mondial</span>}
+                  {activeSeason.isPlayerMarketEnabled && <span className="rounded border border-cyber-blue/40 px-2 py-1 text-cyber-blue">Marche joueur</span>}
+                  {activeSeason.isBlackMarketBonusEnabled && <span className="rounded border border-cyber-yellow/40 px-2 py-1 text-cyber-yellow">Bonus marche noir</span>}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {props.errors?.message && (
           <div className="mb-4 rounded-lg border border-cyber-red/50 bg-cyber-red/10 px-4 py-3 text-sm text-cyber-red">

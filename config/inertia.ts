@@ -2,6 +2,7 @@ import { defineConfig } from '@adonisjs/inertia'
 import Character from '#models/character'
 import BlackMarketService from '#services/black_market_service'
 import PartyMember from '#models/party_member'
+import SeasonService from '#services/season_service'
 
 export default defineConfig({
   rootView: 'inertia_layout',
@@ -55,6 +56,18 @@ export default defineConfig({
       } catch {
         return {
           minLevel: 12,
+        }
+      }
+    },
+    season: async () => {
+      try {
+        const activeSeason = await SeasonService.getActiveSeason()
+        return {
+          active: SeasonService.serializeSummary(activeSeason),
+        }
+      } catch {
+        return {
+          active: null,
         }
       }
     },
