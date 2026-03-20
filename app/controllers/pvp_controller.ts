@@ -34,6 +34,14 @@ export default class PvpController {
       .first()
     const activeMatch = activeParticipant?.match || null
 
+    console.log('[pvp.index]', {
+      userId: auth.user?.id,
+      characterId: character.id,
+      activeParticipantId: activeParticipant?.id ?? null,
+      activeMatchId: activeMatch?.id ?? null,
+      activeMatchStatus: activeMatch?.status ?? null,
+    })
+
     const recentParticipants = await PvpMatchParticipant.query()
       .where('characterId', character.id)
       .whereHas('match', (q) => q.where('status', 'completed'))
@@ -85,7 +93,18 @@ export default class PvpController {
       .firstOrFail()
 
     try {
-      const match = await PvpService.joinQueue(character, request.input('mode', 'solo'))
+      const mode = request.input('mode', 'solo')
+      const match = await PvpService.joinQueue(character, mode)
+
+      console.log('[pvp.queue]', {
+        userId: auth.user?.id,
+        characterId: character.id,
+        mode,
+        matchId: match.id,
+        status: match.status,
+        queueMode: match.queueMode,
+        teamSize: match.teamSize,
+      })
 
       if (match.status === 'in_progress') {
         return response.redirect(`/pvp/match/${match.id}`)
@@ -94,6 +113,11 @@ export default class PvpController {
       session.flash('success', 'Recherche de joueur en cours...')
       return response.redirect('/pvp')
     } catch (error) {
+      console.error('[pvp.queue.error]', {
+        userId: auth.user?.id,
+        characterId: character.id,
+        error: error instanceof Error ? error.message : error,
+      })
       session.flash('errors', { message: error instanceof Error ? error.message : 'Impossible de rejoindre la file PvP' })
       return response.redirect('/pvp')
     }
