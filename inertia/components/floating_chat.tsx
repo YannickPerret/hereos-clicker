@@ -273,6 +273,8 @@ function ChatWidget({ username, partyChannel }: { username: string; partyChannel
   }
 
   const openUserMenu = (event: React.MouseEvent<HTMLButtonElement>, characterName: string) => {
+    if (characterName === username) return
+
     const rect = event.currentTarget.getBoundingClientRect()
     setUserMenu({
       characterName,
@@ -334,6 +336,11 @@ function ChatWidget({ username, partyChannel }: { username: string; partyChannel
 
     setUserMenu(null)
     router.visit(`/reports?${params.toString()}`)
+  }
+
+  const handleViewProfile = (characterName: string) => {
+    setUserMenu(null)
+    router.visit(`/profile/${encodeURIComponent(characterName)}`)
   }
 
   const handleUnavailableAction = (label: string) => {
@@ -525,6 +532,10 @@ function ChatWidget({ username, partyChannel }: { username: string; partyChannel
                     <span className="font-bold shrink-0 text-cyber-yellow">
                       {msg.characterName}:
                     </span>
+                  ) : msg.characterName === username ? (
+                    <span className="font-bold shrink-0 text-cyber-blue">
+                      {msg.characterName}:
+                    </span>
                   ) : (
                     <button
                       type="button"
@@ -575,6 +586,13 @@ function ChatWidget({ username, partyChannel }: { username: string; partyChannel
           <div className="px-2 py-1 text-[10px] uppercase tracking-[0.3em] text-gray-500">
             {userMenu.characterName}
           </div>
+          <button
+            type="button"
+            onClick={() => handleViewProfile(userMenu.characterName)}
+            className="flex w-full items-center justify-between rounded px-2 py-1.5 text-left text-[11px] text-gray-300 transition hover:bg-cyber-blue/10 hover:text-cyber-blue"
+          >
+            <span>Voir le profil</span>
+          </button>
           <button
             type="button"
             onClick={() => handleUnavailableAction('Ajout en ami')}

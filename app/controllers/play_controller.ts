@@ -1,6 +1,7 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import Character from '#models/character'
 import InventoryItem from '#models/inventory_item'
+import CharacterTalent from '#models/character_talent'
 import ClickerService from '#services/clicker_service'
 import TalentService from '#services/talent_service'
 import PartyMember from '#models/party_member'
@@ -173,5 +174,42 @@ export default class PlayController {
 
   async leaderboardState({ response }: HttpContext) {
     return response.json(await this.getLeaderboardData())
+  }
+
+  async profile({ params, inertia, response }: HttpContext) {
+    const characterName = decodeURIComponent(params.name)
+
+    const character = await Character.query()
+      .whereRaw('LOWER(name) = ?', [characterName.toLowerCase()])
+      .first()
+
+    if (!character) {
+      return response.notFound('Personnage introuvable')
+    }
+
+    const equippedItems = await InventoryItem.query()
+      .where('characterId', character.id)
+      .where('isEquipped', true)
+      .preload('item')
+
+    const unlockedTalents = await CharacterTalent.query()
+      .where('characterId', character.id)
+      .preload('talent')
+
+    return inertia.render('profile/show', {
+      character: character.serialize(),
+      equippedItems: equippedItems.map((entry) => ({
+        ...entry.serialize(),
+        item: entry.item.serialize(),
+      })),
+      talents: unlockedTalents.map((entry) => ({
+        id: entry.talent.id,
+        name: entry.talent.name,
+        spec: entry.talent.spec,
+        tier: entry.talent.tier,
+        effectType: entry.talent.effectType,
+        effectValue: entry.talent.effectValue,
+      })),
+    })
   }
 }
