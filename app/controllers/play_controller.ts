@@ -98,7 +98,7 @@ export default class PlayController {
     return inertia.render('play/index', {
       characters: characters.map((c) => c.serialize()),
       activeCharacter: activeCharacter?.serialize() || null,
-      leaderboard: leaderboard.map((c) => c.serialize()),
+      leaderboard,
       bonuses,
       talentBonuses,
       effectiveCpc,
