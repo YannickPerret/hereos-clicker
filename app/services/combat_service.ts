@@ -461,6 +461,41 @@ export default class CombatService {
     return skills
   }
 
+  static async getCombatPreview(character: Character, enemy: Enemy | null, run: DungeonRun) {
+    const bonuses = await ClickerService.calculateEquipBonuses(character)
+    const talentBonuses = await TalentService.getCharacterBonuses(character.id)
+    const effects = this.getEffects(run)
+    const combatMult = 1 + (talentBonuses.combatPercent / 100)
+
+    const playerMods = this.applyPlayerModifiers(
+      {
+        attack: character.attack + talentBonuses.atkFlat,
+        defense: character.defense + talentBonuses.defFlat,
+      },
+      effects,
+      character.id
+    )
+
+    const preview = {
+      player: {
+        attack: Math.floor((playerMods.attack + bonuses.attackBonus) * combatMult),
+        defense: Math.floor((playerMods.defense + bonuses.defenseBonus) * combatMult),
+      },
+      enemy: null as null | { attack: number; defense: number; isStunned: boolean },
+    }
+
+    if (enemy) {
+      const enemyMods = this.applyEnemyModifiers(enemy, effects)
+      preview.enemy = {
+        attack: enemyMods.attack,
+        defense: enemyMods.defense,
+        isStunned: enemyMods.isStunned,
+      }
+    }
+
+    return preview
+  }
+
   /** Get cooldowns for a character in a run */
   private static getCooldowns(run: DungeonRun, characterId: number): Record<number, number> {
     const all = JSON.parse(run.skillCooldowns || '{}')

@@ -43,6 +43,7 @@ router.group(() => {
   router.post('/inventory/:id/equip', [InventoryController, 'equip'])
   router.post('/inventory/:id/unequip', [InventoryController, 'unequip'])
   router.post('/inventory/:id/use', [InventoryController, 'use'])
+  router.post('/inventory/:id/discard', [InventoryController, 'discard'])
 
   // Shop
   router.get('/shop', [ShopController, 'index'])

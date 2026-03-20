@@ -1,4 +1,6 @@
 import { router, usePage } from '@inertiajs/react'
+import { useState } from 'react'
+import CyberpunkAvatar from '~/components/cyberpunk_avatar'
 import GameLayout from '~/components/layout'
 
 interface Item {
@@ -25,6 +27,7 @@ interface Props {
   character: {
     id: number
     name: string
+    chosenSpec: string | null
     credits: number
     level: number
     hpCurrent: number
@@ -58,11 +61,25 @@ const TYPE_LABELS: Record<string, string> = {
   weapon: 'ARME',
   armor: 'ARMURE',
   implant: 'IMPLANT',
+  clothes_hair: 'CHEVEUX',
+  clothes_face: 'VISAGE',
+  clothes_outer: 'HAUT',
+  clothes_legs: 'BAS',
   consumable: 'CONSO',
   upgrade: 'UPGRADE',
 }
 
-const TYPE_ORDER = ['weapon', 'armor', 'consumable', 'implant', 'upgrade'] as const
+const TYPE_ORDER = [
+  'weapon',
+  'armor',
+  'implant',
+  'clothes_hair',
+  'clothes_face',
+  'clothes_outer',
+  'clothes_legs',
+  'consumable',
+  'upgrade',
+] as const
 
 const EFFECT_LABELS: Record<string, string> = {
   attack_boost: 'ATK',
@@ -75,17 +92,17 @@ const EFFECT_LABELS: Record<string, string> = {
 }
 
 export default function Inventory({ character, inventory, equipBonuses, talentBonuses }: Props) {
-  const { props } = usePage<{ errors?: { message?: string } }>()
+  const { props } = usePage<{ errors?: { message?: string }; success?: string }>()
+  const [discardTarget, setDiscardTarget] = useState<InventoryEntry | null>(null)
+  const [discardQuantity, setDiscardQuantity] = useState('1')
   const equipped = inventory.filter((i) => i.isEquipped)
   const backpack = inventory.filter((i) => !i.isEquipped)
-  const groupedBackpack = TYPE_ORDER
-    .map((type) => ({
-      type,
-      entries: backpack
-        .filter((entry) => entry.item.type === type)
-        .sort((a, b) => a.item.name.localeCompare(b.item.name)),
-    }))
-    .filter((group) => group.entries.length > 0)
+  const groupedBackpack = TYPE_ORDER.map((type) => ({
+    type,
+    entries: backpack
+      .filter((entry) => entry.item.type === type)
+      .sort((a, b) => a.item.name.localeCompare(b.item.name)),
+  })).filter((group) => group.entries.length > 0)
 
   const formatEffect = (entry: InventoryEntry) => {
     if (!entry.item.effectType || entry.item.effectValue === null) return null
@@ -96,8 +113,54 @@ export default function Inventory({ character, inventory, equipBonuses, talentBo
     return `${EFFECT_LABELS[entry.item.effectType]}: +${entry.item.effectValue}`
   }
 
+  const openDiscardModal = (entry: InventoryEntry) => {
+    setDiscardTarget(entry)
+    setDiscardQuantity('1')
+  }
+
+  const closeDiscardModal = () => {
+    setDiscardTarget(null)
+    setDiscardQuantity('1')
+  }
+
+  const getDiscardQuantity = () => {
+    if (!discardTarget) return 1
+    const parsed = Number.parseInt(discardQuantity, 10)
+    if (!Number.isFinite(parsed) || parsed <= 0) return 1
+    return Math.min(parsed, discardTarget.quantity)
+  }
+
+  const setDiscardQuantityValue = (quantity: number) => {
+    if (!discardTarget) return
+    setDiscardQuantity(String(Math.max(1, Math.min(Math.floor(quantity), discardTarget.quantity))))
+  }
+
+  const setDiscardQuantityInput = (value: string) => {
+    if (!discardTarget) return
+    if (value === '') {
+      setDiscardQuantity('')
+      return
+    }
+
+    const parsed = Number.parseInt(value, 10)
+    setDiscardQuantityValue(Number.isFinite(parsed) ? parsed : 1)
+  }
+
+  const submitDiscard = () => {
+    if (!discardTarget) return
+    const quantity = getDiscardQuantity()
+    const inventoryId = discardTarget.id
+    closeDiscardModal()
+    router.post(`/inventory/${inventoryId}/discard`, { quantity }, { preserveScroll: true })
+  }
+
   return (
     <GameLayout>
+      {props.success && (
+        <div className="mb-4 rounded-lg border border-cyber-green/50 bg-cyber-green/10 px-4 py-3 text-sm text-cyber-green">
+          {props.success as string}
+        </div>
+      )}
       {props.errors?.message && (
         <div className="mb-4 bg-cyber-red/10 border border-cyber-red/50 rounded-lg px-4 py-3 text-cyber-red text-sm">
           {props.errors.message}
@@ -110,11 +173,29 @@ export default function Inventory({ character, inventory, equipBonuses, talentBo
             <h2 className="text-sm uppercase tracking-widest text-cyber-blue neon-text mb-4 text-center">
               EQUIPE
             </h2>
+            <div className="mb-4">
+              <CyberpunkAvatar
+                name={character.name}
+                chosenSpec={character.chosenSpec}
+                equippedItems={equipped}
+              />
+            </div>
             <div className="space-y-3">
-              {['weapon', 'armor', 'implant'].map((type) => {
+              {[
+                'weapon',
+                'armor',
+                'implant',
+                'clothes_hair',
+                'clothes_face',
+                'clothes_outer',
+                'clothes_legs',
+              ].map((type) => {
                 const item = equipped.find((e) => e.item.type === type)
                 return (
-                  <div key={type} className={`border rounded-lg p-3 ${item ? RARITY_COLORS[item.item.rarity] : 'border-gray-800 bg-cyber-black/50'}`}>
+                  <div
+                    key={type}
+                    className={`border rounded-lg p-3 ${item ? RARITY_COLORS[item.item.rarity] : 'border-gray-800 bg-cyber-black/50'}`}
+                  >
                     <div className="text-[10px] uppercase tracking-wider text-gray-600 mb-1">
                       {TYPE_LABELS[type]}
                     </div>
@@ -124,16 +205,22 @@ export default function Inventory({ character, inventory, equipBonuses, talentBo
                           {item.item.name}
                         </div>
                         {formatEffect(item) && (
-                          <div className="text-xs text-gray-500 mt-1">
-                            {formatEffect(item)}
-                          </div>
+                          <div className="text-xs text-gray-500 mt-1">{formatEffect(item)}</div>
                         )}
-                        <button
-                          onClick={() => router.post(`/inventory/${item.id}/unequip`)}
-                          className="text-[10px] text-cyber-red mt-2 hover:underline uppercase"
-                        >
-                          Retirer
-                        </button>
+                        <div className="mt-2 flex gap-2">
+                          <button
+                            onClick={() => router.post(`/inventory/${item.id}/unequip`)}
+                            className="text-[10px] text-cyber-red hover:underline uppercase"
+                          >
+                            Retirer
+                          </button>
+                          <button
+                            onClick={() => openDiscardModal(item)}
+                            className="text-[10px] text-cyber-orange hover:underline uppercase"
+                          >
+                            Jeter
+                          </button>
+                        </div>
                       </div>
                     ) : (
                       <div className="text-xs text-gray-700">[ Vide ]</div>
@@ -145,28 +232,59 @@ export default function Inventory({ character, inventory, equipBonuses, talentBo
 
             {/* Character Stats */}
             <div className="mt-6 space-y-1 text-xs">
-              <h3 className="text-sm uppercase tracking-widest text-cyber-green mb-2 text-center">Stats</h3>
+              <h3 className="text-sm uppercase tracking-widest text-cyber-green mb-2 text-center">
+                Stats
+              </h3>
               {(() => {
                 const totalAtk = character.attack + equipBonuses.attackBonus + talentBonuses.atkFlat
-                const totalDef = character.defense + equipBonuses.defenseBonus + talentBonuses.defFlat
-                const baseCpc = character.creditsPerClick + equipBonuses.clickBonus + talentBonuses.cpcFlat
+                const totalDef =
+                  character.defense + equipBonuses.defenseBonus + talentBonuses.defFlat
+                const baseCpc =
+                  character.creditsPerClick + equipBonuses.clickBonus + talentBonuses.cpcFlat
                 const totalCpc = Math.floor(baseCpc * (1 + talentBonuses.cpcPercent / 100))
                 const atkBonus = equipBonuses.attackBonus + talentBonuses.atkFlat
                 const defBonus = equipBonuses.defenseBonus + talentBonuses.defFlat
                 const cpcBonus = totalCpc - character.creditsPerClick
 
                 return [
-                  { label: 'Credits', value: character.credits.toLocaleString(), bonus: '', color: 'text-cyber-yellow' },
-                  { label: 'ATK', value: totalAtk, bonus: atkBonus > 0 ? `+${atkBonus}` : '', color: 'text-cyber-red' },
-                  { label: 'DEF', value: totalDef, bonus: defBonus > 0 ? `+${defBonus}` : '', color: 'text-cyber-blue' },
-                  { label: 'HP', value: `${character.hpCurrent}/${character.hpMax}`, bonus: '', color: 'text-cyber-green' },
-                  { label: 'CPC', value: totalCpc, bonus: cpcBonus > 0 ? `+${cpcBonus}` : '', color: 'text-cyber-pink' },
+                  {
+                    label: 'Credits',
+                    value: character.credits.toLocaleString(),
+                    bonus: '',
+                    color: 'text-cyber-yellow',
+                  },
+                  {
+                    label: 'ATK',
+                    value: totalAtk,
+                    bonus: atkBonus > 0 ? `+${atkBonus}` : '',
+                    color: 'text-cyber-red',
+                  },
+                  {
+                    label: 'DEF',
+                    value: totalDef,
+                    bonus: defBonus > 0 ? `+${defBonus}` : '',
+                    color: 'text-cyber-blue',
+                  },
+                  {
+                    label: 'HP',
+                    value: `${character.hpCurrent}/${character.hpMax}`,
+                    bonus: '',
+                    color: 'text-cyber-green',
+                  },
+                  {
+                    label: 'CPC',
+                    value: totalCpc,
+                    bonus: cpcBonus > 0 ? `+${cpcBonus}` : '',
+                    color: 'text-cyber-pink',
+                  },
                 ].map((s) => (
                   <div key={s.label} className="flex justify-between">
                     <span className="text-gray-500">{s.label}</span>
                     <span className={s.color}>
                       {s.value}
-                      {s.bonus && <span className="text-cyber-green text-[10px] ml-1">({s.bonus})</span>}
+                      {s.bonus && (
+                        <span className="text-cyber-green text-[10px] ml-1">({s.bonus})</span>
+                      )}
                     </span>
                   </div>
                 ))
@@ -183,7 +301,9 @@ export default function Inventory({ character, inventory, equipBonuses, talentBo
 
           {backpack.length === 0 ? (
             <div className="bg-cyber-dark border border-gray-800 rounded-lg p-12 text-center">
-              <p className="text-gray-600 text-sm">Inventaire vide. Visitez le Shop ou explorez les Donjons.</p>
+              <p className="text-gray-600 text-sm">
+                Inventaire vide. Visitez le Shop ou explorez les Donjons.
+              </p>
             </div>
           ) : (
             <div className="space-y-5">
@@ -215,10 +335,16 @@ export default function Inventory({ character, inventory, equipBonuses, talentBo
                               </span>
                             )}
                           </div>
-                          <p className="text-[10px] text-gray-500 mb-2 line-clamp-2">{entry.item.description}</p>
+                          <p className="text-[10px] text-gray-500 mb-2 line-clamp-2">
+                            {entry.item.description}
+                          </p>
                           <div className="flex justify-between items-center text-[10px]">
-                            <span className="uppercase text-gray-600">{TYPE_LABELS[entry.item.type]}</span>
-                            {formatEffect(entry) && <span className="text-cyber-green">{formatEffect(entry)}</span>}
+                            <span className="uppercase text-gray-600">
+                              {TYPE_LABELS[entry.item.type]}
+                            </span>
+                            {formatEffect(entry) && (
+                              <span className="text-cyber-green">{formatEffect(entry)}</span>
+                            )}
                           </div>
 
                           <div className="flex gap-1 mt-2">
@@ -230,7 +356,8 @@ export default function Inventory({ character, inventory, equipBonuses, talentBo
                                 Equiper
                               </button>
                             )}
-                            {(entry.item.type === 'consumable' || entry.item.type === 'upgrade') && (
+                            {(entry.item.type === 'consumable' ||
+                              entry.item.type === 'upgrade') && (
                               <button
                                 onClick={() => router.post(`/inventory/${entry.id}/use`)}
                                 className="flex-1 text-[10px] py-1 bg-cyber-green/10 border border-cyber-green/30 text-cyber-green rounded hover:bg-cyber-green/20 transition-all uppercase"
@@ -238,6 +365,12 @@ export default function Inventory({ character, inventory, equipBonuses, talentBo
                                 Utiliser
                               </button>
                             )}
+                            <button
+                              onClick={() => openDiscardModal(entry)}
+                              className="flex-1 text-[10px] py-1 bg-cyber-orange/10 border border-cyber-orange/30 text-cyber-orange rounded hover:bg-cyber-orange/20 transition-all uppercase"
+                            >
+                              Jeter
+                            </button>
                           </div>
                         </div>
                       )
@@ -249,6 +382,75 @@ export default function Inventory({ character, inventory, equipBonuses, talentBo
           )}
         </div>
       </div>
+
+      {discardTarget && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4"
+          onClick={closeDiscardModal}
+        >
+          <div
+            className="w-full max-w-md rounded-lg border border-cyber-orange/30 bg-cyber-dark p-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-2 text-[10px] uppercase tracking-[0.35em] text-gray-600">
+              Confirmation
+            </div>
+            <h3 className="text-lg font-bold text-cyber-orange">{discardTarget.item.name}</h3>
+            <p className="mt-2 text-sm text-gray-400">
+              Choisis la quantite a jeter. Cette action est irreversible.
+            </p>
+
+            <div className="mt-4 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setDiscardQuantityValue(getDiscardQuantity() - 1)}
+                disabled={getDiscardQuantity() <= 1}
+                className="h-10 w-10 rounded border border-gray-700 bg-cyber-black text-sm font-bold text-gray-300 transition hover:border-cyber-orange/50 hover:text-cyber-orange disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                -
+              </button>
+              <input
+                type="number"
+                min={1}
+                max={discardTarget.quantity}
+                inputMode="numeric"
+                value={discardQuantity}
+                onChange={(e) => setDiscardQuantityInput(e.target.value)}
+                className="h-10 flex-1 rounded border border-gray-800 bg-cyber-black px-3 text-center text-sm font-bold text-white focus:border-cyber-orange/50 focus:outline-none"
+              />
+              <button
+                type="button"
+                onClick={() => setDiscardQuantityValue(getDiscardQuantity() + 1)}
+                disabled={getDiscardQuantity() >= discardTarget.quantity}
+                className="h-10 w-10 rounded border border-gray-700 bg-cyber-black text-sm font-bold text-gray-300 transition hover:border-cyber-orange/50 hover:text-cyber-orange disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                +
+              </button>
+            </div>
+
+            <div className="mt-2 text-[10px] uppercase tracking-widest text-gray-600">
+              Stock actuel: {discardTarget.quantity} • Jeter x{getDiscardQuantity()}
+            </div>
+
+            <div className="mt-5 flex gap-2">
+              <button
+                type="button"
+                onClick={closeDiscardModal}
+                className="flex-1 rounded border border-gray-700 px-3 py-2 text-xs uppercase tracking-widest text-gray-400 transition hover:border-gray-500 hover:text-white"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={submitDiscard}
+                className="flex-1 rounded border border-cyber-orange/40 bg-cyber-orange/10 px-3 py-2 text-xs uppercase tracking-widest text-cyber-orange transition hover:bg-cyber-orange/20"
+              >
+                Confirmer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </GameLayout>
   )
 }

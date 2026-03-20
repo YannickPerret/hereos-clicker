@@ -115,6 +115,8 @@ export default class DungeonController {
       currentEnemy = await Enemy.find(run.currentEnemyId)
     }
 
+    const combatPreview = await CombatService.getCombatPreview(character, currentEnemy, run)
+
     const consumables = await InventoryItem.query()
       .where('characterId', character.id)
       .preload('item')
@@ -131,6 +133,7 @@ export default class DungeonController {
       run: run.serialize(),
       floor: run.dungeonFloor.serialize(),
       currentEnemy: currentEnemy?.serialize() || null,
+      combatPreview,
       consumables: consumables.map((c) => ({ ...c.serialize(), item: c.item.serialize() })),
       skills: skills.map((s) => ({
         ...s.serialize(),
@@ -235,6 +238,8 @@ export default class DungeonController {
       currentEnemy = await Enemy.find(run.currentEnemyId)
     }
 
+    const combatPreview = await CombatService.getCombatPreview(character, currentEnemy, run)
+
     // Get party members info for turn display
     let partyMembers: any[] = []
     if (run.partyId) {
@@ -256,6 +261,7 @@ export default class DungeonController {
         combatLog: JSON.parse(run.combatLog || '[]'),
       },
       currentEnemy: currentEnemy?.serialize() || null,
+      combatPreview,
       partyMembers,
     })
   }

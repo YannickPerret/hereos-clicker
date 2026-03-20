@@ -1,4 +1,5 @@
 import { router } from '@inertiajs/react'
+import CyberpunkAvatar from '~/components/cyberpunk_avatar'
 import GameLayout from '~/components/layout'
 
 interface Character {
@@ -29,6 +30,7 @@ interface EquippedItem {
     name: string
     type: string
     rarity: string
+    icon?: string | null
     description: string
     effectType: string | null
     effectValue: number | null
@@ -68,13 +70,21 @@ const SPEC_CONFIG: Record<string, { label: string; color: string; border: string
   hacker: { label: 'HACKER', color: 'text-cyber-green', border: 'border-cyber-green/30' },
   netrunner: { label: 'NETRUNNER', color: 'text-cyber-blue', border: 'border-cyber-blue/30' },
   samurai: { label: 'STREET SAMURAI', color: 'text-cyber-red', border: 'border-cyber-red/30' },
-  chrome_dealer: { label: 'CHROME DEALER', color: 'text-cyber-yellow', border: 'border-cyber-yellow/30' },
+  chrome_dealer: {
+    label: 'CHROME DEALER',
+    color: 'text-cyber-yellow',
+    border: 'border-cyber-yellow/30',
+  },
 }
 
 const TYPE_LABELS: Record<string, string> = {
   weapon: 'ARME',
   armor: 'ARMURE',
   implant: 'IMPLANT',
+  clothes_hair: 'CHEVEUX',
+  clothes_face: 'VISAGE',
+  clothes_outer: 'HAUT',
+  clothes_legs: 'BAS',
 }
 
 const RARITY_TEXT: Record<string, string> = {
@@ -106,19 +116,27 @@ const BONUS_LABELS: Record<string, string> = {
 
 export default function PublicProfile({ character, equippedItems, talents, companions }: Props) {
   const spec = character.chosenSpec ? SPEC_CONFIG[character.chosenSpec] : null
-  const equippedByType = {
-    weapon: equippedItems.find((entry) => entry.item.type === 'weapon') || null,
-    armor: equippedItems.find((entry) => entry.item.type === 'armor') || null,
-    implant: equippedItems.find((entry) => entry.item.type === 'implant') || null,
-  }
+  const equipmentSlots = [
+    'weapon',
+    'armor',
+    'implant',
+    'clothes_hair',
+    'clothes_face',
+    'clothes_outer',
+    'clothes_legs',
+  ] as const
 
   return (
     <GameLayout>
       <div className="max-w-4xl mx-auto">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <div className="text-[10px] uppercase tracking-[0.35em] text-gray-600">Profil Public</div>
-            <h1 className="mt-2 text-2xl font-bold tracking-widest text-cyber-blue">{character.name}</h1>
+            <div className="text-[10px] uppercase tracking-[0.35em] text-gray-600">
+              Profil Public
+            </div>
+            <h1 className="mt-2 text-2xl font-bold tracking-widest text-cyber-blue">
+              {character.name}
+            </h1>
           </div>
           <button
             type="button"
@@ -131,53 +149,116 @@ export default function PublicProfile({ character, equippedItems, talents, compa
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <div className="lg:col-span-1 space-y-4">
+            <div className="rounded-lg border border-cyber-pink/20 bg-cyber-dark p-4">
+              <CyberpunkAvatar
+                name={character.name}
+                chosenSpec={character.chosenSpec}
+                equippedItems={equippedItems}
+              />
+            </div>
+
             <div className="rounded-lg border border-cyber-blue/20 bg-cyber-dark p-4">
               <div className="mb-3 flex items-center justify-between">
-                <span className="text-[10px] uppercase tracking-widest text-gray-500">Specialisation</span>
+                <span className="text-[10px] uppercase tracking-widest text-gray-500">
+                  Specialisation
+                </span>
                 {spec ? (
-                  <span className={`rounded border px-2 py-1 text-[10px] font-bold uppercase tracking-widest ${spec.color} ${spec.border}`}>
+                  <span
+                    className={`rounded border px-2 py-1 text-[10px] font-bold uppercase tracking-widest ${spec.color} ${spec.border}`}
+                  >
                     {spec.label}
                   </span>
                 ) : (
-                  <span className="text-[10px] uppercase tracking-widest text-gray-600">Aucune</span>
+                  <span className="text-[10px] uppercase tracking-widest text-gray-600">
+                    Aucune
+                  </span>
                 )}
               </div>
 
               <div className="space-y-1 text-xs">
-                <div className="flex justify-between"><span className="text-gray-500">Niveau</span><span className="text-cyber-green">LVL {character.level}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">HP</span><span className="text-cyber-red">{character.hpCurrent}/{character.hpMax}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">ATK</span><span className="text-cyber-red">{character.attack}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">DEF</span><span className="text-cyber-blue">{character.defense}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">CPC</span><span className="text-cyber-pink">{character.creditsPerClick}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">CPS</span><span className="text-cyber-purple">{character.creditsPerSecond}/s</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">Crit%</span><span className="text-cyber-yellow">{character.critChance}%</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">Crit Dmg</span><span className="text-cyber-yellow">{character.critDamage}%</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">ELO</span><span className="text-cyber-yellow">{character.pvpRating}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">PvP</span><span className="text-white">{character.pvpWins}W / {character.pvpLosses}L</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">Clicks</span><span className="text-cyber-pink">{character.totalClicks.toLocaleString()}</span></div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Niveau</span>
+                  <span className="text-cyber-green">LVL {character.level}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">HP</span>
+                  <span className="text-cyber-red">
+                    {character.hpCurrent}/{character.hpMax}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">ATK</span>
+                  <span className="text-cyber-red">{character.attack}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">DEF</span>
+                  <span className="text-cyber-blue">{character.defense}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">CPC</span>
+                  <span className="text-cyber-pink">{character.creditsPerClick}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">CPS</span>
+                  <span className="text-cyber-purple">{character.creditsPerSecond}/s</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Crit%</span>
+                  <span className="text-cyber-yellow">{character.critChance}%</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Crit Dmg</span>
+                  <span className="text-cyber-yellow">{character.critDamage}%</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">ELO</span>
+                  <span className="text-cyber-yellow">{character.pvpRating}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">PvP</span>
+                  <span className="text-white">
+                    {character.pvpWins}W / {character.pvpLosses}L
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Clicks</span>
+                  <span className="text-cyber-pink">{character.totalClicks.toLocaleString()}</span>
+                </div>
               </div>
             </div>
           </div>
 
           <div className="lg:col-span-2 space-y-4">
             <div className="rounded-lg border border-cyber-purple/20 bg-cyber-dark p-4">
-              <h2 className="mb-3 text-sm uppercase tracking-widest text-cyber-purple">Equipement</h2>
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                {(['weapon', 'armor', 'implant'] as const).map((type) => {
-                  const entry = equippedByType[type]
+              <h2 className="mb-3 text-sm uppercase tracking-widest text-cyber-purple">
+                Equipement
+              </h2>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+                {equipmentSlots.map((type) => {
+                  const entry = equippedItems.find((item) => item.item.type === type) || null
 
                   return (
-                    <div key={type} className="rounded-lg border border-gray-800 bg-cyber-black/40 p-3">
-                      <div className="mb-1 text-[10px] uppercase tracking-widest text-gray-600">{TYPE_LABELS[type]}</div>
+                    <div
+                      key={type}
+                      className="rounded-lg border border-gray-800 bg-cyber-black/40 p-3"
+                    >
+                      <div className="mb-1 text-[10px] uppercase tracking-widest text-gray-600">
+                        {TYPE_LABELS[type]}
+                      </div>
                       {entry ? (
                         <>
-                          <div className={`text-sm font-bold ${RARITY_TEXT[entry.item.rarity] || 'text-white'}`}>
+                          <div
+                            className={`text-sm font-bold ${RARITY_TEXT[entry.item.rarity] || 'text-white'}`}
+                          >
                             {entry.item.name}
                           </div>
-                          <div className="mt-1 text-[10px] text-gray-500 line-clamp-2">{entry.item.description}</div>
+                          <div className="mt-1 text-[10px] text-gray-500 line-clamp-2">
+                            {entry.item.description}
+                          </div>
                           {entry.item.effectType && entry.item.effectValue !== null && (
                             <div className="mt-2 text-[10px] text-cyber-green">
-                              {EFFECT_LABELS[entry.item.effectType] || entry.item.effectType}: +{entry.item.effectValue}
+                              {EFFECT_LABELS[entry.item.effectType] || entry.item.effectType}: +
+                              {entry.item.effectValue}
                             </div>
                           )}
                         </>
@@ -191,7 +272,9 @@ export default function PublicProfile({ character, equippedItems, talents, compa
             </div>
 
             <div className="rounded-lg border border-cyber-green/20 bg-cyber-dark p-4">
-              <h2 className="mb-3 text-sm uppercase tracking-widest text-cyber-green">Talents Debloques</h2>
+              <h2 className="mb-3 text-sm uppercase tracking-widest text-cyber-green">
+                Talents Debloques
+              </h2>
               {talents.length === 0 ? (
                 <div className="text-sm text-gray-600">Aucun talent debloque.</div>
               ) : (
@@ -199,10 +282,15 @@ export default function PublicProfile({ character, equippedItems, talents, compa
                   {talents
                     .sort((a, b) => a.tier - b.tier || a.name.localeCompare(b.name))
                     .map((talent) => (
-                      <div key={talent.id} className="rounded border border-gray-800 bg-cyber-black/30 p-3">
+                      <div
+                        key={talent.id}
+                        className="rounded border border-gray-800 bg-cyber-black/30 p-3"
+                      >
                         <div className="flex items-center justify-between">
                           <div className="text-xs font-bold text-white">{talent.name}</div>
-                          <div className="text-[10px] uppercase tracking-widest text-gray-600">T{talent.tier}</div>
+                          <div className="text-[10px] uppercase tracking-widest text-gray-600">
+                            T{talent.tier}
+                          </div>
                         </div>
                         <div className="mt-1 text-[10px] text-gray-500 uppercase tracking-widest">
                           {SPEC_CONFIG[talent.spec]?.label || talent.spec}
@@ -217,23 +305,34 @@ export default function PublicProfile({ character, equippedItems, talents, compa
             </div>
 
             <div className="rounded-lg border border-cyber-pink/20 bg-cyber-dark p-4">
-              <h2 className="mb-3 text-sm uppercase tracking-widest text-cyber-pink">Drones & Compagnons</h2>
+              <h2 className="mb-3 text-sm uppercase tracking-widest text-cyber-pink">
+                Drones & Compagnons
+              </h2>
               {companions.length === 0 ? (
                 <div className="text-sm text-gray-600">Aucun drone equipe.</div>
               ) : (
                 <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                   {companions
-                    .sort((a, b) => Number(b.isActive) - Number(a.isActive) || a.name.localeCompare(b.name))
+                    .sort(
+                      (a, b) =>
+                        Number(b.isActive) - Number(a.isActive) || a.name.localeCompare(b.name)
+                    )
                     .map((companion) => (
-                      <div key={companion.id} className="rounded border border-gray-800 bg-cyber-black/30 p-3">
+                      <div
+                        key={companion.id}
+                        className="rounded border border-gray-800 bg-cyber-black/30 p-3"
+                      >
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex items-start gap-2">
                             <div className="text-xl leading-none">{companion.icon}</div>
                             <div>
                               <div className="text-xs font-bold text-white">{companion.name}</div>
-                              <div className="mt-1 text-[10px] text-gray-500 line-clamp-2">{companion.description}</div>
+                              <div className="mt-1 text-[10px] text-gray-500 line-clamp-2">
+                                {companion.description}
+                              </div>
                               <div className="mt-2 text-[10px] text-cyber-green">
-                                +{companion.bonusValue} {BONUS_LABELS[companion.bonusType] || companion.bonusType}
+                                +{companion.bonusValue}{' '}
+                                {BONUS_LABELS[companion.bonusType] || companion.bonusType}
                               </div>
                               <div className="mt-1 text-[10px] uppercase tracking-widest text-gray-600">
                                 LVL {companion.level}

@@ -12,7 +12,16 @@ export default class Item extends BaseModel {
   declare description: string
 
   @column()
-  declare type: 'weapon' | 'armor' | 'implant' | 'consumable' | 'upgrade'
+  declare type:
+    | 'weapon'
+    | 'armor'
+    | 'implant'
+    | 'clothes_hair'
+    | 'clothes_face'
+    | 'clothes_outer'
+    | 'clothes_legs'
+    | 'consumable'
+    | 'upgrade'
 
   @column()
   declare rarity: 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary'

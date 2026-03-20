@@ -141,4 +141,29 @@ export default class InventoryController {
 
     return response.redirect('/inventory')
   }
+
+  async discard({ params, request, auth, response, session }: HttpContext) {
+    const character = await Character.query()
+      .where('userId', auth.user!.id)
+      .firstOrFail()
+
+    const invItem = await InventoryItem.query()
+      .where('id', params.id)
+      .where('characterId', character.id)
+      .preload('item')
+      .firstOrFail()
+
+    const requestedQuantity = Math.max(1, Math.floor(Number(request.input('quantity', 1)) || 1))
+    const quantity = Math.min(requestedQuantity, invItem.quantity)
+
+    invItem.quantity -= quantity
+    if (invItem.quantity <= 0) {
+      await invItem.delete()
+    } else {
+      await invItem.save()
+    }
+
+    session.flash('success', `${quantity}x ${invItem.item.name} jete${quantity > 1 ? 's' : ''}`)
+    return response.redirect('/inventory')
+  }
 }

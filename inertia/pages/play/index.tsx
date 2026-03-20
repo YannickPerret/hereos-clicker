@@ -1,5 +1,6 @@
 import { useForm, router } from '@inertiajs/react'
 import { useState, useCallback, useRef, useEffect } from 'react'
+import CyberpunkAvatar from '~/components/cyberpunk_avatar'
 import GameLayout from '~/components/layout'
 
 interface Character {
@@ -16,6 +17,9 @@ interface Character {
   defense: number
   totalClicks: number
   talentPoints: number
+  chosenSpec: string | null
+  critChance: number
+  critDamage: number
 }
 
 interface PartyInfo {
@@ -44,11 +48,11 @@ interface Props {
       name: string
       type: string
       rarity: string
+      icon?: string | null
       effectType: string | null
       effectValue: number | null
     }
   }[]
-  bonuses: { clickBonus: number; attackBonus: number; defenseBonus: number }
   effectiveCpc: number
   effectiveCps: number
   offlineCredits: number
@@ -59,6 +63,10 @@ const TYPE_LABELS: Record<string, string> = {
   weapon: 'ARME',
   armor: 'ARMURE',
   implant: 'IMPLANT',
+  clothes_hair: 'CHEVEUX',
+  clothes_face: 'VISAGE',
+  clothes_outer: 'HAUT',
+  clothes_legs: 'BAS',
 }
 
 const RARITY_TEXT: Record<string, string> = {
@@ -76,16 +84,38 @@ const EFFECT_LABELS: Record<string, string> = {
   permanent_click: 'CPC',
 }
 
+const SPEC_CONFIG: Record<string, { label: string; color: string; border: string }> = {
+  hacker: { label: 'HACKER', color: 'text-cyber-green', border: 'border-cyber-green/30' },
+  netrunner: { label: 'NETRUNNER', color: 'text-cyber-blue', border: 'border-cyber-blue/30' },
+  samurai: { label: 'STREET SAMURAI', color: 'text-cyber-red', border: 'border-cyber-red/30' },
+  chrome_dealer: {
+    label: 'CHROME DEALER',
+    color: 'text-cyber-yellow',
+    border: 'border-cyber-yellow/30',
+  },
+}
+
 function formatCredits(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`
   return n.toString()
 }
 
-export default function Play({ characters, activeCharacter, leaderboard, equippedItems, bonuses, effectiveCpc, effectiveCps, offlineCredits, party }: Props) {
+export default function Play({
+  characters,
+  activeCharacter,
+  leaderboard,
+  equippedItems,
+  effectiveCpc,
+  effectiveCps,
+  offlineCredits,
+  party,
+}: Props) {
   const [char, setChar] = useState(activeCharacter)
   const [liveLeaderboard, setLiveLeaderboard] = useState(leaderboard)
-  const [particles, setParticles] = useState<{ id: number; x: number; y: number; value: number }[]>([])
+  const [particles, setParticles] = useState<{ id: number; x: number; y: number; value: number }[]>(
+    []
+  )
   const [clickScale, setClickScale] = useState(1)
   const [showOffline, setShowOffline] = useState(offlineCredits > 0)
   const [antiCheatMsg, setAntiCheatMsg] = useState<string | null>(null)
@@ -110,7 +140,7 @@ export default function Play({ characters, activeCharacter, leaderboard, equippe
     if (!char || effectiveCps <= 0) return
 
     autoTickTimer.current = setInterval(() => {
-      setChar((prev) => prev ? { ...prev, credits: prev.credits + effectiveCps } : null)
+      setChar((prev) => (prev ? { ...prev, credits: prev.credits + effectiveCps } : null))
       tickCount.current += 1
 
       // Sync with server every 10 seconds
@@ -120,13 +150,15 @@ export default function Play({ characters, activeCharacter, leaderboard, equippe
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-XSRF-TOKEN': decodeURIComponent(document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] || ''),
+            'X-XSRF-TOKEN': decodeURIComponent(
+              document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] || ''
+            ),
           },
           body: JSON.stringify({ characterId: char.id }),
         })
           .then((r) => r.json())
           .then((data) => {
-            setChar((prev) => prev ? { ...prev, credits: data.credits } : null)
+            setChar((prev) => (prev ? { ...prev, credits: data.credits } : null))
           })
           .catch(() => {})
       }
@@ -187,7 +219,9 @@ export default function Play({ characters, activeCharacter, leaderboard, equippe
     (e: React.MouseEvent) => {
       if (!char) return
       setChar((prev) =>
-        prev ? { ...prev, credits: prev.credits + effectiveCpc, totalClicks: prev.totalClicks + 1 } : null
+        prev
+          ? { ...prev, credits: prev.credits + effectiveCpc, totalClicks: prev.totalClicks + 1 }
+          : null
       )
 
       const rect = (e.target as HTMLElement).getBoundingClientRect()
@@ -207,7 +241,12 @@ export default function Play({ characters, activeCharacter, leaderboard, equippe
     [char, effectiveCpc, sendBatch]
   )
 
-  useEffect(() => () => { sendBatch() }, [sendBatch])
+  useEffect(
+    () => () => {
+      sendBatch()
+    },
+    [sendBatch]
+  )
 
   useEffect(() => {
     let active = true
@@ -239,7 +278,12 @@ export default function Play({ characters, activeCharacter, leaderboard, equippe
             <h2 className="text-2xl font-bold text-cyber-blue neon-text mb-6 text-center tracking-widest">
               CREER TON RUNNER
             </h2>
-            <form onSubmit={(e) => { e.preventDefault(); createForm.post('/play/character') }}>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                createForm.post('/play/character')
+              }}
+            >
               <input
                 type="text"
                 value={createForm.data.name}
@@ -267,9 +311,17 @@ export default function Play({ characters, activeCharacter, leaderboard, equippe
     <GameLayout>
       {/* Offline earnings popup */}
       {showOffline && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50" onClick={() => setShowOffline(false)}>
-          <div className="bg-cyber-dark border border-cyber-yellow/50 rounded-lg p-8 text-center max-w-sm" onClick={(e) => e.stopPropagation()}>
-            <div className="text-xs uppercase tracking-widest text-gray-500 mb-2">Revenus hors-ligne</div>
+        <div
+          className="fixed inset-0 bg-black/70 flex items-center justify-center z-50"
+          onClick={() => setShowOffline(false)}
+        >
+          <div
+            className="bg-cyber-dark border border-cyber-yellow/50 rounded-lg p-8 text-center max-w-sm"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-xs uppercase tracking-widest text-gray-500 mb-2">
+              Revenus hors-ligne
+            </div>
             <div className="text-4xl font-bold text-cyber-yellow mb-2">
               +{formatCredits(offlineCredits)}
             </div>
@@ -290,14 +342,31 @@ export default function Play({ characters, activeCharacter, leaderboard, equippe
           {/* Stats */}
           <div className="grid grid-cols-5 gap-3 mb-6">
             {[
-              { label: 'CREDITS', value: formatCredits(char?.credits || 0), color: 'text-cyber-yellow' },
+              {
+                label: 'CREDITS',
+                value: formatCredits(char?.credits || 0),
+                color: 'text-cyber-yellow',
+              },
               { label: 'NIVEAU', value: `LVL ${char?.level || 1}`, color: 'text-cyber-green' },
               { label: 'CPC', value: `${effectiveCpc}`, color: 'text-cyber-blue' },
-              { label: 'CPS', value: effectiveCps > 0 ? `${effectiveCps}/s` : 'OFF', color: effectiveCps > 0 ? 'text-cyber-purple' : 'text-gray-600' },
-              { label: 'CLICKS', value: formatCredits(char?.totalClicks || 0), color: 'text-cyber-pink' },
+              {
+                label: 'CPS',
+                value: effectiveCps > 0 ? `${effectiveCps}/s` : 'OFF',
+                color: effectiveCps > 0 ? 'text-cyber-purple' : 'text-gray-600',
+              },
+              {
+                label: 'CLICKS',
+                value: formatCredits(char?.totalClicks || 0),
+                color: 'text-cyber-pink',
+              },
             ].map((stat) => (
-              <div key={stat.label} className="bg-cyber-dark border border-cyber-blue/20 rounded-lg p-3 text-center">
-                <div className="text-[10px] uppercase tracking-widest text-gray-500">{stat.label}</div>
+              <div
+                key={stat.label}
+                className="bg-cyber-dark border border-cyber-blue/20 rounded-lg p-3 text-center"
+              >
+                <div className="text-[10px] uppercase tracking-widest text-gray-500">
+                  {stat.label}
+                </div>
                 <div className={`text-lg font-bold ${stat.color}`}>{stat.value}</div>
               </div>
             ))}
@@ -307,8 +376,17 @@ export default function Play({ characters, activeCharacter, leaderboard, equippe
           {char && (
             <div className="mb-6">
               <div className="flex justify-between text-xs text-gray-500 mb-1">
-                <span>XP {char.talentPoints > 0 && <span className="text-cyber-purple ml-2">{char.talentPoints} pts talent dispo</span>}</span>
-                <span>{char.xp} / {char.level * 100}</span>
+                <span>
+                  XP{' '}
+                  {char.talentPoints > 0 && (
+                    <span className="text-cyber-purple ml-2">
+                      {char.talentPoints} pts talent dispo
+                    </span>
+                  )}
+                </span>
+                <span>
+                  {char.xp} / {char.level * 100}
+                </span>
               </div>
               <div className="h-2 bg-cyber-dark rounded-full overflow-hidden border border-cyber-blue/20">
                 <div
@@ -375,16 +453,136 @@ export default function Play({ characters, activeCharacter, leaderboard, equippe
 
           {/* HP Bar */}
           {char && (
-            <div className="max-w-md mx-auto">
-              <div className="flex justify-between text-xs text-gray-500 mb-1">
-                <span>HP</span>
-                <span>{char.hpCurrent} / {char.hpMax}</span>
+            <div className="space-y-6">
+              <div className="max-w-md mx-auto">
+                <div className="flex justify-between text-xs text-gray-500 mb-1">
+                  <span>HP</span>
+                  <span>
+                    {char.hpCurrent} / {char.hpMax}
+                  </span>
+                </div>
+                <div className="h-3 bg-cyber-dark rounded-full overflow-hidden border border-cyber-red/20">
+                  <div
+                    className="h-full bg-gradient-to-r from-cyber-red to-cyber-orange transition-all duration-300"
+                    style={{ width: `${(char.hpCurrent / char.hpMax) * 100}%` }}
+                  />
+                </div>
               </div>
-              <div className="h-3 bg-cyber-dark rounded-full overflow-hidden border border-cyber-red/20">
-                <div
-                  className="h-full bg-gradient-to-r from-cyber-red to-cyber-orange transition-all duration-300"
-                  style={{ width: `${(char.hpCurrent / char.hpMax) * 100}%` }}
-                />
+
+              <div className="grid grid-cols-1 xl:grid-cols-[1.15fr_0.85fr] gap-4">
+                <div className="bg-cyber-dark border border-cyber-green/30 rounded-lg p-4">
+                  <div className="flex items-start justify-between gap-3 mb-4">
+                    <div>
+                      <div className="text-[10px] uppercase tracking-widest text-gray-500">
+                        Personnage
+                      </div>
+                      <h3 className="text-lg uppercase tracking-widest text-cyber-green font-bold mt-1 mb-1">
+                        {char.name}
+                      </h3>
+                      <div className="flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-widest">
+                        <span className="rounded border border-cyber-green/30 px-2 py-1 text-cyber-green">
+                          LVL {char.level}
+                        </span>
+                        {char.chosenSpec ? (
+                          <span
+                            className={`rounded border px-2 py-1 ${SPEC_CONFIG[char.chosenSpec]?.color} ${SPEC_CONFIG[char.chosenSpec]?.border}`}
+                          >
+                            {SPEC_CONFIG[char.chosenSpec]?.label || char.chosenSpec}
+                          </span>
+                        ) : (
+                          <span className="rounded border border-gray-800 px-2 py-1 text-gray-600">
+                            STYLE A CONFIGURER
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => router.visit(`/profile/${encodeURIComponent(char.name)}`)}
+                        className="px-3 py-1.5 border border-gray-800 text-gray-500 rounded text-[10px] uppercase tracking-widest hover:text-white hover:border-gray-600 transition-all"
+                      >
+                        Profil
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => router.visit('/inventory')}
+                        className="px-3 py-1.5 border border-cyber-blue/30 text-cyber-blue rounded text-[10px] uppercase tracking-widest hover:bg-cyber-blue/10 transition-all"
+                      >
+                        Inventaire
+                      </button>
+                    </div>
+                  </div>
+
+                  <CyberpunkAvatar
+                    name={char.name}
+                    chosenSpec={char.chosenSpec}
+                    equippedItems={equippedItems}
+                  />
+                </div>
+
+                <div className="bg-cyber-dark border border-cyber-purple/30 rounded-lg p-4">
+                  <div className="flex items-start justify-between gap-3 mb-4">
+                    <div>
+                      <div className="text-[10px] uppercase tracking-widest text-gray-500">
+                        Personnalisation
+                      </div>
+                      <h3 className="text-lg uppercase tracking-widest text-cyber-purple font-bold mt-1">
+                        Garde-robe cyberpunk
+                      </h3>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => router.visit('/talents')}
+                      className="px-3 py-1.5 border border-cyber-purple/30 text-cyber-purple rounded text-[10px] uppercase tracking-widest hover:bg-cyber-purple/10 transition-all"
+                    >
+                      Talents
+                    </button>
+                  </div>
+
+                  <div className="rounded border border-gray-800 bg-cyber-black/30 px-3 py-3 mb-3">
+                    <div className="text-[10px] uppercase tracking-widest text-gray-500 mb-2">
+                      Specialisation
+                    </div>
+                    {char.chosenSpec ? (
+                      <span
+                        className={`inline-flex rounded border px-2 py-1 text-[10px] font-bold uppercase tracking-widest ${SPEC_CONFIG[char.chosenSpec]?.color} ${SPEC_CONFIG[char.chosenSpec]?.border}`}
+                      >
+                        {SPEC_CONFIG[char.chosenSpec]?.label || char.chosenSpec}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-gray-600">Aucune specialisation choisie</span>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
+                    {['clothes_hair', 'clothes_face', 'clothes_outer', 'clothes_legs'].map(
+                      (type) => {
+                        const entry = equippedItems.find((item) => item.item.type === type)
+
+                        return (
+                          <div
+                            key={type}
+                            className="rounded border border-gray-800 bg-cyber-black/40 px-3 py-2"
+                          >
+                            <div className="text-[10px] uppercase tracking-wider text-gray-600 mb-1">
+                              {TYPE_LABELS[type]}
+                            </div>
+                            {entry ? (
+                              <div
+                                className={`text-xs font-bold ${RARITY_TEXT[entry.item.rarity] || 'text-white'}`}
+                              >
+                                {entry.item.name}
+                              </div>
+                            ) : (
+                              <div className="text-xs text-gray-700">[ Vide ]</div>
+                            )}
+                          </div>
+                        )
+                      }
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -401,11 +599,15 @@ export default function Play({ characters, activeCharacter, leaderboard, equippe
                 <div
                   key={player.id}
                   className={`flex items-center justify-between p-2 rounded text-xs ${
-                    player.id === char?.id ? 'bg-cyber-blue/10 border border-cyber-blue/30' : 'bg-cyber-black/50'
+                    player.id === char?.id
+                      ? 'bg-cyber-blue/10 border border-cyber-blue/30'
+                      : 'bg-cyber-black/50'
                   }`}
                 >
                   <div className="flex items-center gap-2">
-                    <span className={`font-bold ${i === 0 ? 'text-cyber-yellow' : i === 1 ? 'text-gray-300' : i === 2 ? 'text-cyber-orange' : 'text-gray-500'}`}>
+                    <span
+                      className={`font-bold ${i === 0 ? 'text-cyber-yellow' : i === 1 ? 'text-gray-300' : i === 2 ? 'text-cyber-orange' : 'text-gray-500'}`}
+                    >
                       #{i + 1}
                     </span>
                     <span className="text-white truncate max-w-[80px]">{player.name}</span>
@@ -426,11 +628,19 @@ export default function Play({ characters, activeCharacter, leaderboard, equippe
               </h3>
               <div className="space-y-1 text-xs">
                 {[
-                  { label: 'ATK', value: char.attack + bonuses.attackBonus, color: 'text-cyber-red' },
-                  { label: 'DEF', value: char.defense + bonuses.defenseBonus, color: 'text-cyber-blue' },
-                  { label: 'HP', value: `${char.hpCurrent}/${char.hpMax}`, color: 'text-cyber-green' },
+                  { label: 'ATK', value: `${char.attack}`, color: 'text-cyber-red' },
+                  { label: 'DEF', value: `${char.defense}`, color: 'text-cyber-blue' },
+                  {
+                    label: 'HP',
+                    value: `${char.hpCurrent}/${char.hpMax}`,
+                    color: 'text-cyber-green',
+                  },
                   { label: 'CRIT%', value: `${char.critChance ?? 5}%`, color: 'text-cyber-yellow' },
-                  { label: 'CRIT DMG', value: `${char.critDamage ?? 150}%`, color: 'text-cyber-yellow' },
+                  {
+                    label: 'CRIT DMG',
+                    value: `${char.critDamage ?? 150}%`,
+                    color: 'text-cyber-yellow',
+                  },
                 ].map((s) => (
                   <div key={s.label} className="flex justify-between">
                     <span className="text-gray-500">{s.label}</span>
@@ -440,24 +650,32 @@ export default function Play({ characters, activeCharacter, leaderboard, equippe
               </div>
 
               <div className="mt-4 border-t border-gray-800 pt-3">
-                <div className="text-[10px] uppercase tracking-widest text-gray-500 mb-2 text-center">Equipement</div>
+                <div className="text-[10px] uppercase tracking-widest text-gray-500 mb-2 text-center">
+                  Equipement
+                </div>
                 <div className="space-y-2">
                   {['weapon', 'armor', 'implant'].map((type) => {
                     const entry = equippedItems.find((item) => item.item.type === type)
 
                     return (
-                      <div key={type} className="rounded border border-gray-800 bg-cyber-black/40 px-2 py-2">
+                      <div
+                        key={type}
+                        className="rounded border border-gray-800 bg-cyber-black/40 px-2 py-2"
+                      >
                         <div className="text-[10px] uppercase tracking-wider text-gray-600 mb-1">
                           {TYPE_LABELS[type]}
                         </div>
                         {entry ? (
                           <>
-                            <div className={`text-xs font-bold ${RARITY_TEXT[entry.item.rarity] || 'text-white'}`}>
+                            <div
+                              className={`text-xs font-bold ${RARITY_TEXT[entry.item.rarity] || 'text-white'}`}
+                            >
                               {entry.item.name}
                             </div>
                             {entry.item.effectType && entry.item.effectValue !== null && (
                               <div className="text-[10px] text-cyber-green mt-0.5">
-                                {EFFECT_LABELS[entry.item.effectType] || entry.item.effectType}: +{entry.item.effectValue}
+                                {EFFECT_LABELS[entry.item.effectType] || entry.item.effectType}: +
+                                {entry.item.effectValue}
                               </div>
                             )}
                           </>
@@ -476,29 +694,36 @@ export default function Play({ characters, activeCharacter, leaderboard, equippe
           {party && (
             <div className="bg-cyber-dark border border-cyber-purple/30 rounded-lg p-4 mt-4">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm uppercase tracking-widest text-cyber-purple">
-                  Groupe
-                </h3>
-                <span className={`text-[10px] px-2 py-0.5 rounded-full border ${
-                  party.status === 'in_dungeon'
-                    ? 'bg-cyber-red/10 border-cyber-red/30 text-cyber-red'
-                    : 'bg-cyber-green/10 border-cyber-green/30 text-cyber-green'
-                }`}>
+                <h3 className="text-sm uppercase tracking-widest text-cyber-purple">Groupe</h3>
+                <span
+                  className={`text-[10px] px-2 py-0.5 rounded-full border ${
+                    party.status === 'in_dungeon'
+                      ? 'bg-cyber-red/10 border-cyber-red/30 text-cyber-red'
+                      : 'bg-cyber-green/10 border-cyber-green/30 text-cyber-green'
+                  }`}
+                >
                   {party.status === 'in_dungeon' ? 'EN DONJON' : 'EN ATTENTE'}
                 </span>
               </div>
               <div className="text-[10px] text-gray-600 mb-2 truncate">{party.name}</div>
               <div className="space-y-1.5">
                 {party.members.map((m) => (
-                  <div key={m.id} className={`flex items-center justify-between p-1.5 rounded text-xs ${
-                    m.id === char?.id ? 'bg-cyber-purple/10 border border-cyber-purple/20' : 'bg-cyber-black/30'
-                  }`}>
+                  <div
+                    key={m.id}
+                    className={`flex items-center justify-between p-1.5 rounded text-xs ${
+                      m.id === char?.id
+                        ? 'bg-cyber-purple/10 border border-cyber-purple/20'
+                        : 'bg-cyber-black/30'
+                    }`}
+                  >
                     <div className="flex items-center gap-1.5">
                       {m.isLeader && <span className="text-cyber-yellow text-[10px]">★</span>}
                       <span className="text-white truncate max-w-[80px]">{m.name}</span>
                       <span className="text-gray-700 text-[10px]">LVL {m.level}</span>
                     </div>
-                    <span className={`text-[10px] ${m.isReady ? 'text-cyber-green' : 'text-gray-600'}`}>
+                    <span
+                      className={`text-[10px] ${m.isReady ? 'text-cyber-green' : 'text-gray-600'}`}
+                    >
                       {m.isReady ? 'PRET' : '...'}
                     </span>
                   </div>

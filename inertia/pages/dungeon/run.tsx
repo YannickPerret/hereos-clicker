@@ -37,6 +37,17 @@ interface Props {
     tier: number
     icon: string
   } | null
+  combatPreview: {
+    player: {
+      attack: number
+      defense: number
+    }
+    enemy: {
+      attack: number
+      defense: number
+      isStunned: boolean
+    } | null
+  }
   consumables: { id: number; quantity: number; item: { name: string; effectType: string; effectValue: number } }[]
   skills: {
     id: number
@@ -185,9 +196,10 @@ function CombatLog({ log }: { log: CombatLogEntry[] }) {
   )
 }
 
-export default function DungeonRun({ character, run: initialRun, floor, currentEnemy: initialEnemy, consumables, skills = [], activeEffects: initialEffects = [] }: Props) {
+export default function DungeonRun({ character, run: initialRun, floor, currentEnemy: initialEnemy, combatPreview, consumables, skills = [], activeEffects: initialEffects = [] }: Props) {
   const [run, setRun] = useState(initialRun)
   const [enemy, setEnemy] = useState(initialEnemy)
+  const [preview, setPreview] = useState(combatPreview)
   const [partyMembers, setPartyMembers] = useState<{ id: number; name: string; level: number; hpCurrent: number; hpMax: number }[]>([])
   const [groupLog, setGroupLog] = useState<any[]>([])
   const [turnTimer, setTurnTimer] = useState<number | null>(null)
@@ -200,7 +212,8 @@ export default function DungeonRun({ character, run: initialRun, floor, currentE
   useEffect(() => {
     setRun(initialRun)
     setEnemy(initialEnemy)
-  }, [initialRun, initialEnemy])
+    setPreview(combatPreview)
+  }, [initialRun, initialEnemy, combatPreview])
 
   // Poll run state for group dungeons
   useEffect(() => {
@@ -214,6 +227,7 @@ export default function DungeonRun({ character, run: initialRun, floor, currentE
         const data = await res.json()
         setRun(data.run)
         setEnemy(data.currentEnemy)
+        setPreview(data.combatPreview)
         setGroupLog(data.run.combatLog || [])
         if (data.partyMembers) setPartyMembers(data.partyMembers)
         // Calculate turn timer
@@ -331,11 +345,17 @@ export default function DungeonRun({ character, run: initialRun, floor, currentE
             <div className="grid grid-cols-2 gap-2 text-xs mb-2">
               <div className="text-center">
                 <div className="text-gray-600">ATK</div>
-                <div className="text-cyber-red font-bold">{character.attack}</div>
+                <div className="text-cyber-red font-bold">{preview.player.attack}</div>
+                {preview.player.attack !== character.attack && (
+                  <div className="text-[10px] text-gray-600">base {character.attack}</div>
+                )}
               </div>
               <div className="text-center">
                 <div className="text-gray-600">DEF</div>
-                <div className="text-cyber-blue font-bold">{character.defense}</div>
+                <div className="text-cyber-blue font-bold">{preview.player.defense}</div>
+                {preview.player.defense !== character.defense && (
+                  <div className="text-[10px] text-gray-600">base {character.defense}</div>
+                )}
               </div>
             </div>
             <div className="grid grid-cols-2 gap-2 text-xs border-t border-gray-800 pt-2">
@@ -486,11 +506,17 @@ export default function DungeonRun({ character, run: initialRun, floor, currentE
             <div className="grid grid-cols-2 gap-2 text-xs mb-2">
               <div className="text-center">
                 <div className="text-gray-600">ATK</div>
-                <div className="text-cyber-red font-bold">{enemy.attack}</div>
+                <div className="text-cyber-red font-bold">{preview.enemy?.attack ?? enemy.attack}</div>
+                {preview.enemy && preview.enemy.attack !== enemy.attack && (
+                  <div className="text-[10px] text-gray-600">base {enemy.attack}</div>
+                )}
               </div>
               <div className="text-center">
                 <div className="text-gray-600">DEF</div>
-                <div className="text-cyber-blue font-bold">{enemy.defense}</div>
+                <div className="text-cyber-blue font-bold">{preview.enemy?.defense ?? enemy.defense}</div>
+                {preview.enemy && preview.enemy.defense !== enemy.defense && (
+                  <div className="text-[10px] text-gray-600">base {enemy.defense}</div>
+                )}
               </div>
             </div>
             <div className="grid grid-cols-2 gap-2 text-xs border-t border-gray-800 pt-2">

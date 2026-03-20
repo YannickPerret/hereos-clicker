@@ -54,6 +54,10 @@ const TYPE_LABELS: Record<string, string> = {
   weapon: 'ARME',
   armor: 'ARMURE',
   implant: 'IMPLANT',
+  clothes_hair: 'CHEVEUX',
+  clothes_face: 'VISAGE',
+  clothes_outer: 'HAUT',
+  clothes_legs: 'BAS',
   consumable: 'CONSOMMABLE',
   upgrade: 'AMELIORATION',
 }
@@ -69,7 +73,17 @@ const formatEffect = (item: Item) => {
 
 export default function Shop({ character, listings }: Props) {
   const [quantities, setQuantities] = useState<Record<number, string>>({})
-  const categories = ['weapon', 'armor', 'implant', 'consumable', 'upgrade']
+  const categories = [
+    'weapon',
+    'armor',
+    'implant',
+    'clothes_hair',
+    'clothes_face',
+    'clothes_outer',
+    'clothes_legs',
+    'consumable',
+    'upgrade',
+  ]
 
   const getQuantity = (listingId: number) => {
     const value = quantities[listingId] ?? '1'
@@ -98,10 +112,14 @@ export default function Shop({ character, listings }: Props) {
     <GameLayout>
       {/* Credits display */}
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-cyber-pink neon-text-pink tracking-widest">NETMARKET</h1>
+        <h1 className="text-2xl font-bold text-cyber-pink neon-text-pink tracking-widest">
+          NETMARKET
+        </h1>
         <div className="bg-cyber-dark border border-cyber-yellow/30 rounded-lg px-4 py-2">
           <span className="text-xs text-gray-500 mr-2">CREDITS:</span>
-          <span className="text-cyber-yellow font-bold text-lg">{character.credits.toLocaleString()}</span>
+          <span className="text-cyber-yellow font-bold text-lg">
+            {character.credits.toLocaleString()}
+          </span>
         </div>
       </div>
 
@@ -133,16 +151,18 @@ export default function Shop({ character, listings }: Props) {
                         <h3 className={`font-bold text-sm ${RARITY_TEXT[listing.item.rarity]}`}>
                           {listing.item.name}
                         </h3>
-                        <span className="text-[10px] uppercase text-gray-600">{listing.item.rarity}</span>
+                        <span className="text-[10px] uppercase text-gray-600">
+                          {listing.item.rarity}
+                        </span>
                       </div>
                       <div className="text-right">
-                        <div className={`text-sm font-bold ${canAfford ? 'text-cyber-yellow' : 'text-cyber-red'}`}>
+                        <div
+                          className={`text-sm font-bold ${canAfford ? 'text-cyber-yellow' : 'text-cyber-red'}`}
+                        >
                           {listing.price.toLocaleString()}c
                         </div>
                         {listing.stock !== null && (
-                          <div className="text-[10px] text-gray-600">
-                            Stock: {listing.stock}
-                          </div>
+                          <div className="text-[10px] text-gray-600">Stock: {listing.stock}</div>
                         )}
                       </div>
                     </div>
@@ -190,16 +210,22 @@ export default function Shop({ character, listings }: Props) {
                     </div>
 
                     <button
-                      onClick={() => router.post(`/shop/${listing.id}/buy`, { quantity }, { preserveScroll: true })}
+                      onClick={() =>
+                        router.post(
+                          `/shop/${listing.id}/buy`,
+                          { quantity },
+                          { preserveScroll: true }
+                        )
+                      }
                       disabled={!canAfford || outOfStock || !hasEnoughStock}
                       className={`w-full py-2 text-xs uppercase tracking-widest rounded font-bold transition-all ${
                         outOfStock
                           ? 'bg-gray-900 border border-gray-700 text-gray-700 cursor-not-allowed'
                           : !hasEnoughStock
                             ? 'bg-cyber-red/10 border border-cyber-red/30 text-cyber-red/50 cursor-not-allowed'
-                          : canAfford
-                            ? 'bg-cyber-yellow/10 border border-cyber-yellow/50 text-cyber-yellow hover:bg-cyber-yellow/20'
-                            : 'bg-cyber-red/10 border border-cyber-red/30 text-cyber-red/50 cursor-not-allowed'
+                            : canAfford
+                              ? 'bg-cyber-yellow/10 border border-cyber-yellow/50 text-cyber-yellow hover:bg-cyber-yellow/20'
+                              : 'bg-cyber-red/10 border border-cyber-red/30 text-cyber-red/50 cursor-not-allowed'
                       }`}
                     >
                       {outOfStock
