@@ -140,9 +140,9 @@ export default function PvpArena({ character, activeMatch, recentMatches, rankin
                   {activeMatch.status === 'waiting' && (
                     <button
                       onClick={() => router.post('/pvp/leave-queue')}
-                      className="w-full py-2 text-xs text-gray-600 transition-colors hover:text-gray-400"
+                      className="w-full rounded border border-cyber-red/40 bg-cyber-red/10 py-3 text-xs font-bold uppercase tracking-widest text-cyber-red transition-all hover:bg-cyber-red/20"
                     >
-                      Annuler la file
+                      [ ANNULER LA RECHERCHE ]
                     </button>
                   )}
                 </div>

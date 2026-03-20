@@ -110,7 +110,6 @@ export default class PvpController {
         return response.redirect(`/pvp/match/${match.id}`)
       }
 
-      session.flash('success', 'Recherche de joueur en cours...')
       return response.redirect('/pvp')
     } catch (error) {
       console.error('[pvp.queue.error]', {
