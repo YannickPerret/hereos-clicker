@@ -79,6 +79,7 @@ interface CombatLogEntry {
   isCrit?: boolean
   enemyHpLeft?: number
   playerHpLeft?: number
+  blocked?: boolean
   creditsReward?: number
   xpReward?: number
   loot?: { name: string; rarity: string }[]
@@ -86,6 +87,13 @@ interface CombatLogEntry {
   bossName?: string
   enemyName?: string
   enemyHp?: number
+  defenderId?: number
+  defenderName?: string
+  skillName?: string
+  healed?: number
+  stolen?: number
+  message?: string
+  auto?: boolean
 }
 
 const TIER_COLORS: Record<number, string> = {
@@ -125,7 +133,9 @@ function CombatLog({ log, className = '' }: { log: CombatLogEntry[]; className?:
                   key={i}
                   className={`text-xs p-2 rounded ${entry.blocked ? 'bg-cyber-blue/10 border border-cyber-blue/30' : entry.isCrit ? 'bg-cyber-red/20 border border-cyber-red/50' : 'bg-cyber-red/5'}`}
                 >
-                  <span className="text-cyber-red">L'ennemi attaque</span>
+                  <span className="text-cyber-red">
+                    L&apos;ennemi attaque{entry.defenderName ? ` ${entry.defenderName}` : ''}
+                  </span>
                   {entry.blocked ? (
                     <span className="text-cyber-blue font-bold ml-1">BLOQUE PAR LE BOUCLIER!</span>
                   ) : (
@@ -138,6 +148,17 @@ function CombatLog({ log, className = '' }: { log: CombatLogEntry[]; className?:
                       )}
                     </>
                   )}
+                </div>
+              )
+            case 'party_member_down':
+              return (
+                <div
+                  key={i}
+                  className="text-xs p-2 rounded bg-cyber-orange/10 border border-cyber-orange/40"
+                >
+                  <span className="text-cyber-orange font-bold">
+                    {entry.defenderName || 'Un membre du groupe'} est KO!
+                  </span>
                 </div>
               )
             case 'enemy_defeated':
@@ -354,9 +375,12 @@ export default function DungeonRun({
                     : 'border-gray-800'
               }`}
             >
-              <div className="text-white font-bold">{m.name}</div>
+              <div className={`font-bold ${m.hpCurrent <= 0 ? 'text-cyber-red' : 'text-white'}`}>
+                {m.name}
+                {m.hpCurrent <= 0 && <span className="ml-1 text-cyber-red">KO</span>}
+              </div>
               <div className="text-[10px] text-gray-500">LVL {m.level}</div>
-              <div className="text-[10px] text-cyber-green">
+              <div className={`text-[10px] ${m.hpCurrent <= 0 ? 'text-cyber-red' : 'text-cyber-green'}`}>
                 {m.hpCurrent}/{m.hpMax} HP
               </div>
             </div>

@@ -71,6 +71,18 @@ export default class CombatService {
 
   /** Auto-attack for timed out player (basic attack, no crits) */
   private static async performAutoAttack(character: Character, run: DungeonRun) {
+    if (character.hpCurrent <= 0) {
+      const nextTurnId = await this.getNextTurnId(run, character.id)
+      if (nextTurnId) {
+        run.currentTurnId = nextTurnId
+        run.turnDeadline = Date.now() + 30000
+      } else {
+        await this.handlePartyDefeat(run)
+      }
+      await run.save()
+      return
+    }
+
     const enemy = await Enemy.findOrFail(run.currentEnemyId!)
     const bonuses = await ClickerService.calculateEquipBonuses(character)
     const rawDmg = Math.max(1, (character.attack + bonuses.attackBonus) - enemy.defense)
@@ -89,20 +101,220 @@ export default class CombatService {
     run.combatLog = JSON.stringify(persistentLog)
 
     // Switch turn
-    run.currentTurnId = await this.getNextTurnId(run, character.id)
-    run.turnDeadline = Date.now() + 30000
+    const nextTurnId = await this.getNextTurnId(run, character.id)
+    if (nextTurnId) {
+      run.currentTurnId = nextTurnId
+      run.turnDeadline = Date.now() + 30000
+    } else {
+      await this.handlePartyDefeat(run)
+    }
     await run.save()
   }
 
   /** Get next turn character id in party rotation */
-  private static async getNextTurnId(run: DungeonRun, currentCharId: number): Promise<number> {
+  private static async getNextTurnId(run: DungeonRun, currentCharId: number): Promise<number | null> {
     if (!run.partyId) return currentCharId
     const members = await PartyMember.query()
       .where('partyId', run.partyId)
       .orderBy('id', 'asc')
-    const ids = members.map((m) => m.characterId)
+      .preload('character')
+
+    const ids = members.map((member) => member.characterId)
+    const aliveIds = new Set(
+      members
+        .filter((member) => member.character.hpCurrent > 0)
+        .map((member) => member.characterId)
+    )
+
+    if (aliveIds.size === 0) {
+      return null
+    }
+
     const idx = ids.indexOf(currentCharId)
-    return ids[(idx + 1) % ids.length]
+    if (idx === -1) {
+      return members.find((member) => aliveIds.has(member.characterId))?.characterId ?? null
+    }
+
+    for (let offset = 1; offset <= ids.length; offset++) {
+      const nextId = ids[(idx + offset) % ids.length]
+      if (aliveIds.has(nextId)) {
+        return nextId
+      }
+    }
+
+    return null
+  }
+
+  private static getEnemyTargetWeight(character: Character) {
+    let weight = 1
+
+    switch (character.chosenSpec) {
+      case 'samurai':
+        weight += 2.5
+        break
+      case 'chrome_dealer':
+        weight += 0.75
+        break
+      case 'netrunner':
+        weight += 0.15
+        break
+      case 'hacker':
+        weight -= 0.1
+        break
+    }
+
+    weight += Math.min(character.defense / 100, 1.5)
+    weight += Math.min(character.hpMax / 250, 1.5)
+
+    return Math.max(0.5, weight)
+  }
+
+  private static async selectEnemyTarget(run: DungeonRun, actingCharacter: Character) {
+    if (!run.partyId) {
+      return actingCharacter
+    }
+
+    const members = await PartyMember.query()
+      .where('partyId', run.partyId)
+      .preload('character')
+
+    const aliveCharacters = members
+      .map((member) => (member.characterId === actingCharacter.id ? actingCharacter : member.character))
+      .filter((memberCharacter) => memberCharacter.hpCurrent > 0)
+
+    if (aliveCharacters.length === 0) {
+      return actingCharacter
+    }
+
+    const weightedTargets = aliveCharacters.map((memberCharacter) => ({
+      character: memberCharacter,
+      weight: this.getEnemyTargetWeight(memberCharacter),
+    }))
+
+    const totalWeight = weightedTargets.reduce((sum, target) => sum + target.weight, 0)
+    let roll = Math.random() * totalWeight
+
+    for (const target of weightedTargets) {
+      roll -= target.weight
+      if (roll <= 0) {
+        return target.character
+      }
+    }
+
+    return weightedTargets[weightedTargets.length - 1].character
+  }
+
+  private static async handlePartyDefeat(run: DungeonRun) {
+    run.status = 'defeat'
+    run.endedAt = DateTime.now()
+    run.currentTurnId = null
+    run.turnDeadline = null
+
+    if (run.partyId) {
+      const members = await PartyMember.query()
+        .where('partyId', run.partyId)
+        .preload('character')
+
+      for (const member of members) {
+        if (member.character.hpCurrent <= 0) {
+          member.character.hpCurrent = Math.floor(member.character.hpMax * 0.25)
+          await member.character.save()
+        }
+      }
+
+      const { default: Party } = await import('#models/party')
+      const party = await Party.find(run.partyId)
+      if (party) {
+        party.status = 'waiting'
+        party.dungeonRunId = null
+        party.dungeonFloorId = null
+        party.countdownStart = null
+        await party.save()
+      }
+    }
+  }
+
+  private static async handleEnemyCounterAttack(
+    run: DungeonRun,
+    enemy: Enemy,
+    effects: ActiveEffect[],
+    actingCharacter: Character,
+    log: any[]
+  ) {
+    const target = await this.selectEnemyTarget(run, actingCharacter)
+    const targetBonuses = await ClickerService.calculateEquipBonuses(target)
+    const targetTalentBonuses = await TalentService.getCharacterBonuses(target.id)
+    const targetCombatMult = 1 + (targetTalentBonuses.combatPercent / 100)
+    const targetMods = this.applyPlayerModifiers(
+      {
+        attack: target.attack + targetTalentBonuses.atkFlat,
+        defense: target.defense + targetTalentBonuses.defFlat,
+      },
+      effects,
+      target.id
+    )
+
+    const shielded = this.hasShield(effects, target.id)
+
+    if (shielded) {
+      log.push({
+        action: 'enemy_attack',
+        damage: 0,
+        blocked: true,
+        playerHpLeft: target.hpCurrent,
+        defenderId: target.id,
+        defenderName: target.name,
+      })
+      effects = this.consumeEffect(effects, target.id, 'shield')
+      this.setEffects(run, effects)
+      await target.save()
+      return effects
+    }
+
+    const enemyMods = this.applyEnemyModifiers(enemy, effects)
+    const effectiveDef = Math.floor((targetMods.defense + targetBonuses.defenseBonus) * targetCombatMult)
+    const rawEnemyAttack = Math.max(1, enemyMods.attack - effectiveDef)
+    const enemyVariance = Math.floor(Math.random() * Math.floor(rawEnemyAttack * 0.3))
+    const baseEnemyDamage = rawEnemyAttack + enemyVariance
+    const enemyHit = this.rollCrit(enemy.critChance, enemy.critDamage, baseEnemyDamage)
+
+    target.hpCurrent = Math.max(0, target.hpCurrent - enemyHit.damage)
+    log.push({
+      action: 'enemy_attack',
+      damage: enemyHit.damage,
+      isCrit: enemyHit.isCrit,
+      playerHpLeft: target.hpCurrent,
+      defenderId: target.id,
+      defenderName: target.name,
+    })
+
+    if (target.hpCurrent <= 0) {
+      if (run.partyId) {
+        log.push({ action: 'party_member_down', defenderId: target.id, defenderName: target.name })
+        await target.save()
+
+        const remainingAliveMembers = await PartyMember.query()
+          .where('partyId', run.partyId)
+          .preload('character')
+
+        const hasAliveMember = remainingAliveMembers.some((member) => member.character.hpCurrent > 0)
+        if (!hasAliveMember) {
+          await this.handlePartyDefeat(run)
+          log.push({ action: 'defeat', defenderId: target.id, defenderName: target.name })
+        }
+
+        return effects
+      }
+
+      run.status = 'defeat'
+      run.endedAt = DateTime.now()
+      target.hpCurrent = Math.floor(target.hpMax * 0.25)
+      log.push({ action: 'defeat', defenderId: target.id, defenderName: target.name })
+    }
+
+    await target.save()
+
+    return effects
   }
 
   static async attack(character: Character, runId: number) {
@@ -260,45 +472,7 @@ export default class CombatService {
       if (enemyMods.isStunned) {
         log.push({ action: 'enemy_stunned', message: 'L\'ennemi est paralyse!' })
       } else {
-        const shielded = this.hasShield(effects, character.id)
-        if (shielded) {
-          log.push({ action: 'enemy_attack', damage: 0, blocked: true, playerHpLeft: character.hpCurrent })
-          effects = this.consumeEffect(effects, character.id, 'shield')
-          this.setEffects(run, effects)
-        } else {
-          const effectiveDef = Math.floor((playerMods.defense + bonuses.defenseBonus) * combatMult)
-          const rawEnemyAttack = Math.max(1, enemyMods.attack - effectiveDef)
-          const enemyVariance = Math.floor(Math.random() * Math.floor(rawEnemyAttack * 0.3))
-          const baseEnemyDamage = rawEnemyAttack + enemyVariance
-
-          const enemyHit = this.rollCrit(enemy.critChance, enemy.critDamage, baseEnemyDamage)
-
-          character.hpCurrent = Math.max(0, character.hpCurrent - enemyHit.damage)
-          log.push({
-            action: 'enemy_attack',
-            damage: enemyHit.damage,
-            isCrit: enemyHit.isCrit,
-            playerHpLeft: character.hpCurrent,
-          })
-
-          if (character.hpCurrent <= 0) {
-            run.status = 'defeat'
-            run.endedAt = DateTime.now()
-            character.hpCurrent = Math.floor(character.hpMax * 0.25)
-            log.push({ action: 'defeat' })
-            if (run.partyId) {
-              const { default: Party } = await import('#models/party')
-              const party = await Party.find(run.partyId)
-              if (party) {
-                party.status = 'waiting'
-                party.dungeonRunId = null
-                party.dungeonFloorId = null
-                party.countdownStart = null
-                await party.save()
-              }
-            }
-          }
-        }
+        effects = await this.handleEnemyCounterAttack(run, enemy, effects, character, log)
       }
 
       await character.save()
@@ -314,8 +488,13 @@ export default class CombatService {
 
       // Switch turn to next player (if run still in progress)
       if (run.status === 'in_progress') {
-        run.currentTurnId = await this.getNextTurnId(run, character.id)
-        run.turnDeadline = Date.now() + 30000
+        const nextTurnId = await this.getNextTurnId(run, character.id)
+        if (nextTurnId) {
+          run.currentTurnId = nextTurnId
+          run.turnDeadline = Date.now() + 30000
+        } else {
+          await this.handlePartyDefeat(run)
+        }
       } else {
         run.currentTurnId = null
         run.turnDeadline = null
@@ -342,6 +521,7 @@ export default class CombatService {
         .where('characterId', character.id)
         .first()
       if (!isMember) throw new Error('Invalid run')
+      if (character.hpCurrent <= 0) throw new Error('Ton personnage est KO')
     } else if (run.characterId !== character.id) {
       throw new Error('Invalid run')
     }
@@ -826,37 +1006,7 @@ export default class CombatService {
     // Enemy counter-attack (unless stunned)
     const enemyMods = this.applyEnemyModifiers(enemy, effects)
     if (!enemyMods.isStunned) {
-      const shielded = this.hasShield(effects, character.id)
-      if (shielded) {
-        log.push({ action: 'enemy_attack', damage: 0, blocked: true, playerHpLeft: character.hpCurrent })
-        effects = this.consumeEffect(effects, character.id, 'shield')
-        this.setEffects(run, effects)
-      } else {
-        const effectiveDef = Math.floor((playerMods.defense + bonuses.defenseBonus) * combatMult)
-        const rawEnemyAttack = Math.max(1, enemyMods.attack - effectiveDef)
-        const enemyVariance = Math.floor(Math.random() * Math.floor(rawEnemyAttack * 0.3))
-        const enemyHit = this.rollCrit(enemy.critChance, enemy.critDamage, rawEnemyAttack + enemyVariance)
-        character.hpCurrent = Math.max(0, character.hpCurrent - enemyHit.damage)
-        log.push({ action: 'enemy_attack', damage: enemyHit.damage, isCrit: enemyHit.isCrit, playerHpLeft: character.hpCurrent })
-
-        if (character.hpCurrent <= 0) {
-          run.status = 'defeat'
-          run.endedAt = DateTime.now()
-          character.hpCurrent = Math.floor(character.hpMax * 0.25)
-          log.push({ action: 'defeat' })
-          if (run.partyId) {
-            const { default: Party } = await import('#models/party')
-            const party = await Party.find(run.partyId)
-            if (party) {
-              party.status = 'waiting'
-              party.dungeonRunId = null
-              party.dungeonFloorId = null
-              party.countdownStart = null
-              await party.save()
-            }
-          }
-        }
-      }
+      effects = await this.handleEnemyCounterAttack(run, enemy, effects, character, log)
     } else {
       log.push({ action: 'enemy_stunned', message: 'L\'ennemi est paralyse!' })
     }
@@ -872,8 +1022,13 @@ export default class CombatService {
       run.combatLog = JSON.stringify(persistentLog)
 
       if (run.status === 'in_progress') {
-        run.currentTurnId = await this.getNextTurnId(run, character.id)
-        run.turnDeadline = Date.now() + 30000
+        const nextTurnId = await this.getNextTurnId(run, character.id)
+        if (nextTurnId) {
+          run.currentTurnId = nextTurnId
+          run.turnDeadline = Date.now() + 30000
+        } else {
+          await this.handlePartyDefeat(run)
+        }
       } else {
         run.currentTurnId = null
         run.turnDeadline = null
@@ -972,8 +1127,13 @@ export default class CombatService {
       run.combatLog = JSON.stringify(persistentLog)
 
       if (run.status === 'in_progress') {
-        run.currentTurnId = await this.getNextTurnId(run, character.id)
-        run.turnDeadline = Date.now() + 30000
+        const nextTurnId = await this.getNextTurnId(run, character.id)
+        if (nextTurnId) {
+          run.currentTurnId = nextTurnId
+          run.turnDeadline = Date.now() + 30000
+        } else {
+          await this.handlePartyDefeat(run)
+        }
       } else {
         run.currentTurnId = null
         run.turnDeadline = null
