@@ -1,4 +1,4 @@
-import { Link, usePage } from '@inertiajs/react'
+import { Link, router, usePage } from '@inertiajs/react'
 import { type ReactNode, useEffect, useState } from 'react'
 import FloatingChat from '~/components/floating_chat'
 import NotificationCenter from '~/components/notification_center'
@@ -9,15 +9,26 @@ const ROLE_COLORS: Record<string, string> = {
   user: 'text-cyber-green',
 }
 
+const REPORT_CATEGORIES = ['bug', 'exploit', 'player', 'suggestion', 'other'] as const
+
 export default function GameLayout({ children }: { children: ReactNode }) {
   const { auth, blackMarket, success, errors } = usePage().props as any
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [toast, setToast] = useState<null | { type: 'success' | 'error'; message: string }>(null)
+  const [reportModalOpen, setReportModalOpen] = useState(false)
+  const [reportTitle, setReportTitle] = useState('')
+  const [reportDescription, setReportDescription] = useState('')
+  const [reportCategory, setReportCategory] = useState<(typeof REPORT_CATEGORIES)[number]>('bug')
+  const [submittingReport, setSubmittingReport] = useState(false)
   const isStaff = auth?.user?.role === 'admin' || auth?.user?.role === 'moderator'
   const roleColor = ROLE_COLORS[auth?.user?.role] || ROLE_COLORS.user
   const roleLabel = auth?.user?.roleLabel || 'RUNNER'
   const blackMarketMinLevel = Number(blackMarket?.minLevel || 12)
   const hasBlackMarketAccess = Number(auth?.activeCharacterLevel || 0) >= blackMarketMinLevel
+  const activeCharacterName = auth?.activeCharacterName || null
+  const publicProfileHref = activeCharacterName
+    ? `/profile/${encodeURIComponent(activeCharacterName)}`
+    : '/play'
   const navLinks = [
     { href: '/play', label: 'CLICKER' },
     { href: '/inventory', label: 'INVENTAIRE' },
@@ -50,6 +61,37 @@ export default function GameLayout({ children }: { children: ReactNode }) {
     const timer = window.setTimeout(() => setToast(null), 3500)
     return () => window.clearTimeout(timer)
   }, [toast])
+
+  useEffect(() => {
+    if (!submittingReport || !success) return
+
+    setSubmittingReport(false)
+    setReportModalOpen(false)
+    setReportTitle('')
+    setReportDescription('')
+    setReportCategory('bug')
+  }, [submittingReport, success])
+
+  useEffect(() => {
+    if (!submittingReport || !errors?.message) return
+    setSubmittingReport(false)
+  }, [errors?.message, submittingReport])
+
+  const submitBugReport = (event: React.FormEvent) => {
+    event.preventDefault()
+    setSubmittingReport(true)
+    router.post(
+      '/report',
+      {
+        title: reportTitle,
+        description: reportDescription,
+        category: reportCategory,
+      },
+      {
+        preserveScroll: true,
+      }
+    )
+  }
 
   return (
     <div className="min-h-screen bg-cyber-black">
@@ -105,7 +147,12 @@ export default function GameLayout({ children }: { children: ReactNode }) {
             {auth?.user && (
               <>
                 <div className="text-right hidden sm:block">
-                  <span className="text-xs text-cyber-green block">{auth.user.username}</span>
+                  <Link
+                    href={publicProfileHref}
+                    className="block text-xs text-cyber-green transition hover:text-cyber-blue"
+                  >
+                    {auth.user.username}
+                  </Link>
                   <span className={`text-[9px] ${roleColor}`}>{roleLabel}</span>
                 </div>
                 <Link
@@ -143,6 +190,12 @@ export default function GameLayout({ children }: { children: ReactNode }) {
                 ADMIN
               </Link>
             )}
+            <Link
+              href="/reports"
+              className="rounded border border-cyber-orange/20 px-3 py-2.5 text-xs uppercase tracking-[0.22em] text-cyber-orange transition-all hover:border-cyber-orange/40 hover:bg-cyber-orange/10"
+            >
+              MES REPORTS
+            </Link>
           </nav>
         </aside>
         <main className="min-w-0 flex-1 px-4 py-6 md:px-6">
@@ -182,9 +235,132 @@ export default function GameLayout({ children }: { children: ReactNode }) {
                   ADMIN
                 </Link>
               )}
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false)
+                  setReportModalOpen(true)
+                }}
+                className="rounded border border-cyber-orange/20 px-3 py-2.5 text-left text-xs uppercase tracking-[0.22em] text-cyber-orange transition-all hover:border-cyber-orange/40 hover:bg-cyber-orange/10"
+              >
+                REPORT BUG
+              </button>
+              <Link
+                href="/reports"
+                onClick={() => setMobileMenuOpen(false)}
+                className="rounded border border-cyber-orange/20 px-3 py-2.5 text-left text-xs uppercase tracking-[0.22em] text-cyber-orange transition-all hover:border-cyber-orange/40 hover:bg-cyber-orange/10"
+              >
+                MES REPORTS
+              </Link>
             </nav>
           </aside>
         </>
+      )}
+
+      <button
+        type="button"
+        onClick={() => setReportModalOpen(true)}
+        className="fixed bottom-5 right-5 z-[65] hidden rounded-full border border-cyber-orange/40 bg-cyber-dark/90 px-5 py-3 text-[11px] font-bold uppercase tracking-[0.28em] text-cyber-orange shadow-2xl transition-all hover:bg-cyber-orange/10 md:block"
+      >
+        REPORT BUG
+      </button>
+
+      {reportModalOpen && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-cyber-black/80 px-4">
+          <button
+            type="button"
+            aria-label="Fermer la fenetre"
+            onClick={() => {
+              if (submittingReport) return
+              setReportModalOpen(false)
+            }}
+            className="absolute inset-0"
+          />
+          <div className="relative z-[81] w-full max-w-xl rounded-2xl border border-cyber-orange/30 bg-cyber-dark p-5 shadow-2xl">
+            <div className="mb-4 flex items-start justify-between gap-4">
+              <div>
+                <div className="text-[10px] uppercase tracking-[0.32em] text-cyber-orange">Support</div>
+                <h2 className="mt-1 text-lg font-bold tracking-widest text-white">REPORT BUG</h2>
+                <p className="mt-1 text-xs text-gray-500">Signale un bug, un exploit ou une suggestion sans quitter la page.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (submittingReport) return
+                  setReportModalOpen(false)
+                }}
+                className="text-xs uppercase tracking-widest text-gray-500 transition hover:text-white"
+              >
+                FERMER
+              </button>
+            </div>
+
+            <form onSubmit={submitBugReport} className="space-y-4">
+              <div>
+                <label className="mb-2 block text-[10px] uppercase tracking-widest text-gray-500">Categorie</label>
+                <div className="flex flex-wrap gap-2">
+                  {REPORT_CATEGORIES.map((category) => (
+                    <button
+                      key={category}
+                      type="button"
+                      onClick={() => setReportCategory(category)}
+                      className={`rounded border px-3 py-1.5 text-[10px] uppercase tracking-widest transition-all ${
+                        reportCategory === category
+                          ? 'border-cyber-orange/50 bg-cyber-orange/10 text-cyber-orange'
+                          : 'border-gray-800 text-gray-500 hover:border-gray-600 hover:text-white'
+                      }`}
+                    >
+                      {category}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-[10px] uppercase tracking-widest text-gray-500">Titre</label>
+                <input
+                  type="text"
+                  maxLength={200}
+                  required
+                  value={reportTitle}
+                  onChange={(event) => setReportTitle(event.target.value)}
+                  className="w-full rounded border border-gray-800 bg-cyber-black px-3 py-2 text-sm text-white focus:border-cyber-orange/50 focus:outline-none"
+                  placeholder="Resume court du probleme"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-[10px] uppercase tracking-widest text-gray-500">Description</label>
+                <textarea
+                  maxLength={2000}
+                  required
+                  rows={6}
+                  value={reportDescription}
+                  onChange={(event) => setReportDescription(event.target.value)}
+                  className="w-full resize-none rounded border border-gray-800 bg-cyber-black px-3 py-2 text-sm text-white focus:border-cyber-orange/50 focus:outline-none"
+                  placeholder="Etapes, contexte, ecran, comportement attendu, comportement observe..."
+                />
+              </div>
+
+              <div className="flex items-center justify-between gap-3">
+                <Link
+                  href="/reports"
+                  onClick={() => setReportModalOpen(false)}
+                  className="text-[11px] uppercase tracking-widest text-gray-500 transition hover:text-cyber-orange"
+                >
+                  Voir mes reports
+                </Link>
+                <button
+                  type="submit"
+                  disabled={submittingReport}
+                  className="rounded border border-cyber-orange/40 bg-cyber-orange/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.24em] text-cyber-orange transition-all hover:bg-cyber-orange/20 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {submittingReport ? 'ENVOI...' : 'ENVOYER'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
 
       <NotificationCenter />

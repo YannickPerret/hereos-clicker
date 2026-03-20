@@ -639,22 +639,6 @@ export default function Play({
                         {char.name}
                       </h3>
                     </div>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => router.visit(`/profile/${encodeURIComponent(char.name)}`)}
-                        className="px-3 py-1.5 border border-gray-800 text-gray-500 rounded text-[10px] uppercase tracking-widest hover:text-white hover:border-gray-600 transition-all"
-                      >
-                        Profil
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => router.visit('/inventory')}
-                        className="px-3 py-1.5 border border-cyber-blue/30 text-cyber-blue rounded text-[10px] uppercase tracking-widest hover:bg-cyber-blue/10 transition-all"
-                      >
-                        Inventaire
-                      </button>
-                    </div>
                   </div>
 
                   <CyberpunkAvatar
@@ -665,7 +649,7 @@ export default function Play({
                 </div>
 
                 <div className="bg-cyber-dark border border-cyber-purple/30 rounded-lg p-4">
-                  <div className="flex items-start justify-between gap-3 mb-4">
+                  <div className="mb-4">
                     <div>
                       <div className="text-[10px] uppercase tracking-widest text-gray-500">
                         Personnalisation
@@ -674,13 +658,6 @@ export default function Play({
                         Garde-robe cyberpunk
                       </h3>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => router.visit('/talents')}
-                      className="px-3 py-1.5 border border-cyber-purple/30 text-cyber-purple rounded text-[10px] uppercase tracking-widest hover:bg-cyber-purple/10 transition-all"
-                    >
-                      Talents
-                    </button>
                   </div>
 
                   <div className="rounded border border-gray-800 bg-cyber-black/30 px-3 py-3 mb-3">
