@@ -487,6 +487,72 @@ export default class PartyController {
     return response.redirect('/party')
   }
 
+  async kick({ params, auth, response, session }: HttpContext) {
+    const character = await this.getCurrentCharacter(auth.user!.id)
+
+    const leaderMembership = await PartyMember.query()
+      .where('characterId', character.id)
+      .preload('party')
+      .first()
+
+    if (!leaderMembership) {
+      session.flash('errors', { message: 'Groupe introuvable' })
+      return response.redirect('/party')
+    }
+
+    const party = leaderMembership.party
+
+    if (party.leaderId !== character.id) {
+      session.flash('errors', { message: 'Seul le leader peut expulser un membre' })
+      return response.redirect('/party')
+    }
+
+    if (party.status === 'in_dungeon') {
+      session.flash('errors', { message: 'Impossible d\'expulser un membre pendant un donjon' })
+      return response.redirect('/party')
+    }
+
+    const targetCharacterId = Number(params.characterId)
+    if (!Number.isFinite(targetCharacterId)) {
+      session.flash('errors', { message: 'Membre introuvable' })
+      return response.redirect('/party')
+    }
+
+    if (targetCharacterId === character.id) {
+      session.flash('errors', { message: 'Le leader ne peut pas s\'expulser lui-meme' })
+      return response.redirect('/party')
+    }
+
+    const targetMembership = await PartyMember.query()
+      .where('partyId', party.id)
+      .where('characterId', targetCharacterId)
+      .preload('character')
+      .first()
+
+    if (!targetMembership) {
+      session.flash('errors', { message: 'Membre introuvable dans ce groupe' })
+      return response.redirect('/party')
+    }
+
+    await targetMembership.delete()
+
+    if (party.status === 'countdown') {
+      party.status = 'waiting'
+      party.countdownStart = null
+      party.dungeonFloorId = null
+      await party.save()
+    }
+
+    transmit.broadcast(`party/${party.id}`, {
+      event: 'member_kicked',
+      characterName: targetMembership.character.name,
+      characterId: targetMembership.characterId,
+    })
+
+    session.flash('success', `${targetMembership.character.name} a ete expulse du groupe`)
+    return response.redirect('/party')
+  }
+
   async startDungeon({ request, auth, response, session }: HttpContext) {
     const character = await this.getCurrentCharacter(auth.user!.id)
 

@@ -261,9 +261,26 @@ export default function PartyIndex({ character, currentParty: initialParty, floo
                     </div>
                   </div>
                 </div>
-                <span className={`text-xs font-bold ${member.isReady ? 'text-cyber-green' : 'text-gray-600'}`}>
-                  {member.isReady ? 'PRET' : 'EN ATTENTE'}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs font-bold ${member.isReady ? 'text-cyber-green' : 'text-gray-600'}`}>
+                    {member.isReady ? 'PRET' : 'EN ATTENTE'}
+                  </span>
+                  {currentParty.isLeader && member.characterId !== currentParty.leaderId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!confirm(`Expulser ${member.character.name} du groupe ?`)) return
+                        router.post(`/party/members/${member.characterId}/kick`, {}, {
+                          preserveScroll: true,
+                          preserveState: true,
+                        })
+                      }}
+                      className="rounded border border-cyber-red/30 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-cyber-red transition-all hover:bg-cyber-red/10"
+                    >
+                      KICK
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
