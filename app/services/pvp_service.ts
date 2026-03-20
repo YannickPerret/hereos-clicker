@@ -1148,33 +1148,41 @@ export default class PvpService {
   static async getMatchState(matchId: number) {
     const match = await PvpMatch.findOrFail(matchId)
     const participants = await this.loadParticipants(match.id)
-    const teams = [1, 2].map((team) => {
+    const teams = await Promise.all([1, 2].map(async (team) => {
       const members = participants
         .filter((participant) => participant.team === team)
         .sort((a, b) => a.slot - b.slot)
+
+      const serializedMembers = await Promise.all(
+        members.map(async (participant) => {
+          const equipBonuses = await ClickerService.calculateEquipBonuses(participant.character)
+
+          return {
+            id: participant.character.id,
+            name: participant.character.name,
+            level: participant.character.level,
+            attack: participant.character.attack + equipBonuses.attackBonus,
+            defense: participant.character.defense + equipBonuses.defenseBonus,
+            critChance: participant.character.critChance,
+            critDamage: participant.character.critDamage,
+            pvpRating: participant.character.pvpRating,
+            currentHp: participant.currentHp,
+            hpMax: participant.hpMax,
+            isEliminated: participant.isEliminated,
+            slot: participant.slot,
+            isLeader: participant.slot === 1,
+          }
+        })
+      )
 
       return {
         team,
         averageRating: members.length > 0
           ? Math.round(members.reduce((sum, participant) => sum + participant.character.pvpRating, 0) / members.length)
           : 0,
-        members: members.map((participant) => ({
-          id: participant.character.id,
-          name: participant.character.name,
-          level: participant.character.level,
-          attack: participant.character.attack,
-          defense: participant.character.defense,
-          critChance: participant.character.critChance,
-          critDamage: participant.character.critDamage,
-          pvpRating: participant.character.pvpRating,
-          currentHp: participant.currentHp,
-          hpMax: participant.hpMax,
-          isEliminated: participant.isEliminated,
-          slot: participant.slot,
-          isLeader: participant.slot === 1,
-        })),
+        members: serializedMembers,
       }
-    })
+    }))
 
     const waitingMatches = await PvpMatch.query()
       .where('status', 'waiting')

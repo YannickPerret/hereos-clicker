@@ -2,12 +2,23 @@ import type { HttpContext } from '@adonisjs/core/http'
 import Character from '#models/character'
 import PvpMatchParticipant from '#models/pvp_match_participant'
 import CombatService from '#services/combat_service'
+import ClickerService from '#services/clicker_service'
 import PvpService from '#services/pvp_service'
 import DailyMissionService from '#services/daily_mission_service'
 import SeasonService from '#services/season_service'
 import CharacterPvpSeasonStat from '#models/character_pvp_season_stat'
 
 export default class PvpController {
+  private async serializeArenaCharacter(character: Character) {
+    const equipBonuses = await ClickerService.calculateEquipBonuses(character)
+
+    return {
+      ...character.serialize(),
+      attack: character.attack + equipBonuses.attackBonus,
+      defense: character.defense + equipBonuses.defenseBonus,
+    }
+  }
+
   private async getSeasonRank(stat: CharacterPvpSeasonStat) {
     const ahead = await CharacterPvpSeasonStat.query()
       .where('seasonId', stat.seasonId)
@@ -110,7 +121,7 @@ export default class PvpController {
       .limit(8)
 
     return inertia.render('pvp/index', {
-      character: character.serialize(),
+      character: await this.serializeArenaCharacter(character),
       activeMatch: activeMatch
         ? {
             id: activeMatch.id,
