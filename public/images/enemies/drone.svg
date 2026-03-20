@@ -1,0 +1,20 @@
+<svg width="100%" height="100%" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">\n
+    <defs>
+      <filter id="glow-drone" x="-50%" y="-50%" width="200%" height="200%">
+        <feGaussianBlur stdDeviation="3" result="blur" />
+        <feMerge>
+          <feMergeNode in="blur" />
+          <feMergeNode in="SourceGraphic" />
+        </feMerge>
+      </filter>
+    </defs>
+  
+<rect width="100" height="100" fill="transparent" />
+
+      <circle cx="50" cy="50" r="25" fill="none" stroke="#ffcc00" stroke-width="3" filter="url(#glow-drone)"/>
+      <line x1="25" y1="50" x2="10" y2="50" stroke="#ffcc00" stroke-width="2" />
+      <line x1="75" y1="50" x2="90" y2="50" stroke="#ffcc00" stroke-width="2" />
+      <circle cx="50" cy="50" r="5" fill="#ffcc00" filter="url(#glow-drone)"/>
+      <path d="M40 30 L45 25 M60 70 L65 75" stroke="#ffffff" stroke-width="1" />
+    
+</svg>

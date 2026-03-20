@@ -8,6 +8,21 @@ import PartyMember from '#models/party_member'
 import CombatService from '#services/combat_service'
 
 export default class DungeonController {
+  private isRunAccessError(error: unknown) {
+    return error instanceof Error && error.message === 'Invalid run'
+  }
+
+  private async redirectAfterRunError(
+    character: Character,
+    runId: number,
+    response: HttpContext['response'],
+    session: HttpContext['session']
+  ) {
+    const run = await this.findAccessibleRun(character, runId)
+    session.flash('errors', { message: 'Ce donjon n\'est plus actif.' })
+    return response.redirect(run ? `/dungeon/run/${run.id}` : '/dungeon')
+  }
+
   async index({ inertia, auth }: HttpContext) {
     const character = await Character.query()
       .where('userId', auth.user!.id)
@@ -84,13 +99,16 @@ export default class DungeonController {
     return run
   }
 
-  async show({ params, inertia, auth }: HttpContext) {
+  async show({ params, inertia, auth, response, session }: HttpContext) {
     const character = await Character.query()
       .where('userId', auth.user!.id)
       .firstOrFail()
 
     const run = await this.findAccessibleRun(character, params.runId)
-    if (!run) throw new Error('Run introuvable')
+    if (!run) {
+      session.flash('errors', { message: 'Donjon introuvable.' })
+      return response.redirect('/dungeon')
+    }
 
     let currentEnemy = null
     if (run.currentEnemyId) {
@@ -127,8 +145,15 @@ export default class DungeonController {
       .where('userId', auth.user!.id)
       .firstOrFail()
 
-    const result = await CombatService.attack(character, params.runId)
-    session.flash('combatLog', result.log)
+    try {
+      const result = await CombatService.attack(character, params.runId)
+      session.flash('combatLog', result.log)
+    } catch (error) {
+      if (this.isRunAccessError(error)) {
+        return this.redirectAfterRunError(character, Number(params.runId), response, session)
+      }
+      throw error
+    }
 
     return response.redirect(`/dungeon/run/${params.runId}`)
   }
@@ -143,29 +168,48 @@ export default class DungeonController {
       const result = await CombatService.useSkill(character, params.runId, skillId)
       session.flash('combatLog', result.log)
     } catch (e: any) {
+      if (this.isRunAccessError(e)) {
+        return this.redirectAfterRunError(character, Number(params.runId), response, session)
+      }
       session.flash('errors', { message: e.message })
     }
 
     return response.redirect(`/dungeon/run/${params.runId}`)
   }
 
-  async useItem({ params, request, auth, response }: HttpContext) {
+  async useItem({ params, request, auth, response, session }: HttpContext) {
     const character = await Character.query()
       .where('userId', auth.user!.id)
       .firstOrFail()
 
-    const inventoryItemId = request.input('inventoryItemId')
-    await CombatService.useConsumable(character, params.runId, inventoryItemId)
+    try {
+      const inventoryItemId = request.input('inventoryItemId')
+      await CombatService.useConsumable(character, params.runId, inventoryItemId)
+    } catch (error) {
+      if (this.isRunAccessError(error)) {
+        return this.redirectAfterRunError(character, Number(params.runId), response, session)
+      }
+      throw error
+    }
 
     return response.redirect(`/dungeon/run/${params.runId}`)
   }
 
-  async flee({ params, auth, response }: HttpContext) {
+  async flee({ params, auth, response, session }: HttpContext) {
     const character = await Character.query()
       .where('userId', auth.user!.id)
       .firstOrFail()
 
-    const result = await CombatService.flee(character, params.runId)
+    let result
+    try {
+      result = await CombatService.flee(character, params.runId)
+    } catch (error) {
+      if (this.isRunAccessError(error)) {
+        return this.redirectAfterRunError(character, Number(params.runId), response, session)
+      }
+      throw error
+    }
+
     return response.redirect(result.run.partyId ? '/party' : '/dungeon')
   }
 
