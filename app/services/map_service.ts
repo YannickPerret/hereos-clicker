@@ -139,13 +139,13 @@ export default class MapService {
     const isObstacle = (x: number, y: number) => collisions.some((c: any) => c.x === x && c.y === y)
     const openSet: any[] = [{ x: startX, y: startY, g: 0, h: this.heuristic(startX, startY, endX, endY), f: 0 }]
     const closedSet = new Set<string>()
-    const parentMap = new Map<string, any>()
+    const parentLookup: { [key: string]: any } = {}
     while (openSet.length > 0) {
       openSet.sort((a, b) => a.f - b.f)
       const current = openSet.shift()
       if (current.x === endX && current.y === endY) {
         const path = []; let curr = current
-        while (curr) { path.unshift({ x: curr.x, y: curr.y }); curr = parentMap.get(`${curr.x},${curr.y}`) }
+        while (curr) { path.unshift({ x: curr.x, y: curr.y }); curr = parentLookup[`${curr.x},${curr.y}`] }
         return path
       }
       closedSet.add(`${current.x},${current.y}`)
@@ -156,9 +156,9 @@ export default class MapService {
         const existingNeighbor = openSet.find((o) => o.x === neighbor.x && o.y === neighbor.y)
         if (!existingNeighbor) {
           const h = this.heuristic(neighbor.x, neighbor.y, endX, endY)
-          const newNeighbor = { ...neighbor, g: gScore, h, f: gScore + h }; openSet.push(newNeighbor); parentMap.set(`${neighbor.x},${neighbor.y}`, current)
+          const newNeighbor = { ...neighbor, g: gScore, h, f: gScore + h }; openSet.push(newNeighbor); parentLookup[`${neighbor.x},${neighbor.y}`] = current
         } else if (gScore < existingNeighbor.g) {
-          existingNeighbor.g = gScore; existingNeighbor.f = gScore + existingNeighbor.h; parentMap.set(`${neighbor.x},${neighbor.y}`, current)
+          existingNeighbor.g = gScore; existingNeighbor.f = gScore + existingNeighbor.h; parentLookup[`${neighbor.x},${neighbor.y}`] = current
         }
       }
     }
