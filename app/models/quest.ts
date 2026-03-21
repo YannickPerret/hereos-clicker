@@ -4,6 +4,7 @@ import type { BelongsTo, HasMany } from '@adonisjs/lucid/types/relations'
 import CharacterQuest from '#models/character_quest'
 import Season from '#models/season'
 import QuestArc from '#models/quest_arc'
+import QuestFlowStep from '#models/quest_flow_step'
 
 export default class Quest extends BaseModel {
   @column({ isPrimary: true })
@@ -11,6 +12,9 @@ export default class Quest extends BaseModel {
 
   @column()
   declare key: string
+
+  @column()
+  declare mode: 'simple' | 'advanced'
 
   @column()
   declare questType: 'main' | 'seasonal'
@@ -90,4 +94,7 @@ export default class Quest extends BaseModel {
     foreignKey: 'parentQuestId',
   })
   declare childQuests: HasMany<typeof Quest>
+
+  @hasMany(() => QuestFlowStep)
+  declare flowSteps: HasMany<typeof QuestFlowStep>
 }

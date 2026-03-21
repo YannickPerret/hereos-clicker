@@ -9,9 +9,18 @@ interface QuestReward {
   itemName: string | null
 }
 
+interface FlowStepRecord {
+  id: number
+  stepType: string
+  sortOrder: number
+  contentJson: string
+  nextStepId: number | null
+}
+
 interface QuestRecord {
   id: number
   key: string
+  mode: 'simple' | 'advanced'
   questType: 'main' | 'seasonal'
   seasonId: number | null
   seasonName: string | null
@@ -28,6 +37,7 @@ interface QuestRecord {
   icon: string
   sortOrder: number
   rewards: QuestReward[]
+  flowSteps: FlowStepRecord[]
 }
 
 interface QuestOption {
@@ -69,6 +79,7 @@ type QuestFormReward = { type: string; value: number; itemId: string }
 
 type QuestFormState = {
   key: string
+  mode: 'simple' | 'advanced'
   questType: 'main' | 'seasonal'
   seasonId: string
   parentQuestId: string
@@ -88,6 +99,7 @@ const emptyReward = (): QuestFormReward => ({ type: 'credits', value: 100, itemI
 
 const emptyForm = (arcs: ArcRecord[]): QuestFormState => ({
   key: '',
+  mode: 'simple',
   questType: 'main',
   seasonId: '',
   parentQuestId: '',
@@ -106,6 +118,7 @@ const emptyForm = (arcs: ArcRecord[]): QuestFormState => ({
 function serializeQuestToForm(quest: QuestRecord): QuestFormState {
   return {
     key: quest.key,
+    mode: quest.mode || 'simple',
     questType: quest.questType,
     seasonId: quest.seasonId ? String(quest.seasonId) : '',
     parentQuestId: quest.parentQuestId ? String(quest.parentQuestId) : '',
@@ -147,6 +160,73 @@ export default function AdminQuests({ quests, questOptions, arcs, seasons, items
   const [newArcSort, setNewArcSort] = useState(1)
   const [editingArcId, setEditingArcId] = useState<number | null>(null)
   const [editArc, setEditArc] = useState<{ key: string; title: string; parentArcId: string; isActive: boolean; sortOrder: number }>({ key: '', title: '', parentArcId: '', isActive: true, sortOrder: 1 })
+
+  // Flow step editor state
+  const [flowEditQuestId, setFlowEditQuestId] = useState<number | null>(null)
+  const [newStepType, setNewStepType] = useState('narration')
+  const [newStepContent, setNewStepContent] = useState('{}')
+  const [newStepNextId, setNewStepNextId] = useState('')
+  const [editingStepId, setEditingStepId] = useState<number | null>(null)
+  const [editStepType, setEditStepType] = useState('')
+  const [editStepContent, setEditStepContent] = useState('')
+  const [editStepNextId, setEditStepNextId] = useState('')
+  const [dragIdx, setDragIdx] = useState<number | null>(null)
+
+  const stepTypeLabels: Record<string, string> = {
+    narration: 'Narration',
+    conversation: 'Conversation',
+    objective: 'Objectif',
+    wait: 'Attente',
+    choice: 'Choix',
+  }
+
+  const stepTypeColors: Record<string, string> = {
+    narration: 'border-cyber-blue/30 bg-cyber-blue/10 text-cyber-blue',
+    conversation: 'border-cyber-purple/30 bg-cyber-purple/10 text-cyber-purple',
+    objective: 'border-cyber-yellow/30 bg-cyber-yellow/10 text-cyber-yellow',
+    wait: 'border-gray-600 bg-gray-800/50 text-gray-400',
+    choice: 'border-cyber-green/30 bg-cyber-green/10 text-cyber-green',
+  }
+
+  const getContentPreview = (stepType: string, json: string) => {
+    try {
+      const c = JSON.parse(json)
+      if (stepType === 'narration') return `${c.speaker || 'Narrateur'}: "${(c.text || '').slice(0, 60)}..."`
+      if (stepType === 'conversation') return `${(c.lines || []).length} lignes`
+      if (stepType === 'objective') return `${c.objectiveType}: ${c.targetValue}`
+      if (stepType === 'wait') return `${c.duration} ${c.unit || 'minutes'}`
+      if (stepType === 'choice') return `${(c.options || []).length} options: ${(c.options || []).map((o: any) => o.label).join(', ')}`
+    } catch {}
+    return json.slice(0, 50)
+  }
+
+  const handleCreateStep = (questId: number) => {
+    router.post('/admin/quest-steps/create', {
+      questId,
+      stepType: newStepType,
+      contentJson: newStepContent,
+      nextStepId: newStepNextId,
+    } as any)
+    setNewStepContent('{}')
+    setNewStepNextId('')
+  }
+
+  const handleUpdateStep = (stepId: number) => {
+    router.post(`/admin/quest-steps/${stepId}/update`, {
+      stepType: editStepType,
+      contentJson: editStepContent,
+      nextStepId: editStepNextId,
+    } as any)
+    setEditingStepId(null)
+  }
+
+  const handleReorder = (questId: number, steps: FlowStepRecord[], fromIdx: number, toIdx: number) => {
+    const reordered = [...steps]
+    const [moved] = reordered.splice(fromIdx, 1)
+    reordered.splice(toIdx, 0, moved)
+    const order = reordered.map((s, i) => ({ id: s.id, sortOrder: i + 1 }))
+    router.post('/admin/quest-steps/reorder', { order } as any)
+  }
 
   const updateCreate = (field: keyof QuestFormState, value: any) => setCreateForm((p) => ({ ...p, [field]: value }))
   const updateEdit = (field: keyof QuestFormState, value: any) => setEditForm((p) => ({ ...p, [field]: value }))
@@ -225,6 +305,13 @@ export default function AdminQuests({ quests, questOptions, arcs, seasons, items
       <div>
         <label className="mb-1 block text-[10px] uppercase text-gray-500">Cle</label>
         <input value={form.key} onChange={(e) => update('key', e.target.value)} className={inputCls} />
+      </div>
+      <div>
+        <label className="mb-1 block text-[10px] uppercase text-gray-500">Mode</label>
+        <select value={form.mode} onChange={(e) => update('mode', e.target.value)} className={inputCls}>
+          <option value="simple">Simple</option>
+          <option value="advanced">Advanced (Flow)</option>
+        </select>
       </div>
       <div>
         <label className="mb-1 block text-[10px] uppercase text-gray-500">Type</label>
@@ -428,6 +515,9 @@ export default function AdminQuests({ quests, questOptions, arcs, seasons, items
                         <span className={`rounded border px-2 py-0.5 text-[10px] uppercase tracking-widest ${quest.questType === 'main' ? 'border-cyber-blue/30 bg-cyber-blue/10 text-cyber-blue' : 'border-cyber-yellow/30 bg-cyber-yellow/10 text-cyber-yellow'}`}>
                           {quest.questType === 'main' ? 'PRINCIPALE' : 'SAISON'}
                         </span>
+                        {quest.mode === 'advanced' && (
+                          <span className="rounded border border-cyber-green/30 bg-cyber-green/10 px-2 py-0.5 text-[10px] uppercase tracking-widest text-cyber-green">FLOW</span>
+                        )}
                         <span className="rounded border border-cyber-purple/30 bg-cyber-purple/10 px-2 py-0.5 text-[10px] uppercase tracking-widest text-cyber-purple">{quest.arcTitle}</span>
                         <span className="rounded border border-gray-700 px-2 py-0.5 text-[10px] uppercase tracking-widest text-gray-500">#{quest.sortOrder}</span>
                         <span className="rounded border border-gray-700 px-2 py-0.5 text-[10px] uppercase tracking-widest text-gray-500">{quest.key}</span>
@@ -442,9 +532,107 @@ export default function AdminQuests({ quests, questOptions, arcs, seasons, items
                       </div>
                     </div>
                     <div className="flex shrink-0 gap-2">
+                      {quest.mode === 'advanced' && (
+                        <button type="button" onClick={() => setFlowEditQuestId(flowEditQuestId === quest.id ? null : quest.id)}
+                          className={`rounded border px-3 py-1.5 text-[10px] uppercase tracking-widest transition-all ${flowEditQuestId === quest.id ? 'border-cyber-green/50 bg-cyber-green/10 text-cyber-green' : 'border-cyber-green/30 text-cyber-green hover:bg-cyber-green/10'}`}>
+                          Flow ({quest.flowSteps.length})
+                        </button>
+                      )}
                       <button type="button" onClick={() => startEdit(quest)} className="rounded border border-cyber-blue/30 px-3 py-1.5 text-[10px] uppercase tracking-widest text-cyber-blue hover:bg-cyber-blue/10">Editer</button>
                       <button type="button" onClick={() => { if (window.confirm(`Supprimer la quete "${quest.title}" ?`)) router.post(`/admin/quests/${quest.id}/delete`) }}
                         className="rounded border border-cyber-red/30 px-3 py-1.5 text-[10px] uppercase tracking-widest text-cyber-red hover:bg-cyber-red/10">Supprimer</button>
+                    </div>
+                  </div>
+                )}
+
+                {/* ── FLOW STEPS EDITOR ── */}
+                {flowEditQuestId === quest.id && quest.mode === 'advanced' && (
+                  <div className="mt-4 rounded-lg border border-cyber-green/20 bg-cyber-black/30 p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-xs font-bold uppercase tracking-widest text-cyber-green">Flow Steps</h3>
+                      <span className="text-[10px] text-gray-600">{quest.flowSteps.length} step(s)</span>
+                    </div>
+
+                    {/* Step list with drag & drop */}
+                    <div className="space-y-2 mb-4">
+                      {quest.flowSteps.sort((a, b) => a.sortOrder - b.sortOrder).map((step, idx) => (
+                        <div
+                          key={step.id}
+                          draggable
+                          onDragStart={() => setDragIdx(idx)}
+                          onDragOver={(e) => e.preventDefault()}
+                          onDrop={() => { if (dragIdx !== null && dragIdx !== idx) handleReorder(quest.id, quest.flowSteps, dragIdx, idx); setDragIdx(null) }}
+                          className={`rounded border p-3 ${editingStepId === step.id ? 'border-cyber-green/40' : 'border-gray-800 hover:border-gray-700'} cursor-grab`}
+                        >
+                          {editingStepId === step.id ? (
+                            <div className="space-y-2">
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                                <select value={editStepType} onChange={(e) => setEditStepType(e.target.value)} className={inputCls}>
+                                  {Object.entries(stepTypeLabels).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                                </select>
+                                <input placeholder="nextStepId (vide=auto)" value={editStepNextId} onChange={(e) => setEditStepNextId(e.target.value)} className={inputCls} />
+                                <div className="flex gap-1">
+                                  <button onClick={() => handleUpdateStep(step.id)}
+                                    className="text-[10px] px-2 py-1 rounded border border-cyber-green/30 text-cyber-green hover:bg-cyber-green/10 uppercase">OK</button>
+                                  <button onClick={() => setEditingStepId(null)}
+                                    className="text-[10px] px-2 py-1 text-gray-600 hover:text-white uppercase">X</button>
+                                </div>
+                              </div>
+                              <textarea value={editStepContent} onChange={(e) => setEditStepContent(e.target.value)} rows={4}
+                                className={inputCls + ' font-mono text-xs'} placeholder="Content JSON" />
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="text-[10px] text-gray-600 shrink-0">#{step.sortOrder}</span>
+                                <span className={`rounded border px-1.5 py-0.5 text-[9px] uppercase font-bold shrink-0 ${stepTypeColors[step.stepType] || 'border-gray-700 text-gray-500'}`}>
+                                  {stepTypeLabels[step.stepType] || step.stepType}
+                                </span>
+                                <span className="text-[10px] text-gray-400 truncate">
+                                  {getContentPreview(step.stepType, step.contentJson)}
+                                </span>
+                                {step.nextStepId && <span className="text-[9px] text-gray-600 shrink-0">→#{step.nextStepId}</span>}
+                              </div>
+                              <div className="flex gap-1 shrink-0">
+                                <button onClick={() => { setEditingStepId(step.id); setEditStepType(step.stepType); setEditStepContent(step.contentJson); setEditStepNextId(step.nextStepId ? String(step.nextStepId) : '') }}
+                                  className="text-[10px] px-2 py-1 rounded border border-cyber-blue/30 text-cyber-blue hover:bg-cyber-blue/10 uppercase">E</button>
+                                <button onClick={() => { if (confirm('Supprimer cette step ?')) router.post(`/admin/quest-steps/${step.id}/delete`) }}
+                                  className="text-[10px] px-2 py-1 rounded border border-cyber-red/30 text-cyber-red hover:bg-cyber-red/10 uppercase">X</button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                      {quest.flowSteps.length === 0 && (
+                        <div className="text-[10px] text-gray-600 text-center py-3">Aucune step. Ajoutez-en une ci-dessous.</div>
+                      )}
+                    </div>
+
+                    {/* Add new step */}
+                    <div className="rounded border border-gray-800 p-3 space-y-2">
+                      <div className="text-[10px] uppercase tracking-widest text-gray-500 mb-1">Ajouter une step</div>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                        <select value={newStepType} onChange={(e) => {
+                          setNewStepType(e.target.value)
+                          const templates: Record<string, string> = {
+                            narration: '{"text": "", "speaker": "Narrateur"}',
+                            conversation: '{"lines": [{"speaker": "", "text": "", "avatar": ""}]}',
+                            objective: '{"objectiveType": "hack_clicks", "targetValue": 100, "label": ""}',
+                            wait: '{"duration": 5, "unit": "minutes"}',
+                            choice: '{"prompt": "", "options": [{"label": "", "nextStepId": null}]}',
+                          }
+                          setNewStepContent(templates[e.target.value] || '{}')
+                        }} className={inputCls}>
+                          {Object.entries(stepTypeLabels).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                        </select>
+                        <input placeholder="nextStepId (vide=auto)" value={newStepNextId} onChange={(e) => setNewStepNextId(e.target.value)} className={inputCls} />
+                        <button onClick={() => handleCreateStep(quest.id)}
+                          className="rounded border border-cyber-green/30 px-3 py-2 text-[10px] uppercase tracking-widest text-cyber-green hover:bg-cyber-green/10">
+                          Ajouter
+                        </button>
+                      </div>
+                      <textarea value={newStepContent} onChange={(e) => setNewStepContent(e.target.value)} rows={3}
+                        className={inputCls + ' font-mono text-xs'} placeholder="Content JSON" />
                     </div>
                   </div>
                 )}

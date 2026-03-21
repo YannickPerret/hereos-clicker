@@ -19,6 +19,7 @@ import DungeonRun from '#models/dungeon_run'
 import Season from '#models/season'
 import Quest from '#models/quest'
 import QuestArc from '#models/quest_arc'
+import QuestFlowStep from '#models/quest_flow_step'
 import BlackMarketService from '#services/black_market_service'
 import SeasonService from '#services/season_service'
 import TalentService from '#services/talent_service'
@@ -77,9 +78,11 @@ export default class AdminController {
     const targetValue = Math.max(1, Number(request.input('targetValue', fallback.targetValue || 1)) || 1)
     const icon = String(request.input('icon', fallback.icon || 'terminal')).trim()
     const sortOrder = Math.max(1, Number(request.input('sortOrder', fallback.sortOrder || 1)) || 1)
+    const mode = request.input('mode', fallback.mode || 'simple') === 'advanced' ? 'advanced' : 'simple'
 
     return {
       key,
+      mode: mode as 'simple' | 'advanced',
       questType: questType as 'main' | 'seasonal',
       seasonId,
       parentQuestId,
@@ -1255,6 +1258,7 @@ export default class AdminController {
         .preload('season')
         .preload('parentQuest')
         .preload('questArc')
+        .preload('flowSteps', (q) => q.orderBy('sortOrder', 'asc'))
         .orderBy('questType', 'asc')
         .orderBy('arcTitle', 'asc')
         .orderBy('sortOrder', 'asc')
@@ -1271,6 +1275,13 @@ export default class AdminController {
         parentQuestTitle: quest.parentQuest?.title || null,
         arcTitle: quest.questArc?.title || quest.arcTitle,
         rewards: this.getQuestRewards(quest),
+        flowSteps: quest.flowSteps.map((step) => ({
+          id: step.id,
+          stepType: step.stepType,
+          sortOrder: step.sortOrder,
+          contentJson: step.contentJson,
+          nextStepId: step.nextStepId,
+        })),
       })),
       questOptions: quests.map((quest) => ({
         id: quest.id,
@@ -1463,6 +1474,100 @@ export default class AdminController {
     await arc.delete()
 
     session.flash('success', `Arc "${title}" supprime`)
+    return response.redirect('/admin/quests')
+  }
+
+  // ── Quest Flow Steps ──
+
+  async createQuestStep({ request, response, session }: HttpContext) {
+    const questId = Number(request.input('questId'))
+    const quest = await Quest.find(questId)
+    if (!quest || quest.mode !== 'advanced') {
+      session.flash('errors', { message: 'Quete introuvable ou non-advanced' })
+      return response.redirect('/admin/quests')
+    }
+
+    const stepType = String(request.input('stepType', 'narration')).trim()
+    const validTypes = ['narration', 'conversation', 'objective', 'wait', 'choice']
+    if (!validTypes.includes(stepType)) {
+      session.flash('errors', { message: 'Type de step invalide' })
+      return response.redirect('/admin/quests')
+    }
+
+    const contentJson = String(request.input('contentJson', '{}')).trim()
+    try { JSON.parse(contentJson) } catch {
+      session.flash('errors', { message: 'JSON invalide pour le contenu' })
+      return response.redirect('/admin/quests')
+    }
+
+    const maxSort = await QuestFlowStep.query()
+      .where('questId', questId)
+      .max('sort_order as max')
+    const nextSort = (Number(maxSort[0]?.$extras?.max) || 0) + 1
+
+    const rawNextStepId = request.input('nextStepId', '')
+    const nextStepId = rawNextStepId === '' || rawNextStepId === null ? null : Number(rawNextStepId)
+
+    await QuestFlowStep.create({
+      questId,
+      stepType: stepType as any,
+      sortOrder: nextSort,
+      contentJson,
+      nextStepId,
+    })
+
+    session.flash('success', `Step ${stepType} ajoutee`)
+    return response.redirect('/admin/quests')
+  }
+
+  async updateQuestStep({ params, request, response, session }: HttpContext) {
+    const step = await QuestFlowStep.findOrFail(params.id)
+
+    const stepType = String(request.input('stepType', step.stepType)).trim()
+    const validTypes = ['narration', 'conversation', 'objective', 'wait', 'choice']
+    if (!validTypes.includes(stepType)) {
+      session.flash('errors', { message: 'Type de step invalide' })
+      return response.redirect('/admin/quests')
+    }
+
+    const contentJson = String(request.input('contentJson', step.contentJson)).trim()
+    try { JSON.parse(contentJson) } catch {
+      session.flash('errors', { message: 'JSON invalide pour le contenu' })
+      return response.redirect('/admin/quests')
+    }
+
+    const rawNextStepId = request.input('nextStepId', '')
+    const nextStepId = rawNextStepId === '' || rawNextStepId === null ? null : Number(rawNextStepId)
+
+    step.merge({
+      stepType: stepType as any,
+      contentJson,
+      nextStepId,
+    })
+    await step.save()
+
+    session.flash('success', 'Step mise a jour')
+    return response.redirect('/admin/quests')
+  }
+
+  async deleteQuestStep({ params, response, session }: HttpContext) {
+    const step = await QuestFlowStep.findOrFail(params.id)
+    await step.delete()
+
+    session.flash('success', 'Step supprimee')
+    return response.redirect('/admin/quests')
+  }
+
+  async reorderQuestSteps({ request, response, session }: HttpContext) {
+    const order = request.input('order', []) as { id: number; sortOrder: number }[]
+
+    for (const entry of order) {
+      await QuestFlowStep.query()
+        .where('id', entry.id)
+        .update({ sortOrder: entry.sortOrder })
+    }
+
+    session.flash('success', 'Ordre mis a jour')
     return response.redirect('/admin/quests')
   }
 

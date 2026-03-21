@@ -1,9 +1,12 @@
 import { router } from '@inertiajs/react'
+import { useState, useCallback } from 'react'
 import GameLayout from '~/components/layout'
+import QuestOverlay from '~/components/quest_overlay'
 
 interface QuestEntry {
   id: number
   key: string
+  mode: 'simple' | 'advanced'
   questType: 'main' | 'seasonal'
   seasonId: number | null
   seasonName: string | null
@@ -43,6 +46,14 @@ interface QuestTrack {
   quests: QuestEntry[]
 }
 
+interface FlowState {
+  characterQuestId: number
+  status: 'active' | 'completed'
+  currentStep: any
+  stepState: any
+  steps: any[]
+}
+
 interface Props {
   character: {
     id: number
@@ -52,6 +63,7 @@ interface Props {
   journal: {
     tracks: QuestTrack[]
   }
+  flowStates: Record<number, FlowState>
 }
 
 const STATUS_STYLES: Record<QuestEntry['status'], string> = {
@@ -68,9 +80,36 @@ const STATUS_LABELS: Record<QuestEntry['status'], string> = {
   available: 'DISPONIBLE',
 }
 
-export default function Quests({ character, journal }: Props) {
+export default function Quests({ character, journal, flowStates: initialFlowStates }: Props) {
+  const [flowStates, setFlowStates] = useState<Record<number, FlowState>>(initialFlowStates || {})
+  const [activeOverlayQuestId, setActiveOverlayQuestId] = useState<number | null>(null)
+  const [activeOverlayTitle, setActiveOverlayTitle] = useState('')
+
+  const openOverlay = useCallback((questId: number, title: string) => {
+    setActiveOverlayQuestId(questId)
+    setActiveOverlayTitle(title)
+  }, [])
+
+  const closeOverlay = useCallback(() => {
+    setActiveOverlayQuestId(null)
+    router.reload()
+  }, [])
+
+  const handleFlowUpdate = useCallback((questId: number) => (newState: FlowState) => {
+    setFlowStates((prev) => ({ ...prev, [questId]: newState }))
+  }, [])
+
   return (
     <GameLayout>
+      {activeOverlayQuestId && flowStates[activeOverlayQuestId] && (
+        <QuestOverlay
+          questId={activeOverlayQuestId}
+          questTitle={activeOverlayTitle}
+          flowState={flowStates[activeOverlayQuestId]}
+          onClose={closeOverlay}
+          onUpdate={handleFlowUpdate(activeOverlayQuestId)}
+        />
+      )}
       <div className="max-w-6xl mx-auto">
         <div className="flex items-start justify-between gap-4 mb-6">
           <div>
@@ -189,6 +228,15 @@ export default function Quests({ character, journal }: Props) {
                             <div className="mt-3 rounded-lg border border-gray-800 bg-cyber-black/30 px-3 py-2 text-xs text-gray-500 leading-relaxed">
                               {quest.narrative}
                             </div>
+                          )}
+
+                          {quest.mode === 'advanced' && quest.status === 'active' && flowStates[quest.id] && (
+                            <button
+                              onClick={() => openOverlay(quest.id, quest.title)}
+                              className="mt-3 w-full rounded-lg border border-cyber-purple/40 bg-cyber-purple/10 px-4 py-2.5 text-[11px] uppercase tracking-widest text-cyber-purple hover:bg-cyber-purple/20 transition-all"
+                            >
+                              Ouvrir le flow narratif
+                            </button>
                           )}
                         </div>
                       )

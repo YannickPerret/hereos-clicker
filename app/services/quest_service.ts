@@ -3,6 +3,7 @@ import Character from '#models/character'
 import CharacterQuest from '#models/character_quest'
 import InventoryItem from '#models/inventory_item'
 import Quest from '#models/quest'
+import QuestFlowStep from '#models/quest_flow_step'
 import Season from '#models/season'
 import CompanionService from '#services/companion_service'
 import SeasonService from '#services/season_service'
@@ -55,6 +56,7 @@ type QuestTrackSummary = {
 type QuestJournalEntry = {
   id: number
   key: string
+  mode: 'simple' | 'advanced'
   questType: 'main' | 'seasonal'
   seasonId: number | null
   seasonName: string | null
@@ -206,12 +208,24 @@ export default class QuestService {
         continue
       }
 
+      // For advanced quests, find the first flow step
+      let firstStepId: number | null = null
+      if (quest.mode === 'advanced') {
+        const firstStep = await QuestFlowStep.query()
+          .where('questId', quest.id)
+          .orderBy('sortOrder', 'asc')
+          .first()
+        firstStepId = firstStep?.id || null
+      }
+
       const created = await CharacterQuest.create({
         characterId,
         questId: quest.id,
         status: 'active',
         progress: 0,
         startedAt: DateTime.now(),
+        currentStepId: firstStepId,
+        stepStateJson: null,
       })
 
       stateByQuestId.set(quest.id, created)
@@ -248,6 +262,16 @@ export default class QuestService {
     const toComplete: CharacterQuest[] = []
 
     for (const state of activeStates) {
+      // Advanced quests track progress through flow steps, not simple progress
+      if (state.quest.mode === 'advanced') {
+        await this.trackFlowObjectiveProgress(
+          character,
+          state.quest.objectiveType,
+          this.getPayloadAmount(state.quest.objectiveType, payload)
+        )
+        continue
+      }
+
       const nextProgress = this.computeNextProgress(state.quest, state.progress, payload)
 
       if (nextProgress === state.progress) {
@@ -314,6 +338,18 @@ export default class QuestService {
     }
 
     return currentProgress
+  }
+
+  private static getPayloadAmount(objectiveType: string, payload: HackProgressPayload): number {
+    if (objectiveType === 'hack_clicks') return Math.max(0, payload.clicks)
+    if (objectiveType === 'hack_credits') return Math.max(0, payload.creditsEarned)
+    if (objectiveType === 'reach_level') return Math.max(1, payload.level)
+    if (objectiveType === 'shop_purchase') return Math.max(0, payload.shopPurchases || 0)
+    if (objectiveType === 'companion_purchase') return Math.max(0, payload.companionPurchases || 0)
+    if (objectiveType === 'companion_activate') return Math.max(0, payload.companionActivations || 0)
+    if (objectiveType === 'pvp_match') return Math.max(0, payload.pvpMatches || 0)
+    if (objectiveType === 'dungeon_floor_clear') return Math.max(0, payload.dungeonFloorClears || 0)
+    return 0
   }
 
   private static async completeQuest(
@@ -530,6 +566,7 @@ export default class QuestService {
       return {
         id: quest.id,
         key: quest.key,
+        mode: quest.mode || 'simple',
         questType: quest.questType,
         seasonId: quest.seasonId,
         seasonName: quest.season?.name || season?.name || null,
@@ -658,5 +695,286 @@ export default class QuestService {
         itemName: null,
       },
     ]
+  }
+
+  // ── Flow Step Logic (Advanced Quests) ──
+
+  static async getFlowState(characterId: number, questId: number) {
+    const state = await CharacterQuest.query()
+      .where('characterId', characterId)
+      .where('questId', questId)
+      .preload('quest', (q) => q.preload('flowSteps'))
+      .first()
+
+    if (!state || state.quest.mode !== 'advanced') {
+      return null
+    }
+
+    const steps = state.quest.flowSteps.sort((a, b) => a.sortOrder - b.sortOrder)
+    if (steps.length === 0) return null
+
+    // Initialize to first step if not set
+    if (!state.currentStepId && state.status === 'active') {
+      state.currentStepId = steps[0].id
+      state.stepStateJson = null
+      await state.save()
+    }
+
+    const currentStep = steps.find((s) => s.id === state.currentStepId) || null
+
+    return {
+      characterQuestId: state.id,
+      status: state.status,
+      currentStep: currentStep
+        ? {
+            id: currentStep.id,
+            stepType: currentStep.stepType,
+            sortOrder: currentStep.sortOrder,
+            content: currentStep.content,
+            nextStepId: currentStep.nextStepId,
+          }
+        : null,
+      stepState: state.stepState,
+      steps: steps.map((s) => ({
+        id: s.id,
+        stepType: s.stepType,
+        sortOrder: s.sortOrder,
+        content: s.content,
+        nextStepId: s.nextStepId,
+      })),
+    }
+  }
+
+  static async advanceFlowStep(character: Character, questId: number): Promise<{ success: boolean; event?: QuestEvent; flowState?: any }> {
+    const state = await CharacterQuest.query()
+      .where('characterId', character.id)
+      .where('questId', questId)
+      .where('status', 'active')
+      .preload('quest', (q) => q.preload('flowSteps'))
+      .first()
+
+    if (!state || state.quest.mode !== 'advanced') {
+      return { success: false }
+    }
+
+    const steps = state.quest.flowSteps.sort((a, b) => a.sortOrder - b.sortOrder)
+    const currentStep = steps.find((s) => s.id === state.currentStepId)
+
+    if (!currentStep) return { success: false }
+
+    // Only narration/conversation can be advanced by clicking "next"
+    if (currentStep.stepType !== 'narration' && currentStep.stepType !== 'conversation') {
+      return { success: false }
+    }
+
+    // For conversation: track which line the player is on
+    if (currentStep.stepType === 'conversation') {
+      const content = currentStep.content
+      const lines = content.lines || []
+      const stepState = state.stepState || {}
+      const currentLine = stepState.currentLine || 0
+
+      if (currentLine < lines.length - 1) {
+        // Advance to next line in conversation
+        state.stepStateJson = JSON.stringify({ ...stepState, currentLine: currentLine + 1 })
+        await state.save()
+        return { success: true, flowState: await this.getFlowState(character.id, questId) }
+      }
+      // All lines read, fall through to advance to next step
+    }
+
+    return this.moveToNextStep(character, state, currentStep, steps)
+  }
+
+  static async makeFlowChoice(character: Character, questId: number, optionIndex: number): Promise<{ success: boolean; event?: QuestEvent; flowState?: any }> {
+    const state = await CharacterQuest.query()
+      .where('characterId', character.id)
+      .where('questId', questId)
+      .where('status', 'active')
+      .preload('quest', (q) => q.preload('flowSteps'))
+      .first()
+
+    if (!state || state.quest.mode !== 'advanced') {
+      return { success: false }
+    }
+
+    const steps = state.quest.flowSteps.sort((a, b) => a.sortOrder - b.sortOrder)
+    const currentStep = steps.find((s) => s.id === state.currentStepId)
+
+    if (!currentStep || currentStep.stepType !== 'choice') {
+      return { success: false }
+    }
+
+    const content = currentStep.content
+    const options = content.options || []
+    if (optionIndex < 0 || optionIndex >= options.length) {
+      return { success: false }
+    }
+
+    const chosen = options[optionIndex]
+    const nextStepId = chosen.nextStepId
+
+    if (nextStepId) {
+      const nextStep = steps.find((s) => s.id === nextStepId)
+      if (nextStep) {
+        state.currentStepId = nextStep.id
+        state.stepStateJson = JSON.stringify({ choiceMade: chosen.label })
+        await state.save()
+        return { success: true, flowState: await this.getFlowState(character.id, questId) }
+      }
+    }
+
+    // No next step from choice — try sortOrder fallback or complete
+    return this.moveToNextStep(character, state, currentStep, steps)
+  }
+
+  static async checkFlowObjectiveProgress(character: Character, questId: number): Promise<{ success: boolean; event?: QuestEvent; flowState?: any }> {
+    const state = await CharacterQuest.query()
+      .where('characterId', character.id)
+      .where('questId', questId)
+      .where('status', 'active')
+      .preload('quest', (q) => q.preload('flowSteps'))
+      .first()
+
+    if (!state || state.quest.mode !== 'advanced') {
+      return { success: false }
+    }
+
+    const steps = state.quest.flowSteps.sort((a, b) => a.sortOrder - b.sortOrder)
+    const currentStep = steps.find((s) => s.id === state.currentStepId)
+
+    if (!currentStep || currentStep.stepType !== 'objective') {
+      return { success: false }
+    }
+
+    const content = currentStep.content
+    const stepState = state.stepState || {}
+    const progress = stepState.progress || 0
+
+    if (progress >= (content.targetValue || 1)) {
+      return this.moveToNextStep(character, state, currentStep, steps)
+    }
+
+    return { success: false, flowState: await this.getFlowState(character.id, questId) }
+  }
+
+  static async checkFlowWaitProgress(character: Character, questId: number): Promise<{ success: boolean; event?: QuestEvent; flowState?: any }> {
+    const state = await CharacterQuest.query()
+      .where('characterId', character.id)
+      .where('questId', questId)
+      .where('status', 'active')
+      .preload('quest', (q) => q.preload('flowSteps'))
+      .first()
+
+    if (!state || state.quest.mode !== 'advanced') {
+      return { success: false }
+    }
+
+    const steps = state.quest.flowSteps.sort((a, b) => a.sortOrder - b.sortOrder)
+    const currentStep = steps.find((s) => s.id === state.currentStepId)
+
+    if (!currentStep || currentStep.stepType !== 'wait') {
+      return { success: false }
+    }
+
+    const content = currentStep.content
+    const stepState = state.stepState || {}
+
+    // Initialize wait start time
+    if (!stepState.waitStartedAt) {
+      state.stepStateJson = JSON.stringify({ ...stepState, waitStartedAt: DateTime.now().toISO() })
+      await state.save()
+      return { success: false, flowState: await this.getFlowState(character.id, questId) }
+    }
+
+    const waitStart = DateTime.fromISO(stepState.waitStartedAt)
+    const duration = content.duration || 1
+    const unit = content.unit || 'minutes'
+    const endTime = waitStart.plus({ [unit]: duration })
+
+    if (DateTime.now() >= endTime) {
+      return this.moveToNextStep(character, state, currentStep, steps)
+    }
+
+    return { success: false, flowState: await this.getFlowState(character.id, questId) }
+  }
+
+  static async trackFlowObjectiveProgress(
+    character: Character,
+    objectiveType: string,
+    amount: number
+  ) {
+    // Find all active advanced quests for this character whose current step is an objective
+    const states = await CharacterQuest.query()
+      .where('characterId', character.id)
+      .where('status', 'active')
+      .whereNotNull('currentStepId')
+      .preload('quest', (q) => q.preload('flowSteps'))
+
+    for (const state of states) {
+      if (state.quest.mode !== 'advanced') continue
+
+      const currentStep = state.quest.flowSteps.find((s) => s.id === state.currentStepId)
+      if (!currentStep || currentStep.stepType !== 'objective') continue
+
+      const content = currentStep.content
+      if (content.objectiveType !== objectiveType) continue
+
+      const stepState = state.stepState || {}
+      const currentProgress = stepState.progress || 0
+      const newProgress = Math.min(content.targetValue || 1, currentProgress + amount)
+
+      state.stepStateJson = JSON.stringify({ ...stepState, progress: newProgress })
+      await state.save()
+
+      // Auto-advance if objective completed
+      if (newProgress >= (content.targetValue || 1)) {
+        const steps = state.quest.flowSteps.sort((a, b) => a.sortOrder - b.sortOrder)
+        await this.moveToNextStep(character, state, currentStep, steps)
+      }
+    }
+  }
+
+  private static async moveToNextStep(
+    character: Character,
+    state: CharacterQuest,
+    currentStep: QuestFlowStep,
+    steps: QuestFlowStep[]
+  ): Promise<{ success: boolean; event?: QuestEvent; flowState?: any }> {
+    // Determine next step: explicit nextStepId or next by sortOrder
+    let nextStep: QuestFlowStep | undefined
+
+    if (currentStep.nextStepId) {
+      nextStep = steps.find((s) => s.id === currentStep.nextStepId)
+    }
+
+    if (!nextStep) {
+      const currentIdx = steps.findIndex((s) => s.id === currentStep.id)
+      nextStep = steps[currentIdx + 1]
+    }
+
+    if (nextStep) {
+      state.currentStepId = nextStep.id
+      state.stepStateJson = null
+      await state.save()
+
+      // If next step is a wait, initialize the timer
+      if (nextStep.stepType === 'wait') {
+        state.stepStateJson = JSON.stringify({ waitStartedAt: DateTime.now().toISO() })
+        await state.save()
+      }
+
+      return { success: true, flowState: await this.getFlowState(character.id, state.questId) }
+    }
+
+    // No more steps — quest complete
+    const events: QuestEvent[] = []
+    await this.completeQuest(character, state, events)
+
+    return {
+      success: true,
+      event: events[0],
+      flowState: await this.getFlowState(character.id, state.questId),
+    }
   }
 }

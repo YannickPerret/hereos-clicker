@@ -107,6 +107,9 @@ router
 
     // Quetes principales
     router.get('/quests', [QuestController, 'index'])
+    router.post('/quests/:questId/advance', [QuestController, 'advance'])
+    router.post('/quests/:questId/choose', [QuestController, 'choose'])
+    router.get('/quests/:questId/flow-state', [QuestController, 'flowState'])
 
     // Amis
     router.get('/friends', [FriendsController, 'index'])
@@ -227,6 +230,12 @@ router
     router.post('/admin/quest-arcs/create', [AdminController, 'createQuestArc'])
     router.post('/admin/quest-arcs/:id/update', [AdminController, 'updateQuestArc'])
     router.post('/admin/quest-arcs/:id/delete', [AdminController, 'deleteQuestArc'])
+
+    // Quest Flow Steps
+    router.post('/admin/quest-steps/create', [AdminController, 'createQuestStep'])
+    router.post('/admin/quest-steps/:id/update', [AdminController, 'updateQuestStep'])
+    router.post('/admin/quest-steps/:id/delete', [AdminController, 'deleteQuestStep'])
+    router.post('/admin/quest-steps/reorder', [AdminController, 'reorderQuestSteps'])
 
     // Black Market
     router.get('/admin/black-market', [AdminController, 'blackMarket'])
