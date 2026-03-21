@@ -490,6 +490,16 @@ export default function AdminQuests({ quests, questOptions, arcs, seasons, items
           </form>
         </div>
 
+        {/* ═══ DEBUG ═══ */}
+        {quests.length > 0 && (
+          <div className="mb-4 rounded border border-cyber-yellow/30 bg-cyber-yellow/5 p-3">
+            <div className="text-[10px] uppercase tracking-widest text-cyber-yellow mb-1">DEBUG — Modes des quetes</div>
+            <div className="text-xs text-gray-400 font-mono">
+              {quests.map((q) => `#${q.id} ${q.key}: mode="${q.mode}" (type: ${typeof q.mode})`).join(' | ')}
+            </div>
+          </div>
+        )}
+
         {/* ═══ QUEST LIST ═══ */}
         <div className="space-y-4">
           {quests.length === 0 ? (

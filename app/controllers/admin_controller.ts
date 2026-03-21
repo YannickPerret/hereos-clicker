@@ -1333,6 +1333,11 @@ export default class AdminController {
   async createQuest({ request, response, session }: HttpContext) {
     const payload = this.normalizeQuestInput(request)
     const rewards = await this.normalizeQuestRewards(request)
+
+    console.log('[DEBUG createQuest] request.input(mode):', request.input('mode'))
+    console.log('[DEBUG createQuest] payload.mode:', payload.mode)
+    console.log('[DEBUG createQuest] all request body:', request.all())
+
     const validationError = await this.validateQuestPayload(payload, rewards)
 
     if (validationError) {
@@ -1342,7 +1347,7 @@ export default class AdminController {
 
     const parentQuest = payload.parentQuestId ? await Quest.find(payload.parentQuestId) : null
 
-    await Quest.create({
+    const created = await Quest.create({
       ...payload,
       seasonId: payload.questType === 'seasonal' ? payload.seasonId : null,
       rewardsJson: JSON.stringify(rewards),
@@ -1350,6 +1355,8 @@ export default class AdminController {
       rewardValue: rewards[0]?.value || 0,
       requiredQuestKey: parentQuest?.key || null,
     })
+
+    console.log('[DEBUG createQuest] created quest mode:', created.mode, 'id:', created.id)
 
     session.flash('success', `Quete ${payload.title} ajoutee`)
     return response.redirect('/admin/quests')
