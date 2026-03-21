@@ -1,5 +1,5 @@
 import { router, usePage, useRemember } from '@inertiajs/react'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import CombatSkillTooltip from '~/components/combat_skill_tooltip'
 import GameLayout from '~/components/layout'
 
@@ -121,6 +121,32 @@ function parseAfkPenalties(raw?: string) {
     return JSON.parse(raw) as Record<string, number>
   } catch {
     return {}
+  }
+}
+
+function summarizeRewards(log: CombatLogEntry[]) {
+  const lootCounts = new Map<string, number>()
+  let credits = 0
+  let xp = 0
+
+  for (const entry of log) {
+    if (entry.action !== 'enemy_defeated') continue
+
+    credits += entry.creditsReward || 0
+    xp += entry.xpReward || 0
+
+    for (const loot of entry.loot || []) {
+      lootCounts.set(loot.name, (lootCounts.get(loot.name) || 0) + 1)
+    }
+  }
+
+  return {
+    credits,
+    xp,
+    items: Array.from(lootCounts.entries()).map(([name, quantity]) => ({
+      name,
+      quantity,
+    })),
   }
 }
 
@@ -427,6 +453,10 @@ export default function DungeonRun({
   const lastSoloFlashRef = useRef<string | null>(null)
   const previousRunIdRef = useRef(initialRun.id)
   const groupLogScroll = useAutoFollowLog(groupLog.length)
+  const rewardSummary = useMemo(
+    () => summarizeRewards(isGroupRun ? groupLog : soloLog),
+    [groupLog, isGroupRun, soloLog]
+  )
 
   // Sync from Inertia props
   useEffect(() => {
@@ -587,6 +617,43 @@ export default function DungeonRun({
                 ? "Tes implants t'ont ramene. Tu perds 10% de tes credits et tu reviens a 10 PV."
                 : "Tu t'es echappe. Pas de honte a survivre."}
           </p>
+          {run.status === 'victory' && (
+            <div className="mb-6 rounded-lg border border-cyber-green/20 bg-cyber-black/40 p-4 text-left">
+              <div className="mb-3 text-[10px] uppercase tracking-[0.28em] text-cyber-green">
+                Recompenses
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded border border-cyber-yellow/20 bg-cyber-yellow/5 px-3 py-2">
+                  <div className="text-[10px] uppercase tracking-widest text-gray-600">Credits</div>
+                  <div className="mt-1 text-lg font-bold text-cyber-yellow">
+                    +{rewardSummary.credits}
+                  </div>
+                </div>
+                <div className="rounded border border-cyber-blue/20 bg-cyber-blue/5 px-3 py-2">
+                  <div className="text-[10px] uppercase tracking-widest text-gray-600">XP</div>
+                  <div className="mt-1 text-lg font-bold text-cyber-blue">+{rewardSummary.xp}</div>
+                </div>
+              </div>
+              <div className="mt-3 rounded border border-cyber-pink/20 bg-cyber-pink/5 px-3 py-3">
+                <div className="text-[10px] uppercase tracking-widest text-gray-600">Items</div>
+                {rewardSummary.items.length > 0 ? (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {rewardSummary.items.map((item) => (
+                      <div
+                        key={item.name}
+                        className="rounded border border-cyber-pink/30 bg-cyber-pink/10 px-2 py-1 text-xs text-cyber-pink"
+                      >
+                        {item.quantity > 1 ? `${item.quantity}x ` : ''}
+                        {item.name}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="mt-2 text-xs text-gray-600">Aucun item obtenu.</div>
+                )}
+              </div>
+            </div>
+          )}
           <button
             onClick={() => router.visit(run.partyId ? '/party' : '/dungeon')}
             className="px-6 py-3 bg-cyber-blue/20 border border-cyber-blue text-cyber-blue font-bold uppercase tracking-widest rounded hover:bg-cyber-blue/30 transition-all"
