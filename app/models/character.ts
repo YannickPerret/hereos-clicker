@@ -75,6 +75,15 @@ export default class Character extends BaseModel {
   @column()
   declare pvpLosses: number
 
+  @column()
+  declare currentMapId: number | null
+
+  @column()
+  declare posX: number
+
+  @column()
+  declare posY: number
+
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
 

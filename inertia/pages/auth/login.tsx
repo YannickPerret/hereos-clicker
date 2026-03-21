@@ -25,7 +25,7 @@ export default function Login() {
         <img
           src="/images/hereos_logo.webp"
           alt="HEREOS"
-          className="mx-auto mb-3 h-28 w-auto object-contain"
+          className="mx-auto mb-3 h-20 w-auto object-contain"
         />
         <p className="text-center text-gray-500 mb-8 text-sm tracking-widest uppercase">
           Cyberpunk Clicker // Connexion
