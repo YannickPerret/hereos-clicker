@@ -43,18 +43,18 @@ export default function GameLayout({ children }: { children: ReactNode }) {
     ? `/profile/${encodeURIComponent(activeCharacterName)}`
     : '/play'
   const navLinks = [
-    { href: '/play', label: 'CLICKER' },
+    { href: '/play', label: 'ACCUEIL' },
     { href: '/inventory', label: 'INVENTAIRE' },
+    { href: '/companions', label: 'DRONES' },
+    { href: '/talents', label: 'TALENTS' },
     { href: '/shop', label: 'SHOP' },
     ...(hasBlackMarketAccess ? [{ href: '/black-market', label: 'MARCHE NOIR' }] : []),
-    { href: '/talents', label: 'TALENTS' },
-    { href: '/companions', label: 'DRONES' },
-    { href: '/friends', label: 'AMIS' },
     { href: '/party', label: 'GROUPE' },
     { href: '/dungeon', label: 'DONJON' },
     { href: '/pvp', label: 'PVP' },
     { href: '/quests', label: 'QUETES' },
     { href: '/missions', label: 'MISSIONS' },
+    { href: '/friends', label: 'AMIS' },
     { href: '/leaderboard', label: 'CLASSEMENT' },
   ]
 
