@@ -46,6 +46,17 @@ const TYPE_LABELS: Record<string, string> = {
   upgrade: 'UPGRADE',
 }
 
+const EFFECT_TYPE_OPTIONS = [
+  { value: '', label: 'Aucun' },
+  { value: 'attack_boost', label: 'ATK Boost' },
+  { value: 'defense_boost', label: 'DEF Boost' },
+  { value: 'click_multiplier', label: 'CPC %' },
+  { value: 'permanent_click', label: 'CPC Permanent %' },
+  { value: 'hp_restore', label: 'Soin HP' },
+  { value: 'xp_boost', label: 'Boost XP' },
+  { value: 'talent_respec', label: 'Talent Respec' },
+] as const
+
 export default function AdminItems({ items }: Props) {
   const { props } = usePage<{ errors?: { message?: string }; success?: string }>()
   const [filter, setFilter] = useState<string>('all')
@@ -195,13 +206,17 @@ export default function AdminItems({ items }: Props) {
                 <label className="text-[10px] text-gray-500 uppercase block mb-1">
                   Effect Type
                 </label>
-                <input
-                  type="text"
+                <select
                   value={newItem.effectType}
                   onChange={(e) => setNewItem({ ...newItem, effectType: e.target.value })}
-                  placeholder="attack_boost, defense_boost..."
                   className="w-full bg-cyber-black border border-gray-800 rounded px-2 py-1.5 text-xs text-white focus:outline-none"
-                />
+                >
+                  {EFFECT_TYPE_OPTIONS.map((option) => (
+                    <option key={option.value || 'none'} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="text-[10px] text-gray-500 uppercase block mb-1">
@@ -309,13 +324,17 @@ export default function AdminItems({ items }: Props) {
                         </option>
                       ))}
                     </select>
-                    <input
-                      type="text"
+                    <select
                       value={editData.effectType || ''}
                       onChange={(e) => setEditData({ ...editData, effectType: e.target.value })}
-                      placeholder="effect_type"
                       className="bg-cyber-black border border-gray-800 rounded px-2 py-1 text-xs text-white focus:outline-none"
-                    />
+                    >
+                      {EFFECT_TYPE_OPTIONS.map((option) => (
+                        <option key={option.value || 'none'} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
                     <input
                       type="number"
                       value={editData.effectValue}
