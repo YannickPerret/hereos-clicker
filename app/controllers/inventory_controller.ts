@@ -96,10 +96,12 @@ export default class InventoryController {
     }
 
     const quantity = 1
+    let successMessage = `${invItem.item.name} utilise`
 
     // Apply effect
     if (invItem.item.effectType === 'hp_restore') {
       const effectiveHpMax = await CompanionService.getEffectiveHpMax(character)
+      const healed = Math.min(effectiveHpMax - character.hpCurrent, invItem.item.effectValue || 0)
       if (character.hpCurrent >= effectiveHpMax) {
         session.flash('errors', { message: 'Tes HP sont deja au maximum' })
         return response.redirect('/inventory')
@@ -108,9 +110,11 @@ export default class InventoryController {
         effectiveHpMax,
         character.hpCurrent + (invItem.item.effectValue || 0)
       )
+      successMessage = `${invItem.item.name} utilise: +${healed} HP`
       await character.save()
     } else if (invItem.item.effectType === 'xp_boost') {
       character.xp += invItem.item.effectValue || 0
+      successMessage = `${invItem.item.name} utilise: +${invItem.item.effectValue || 0} XP`
       if (character.xp >= character.level * 100) {
         character.levelUp()
         await CompanionService.refillHpAfterLevelUp(character)
@@ -120,6 +124,7 @@ export default class InventoryController {
       const percent = Math.max(1, invItem.item.effectValue || 0)
       const increase = Math.max(1, Math.ceil(character.creditsPerClick * (percent / 100)))
       character.creditsPerClick += increase
+      successMessage = `${invItem.item.name} utilise: +${increase} CPC`
       await character.save()
     } else if (invItem.item.effectType === 'talent_respec') {
       await TalentService.respec(character)
@@ -130,6 +135,7 @@ export default class InventoryController {
       } else {
         await invItem.save()
       }
+      session.flash('success', `${invItem.item.name} utilise: talents reinitialises`)
       return response.redirect('/talents')
     }
 
@@ -140,6 +146,7 @@ export default class InventoryController {
       await invItem.save()
     }
 
+    session.flash('success', successMessage)
     return response.redirect('/inventory')
   }
 
