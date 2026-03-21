@@ -312,6 +312,9 @@ export default function AdminQuests({ quests, questOptions, arcs, seasons, items
           <option value="simple">Simple</option>
           <option value="advanced">Advanced (Flow)</option>
         </select>
+        {form.mode === 'advanced' && (
+          <div className="mt-1 text-[10px] text-cyber-green">Mode flow actif — sauvegardez puis gerez les steps ci-dessous.</div>
+        )}
       </div>
       <div>
         <label className="mb-1 block text-[10px] uppercase text-gray-500">Type</label>
@@ -529,15 +532,10 @@ export default function AdminQuests({ quests, questOptions, arcs, seasons, items
                         <div>Recompenses: {rewardPreview(quest.rewards)}</div>
                         <div>Donneur: {quest.giverName || 'Aucun'}</div>
                         <div>Parent: {quest.parentQuestTitle || 'Aucun'}</div>
+                        <div>Mode: <span className={quest.mode === 'advanced' ? 'text-cyber-green' : 'text-gray-500'}>{quest.mode || 'simple'}</span></div>
                       </div>
                     </div>
                     <div className="flex shrink-0 gap-2">
-                      {quest.mode === 'advanced' && (
-                        <button type="button" onClick={() => setFlowEditQuestId(flowEditQuestId === quest.id ? null : quest.id)}
-                          className={`rounded border px-3 py-1.5 text-[10px] uppercase tracking-widest transition-all ${flowEditQuestId === quest.id ? 'border-cyber-green/50 bg-cyber-green/10 text-cyber-green' : 'border-cyber-green/30 text-cyber-green hover:bg-cyber-green/10'}`}>
-                          Flow ({quest.flowSteps.length})
-                        </button>
-                      )}
                       <button type="button" onClick={() => startEdit(quest)} className="rounded border border-cyber-blue/30 px-3 py-1.5 text-[10px] uppercase tracking-widest text-cyber-blue hover:bg-cyber-blue/10">Editer</button>
                       <button type="button" onClick={() => { if (window.confirm(`Supprimer la quete "${quest.title}" ?`)) router.post(`/admin/quests/${quest.id}/delete`) }}
                         className="rounded border border-cyber-red/30 px-3 py-1.5 text-[10px] uppercase tracking-widest text-cyber-red hover:bg-cyber-red/10">Supprimer</button>
@@ -545,8 +543,8 @@ export default function AdminQuests({ quests, questOptions, arcs, seasons, items
                   </div>
                 )}
 
-                {/* ── FLOW STEPS EDITOR ── */}
-                {flowEditQuestId === quest.id && quest.mode === 'advanced' && (
+                {/* ── FLOW STEPS EDITOR (always visible for advanced quests) ── */}
+                {quest.mode === 'advanced' && (
                   <div className="mt-4 rounded-lg border border-cyber-green/20 bg-cyber-black/30 p-4">
                     <div className="flex items-center justify-between mb-3">
                       <h3 className="text-xs font-bold uppercase tracking-widest text-cyber-green">Flow Steps</h3>
