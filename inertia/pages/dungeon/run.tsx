@@ -1,4 +1,4 @@
-import { router, usePage } from '@inertiajs/react'
+import { router, usePage, useRemember } from '@inertiajs/react'
 import { useState, useEffect, useRef } from 'react'
 import CombatSkillTooltip from '~/components/combat_skill_tooltip'
 import GameLayout from '~/components/layout'
@@ -104,6 +104,7 @@ interface CombatLogEntry {
   nextTurnSeconds?: number
   creditsLost?: number
   revivedHp?: number
+  itemName?: string
 }
 
 const TIER_COLORS: Record<number, string> = {
@@ -272,6 +273,26 @@ function CombatLog({ log, className = '' }: { log: CombatLogEntry[]; className?:
                   <span className="text-cyber-yellow">L'ennemi est paralyse!</span>
                 </div>
               )
+            case 'item_use':
+              return (
+                <div
+                  key={i}
+                  className="text-xs p-2 rounded bg-cyber-green/10 border border-cyber-green/30"
+                >
+                  <span className="text-cyber-green font-bold">
+                    Consommable: {entry.itemName || 'Objet'}
+                  </span>
+                  {entry.healed !== undefined && (
+                    <span className="text-white font-bold ml-2">+{entry.healed} HP</span>
+                  )}
+                  {entry.playerHpLeft !== undefined && (
+                    <span className="text-gray-400 ml-2">({entry.playerHpLeft} HP)</span>
+                  )}
+                  {entry.message && entry.healed === undefined && (
+                    <span className="text-gray-400 ml-2">{entry.message}</span>
+                  )}
+                </div>
+              )
             case 'victory':
               return (
                 <div
@@ -316,6 +337,7 @@ export default function DungeonRun({
   skills = [],
   activeEffects: initialEffects = [],
 }: Props) {
+  const { combatLog } = usePage().props as any
   const [playerCharacter, setPlayerCharacter] = useState(character)
   const [run, setRun] = useState(initialRun)
   const [enemy, setEnemy] = useState(initialEnemy)
@@ -324,15 +346,20 @@ export default function DungeonRun({
     { id: number; name: string; level: number; hpCurrent: number; hpMax: number }[]
   >([])
   const [groupLog, setGroupLog] = useState<any[]>([])
+  const [soloLog, setSoloLog] = useRemember<CombatLogEntry[]>(
+    Array.isArray(combatLog) ? (combatLog as CombatLogEntry[]) : [],
+    `dungeon-run-log:${initialRun.id}`
+  )
   const [turnTimer, setTurnTimer] = useState<number | null>(null)
   const isOver = run.status !== 'in_progress'
-  const { combatLog } = usePage().props as any
   const isGroupRun = !!run.partyId
   const isMyTurn = !run.partyId || run.currentTurnId === playerCharacter.id
   const isCharacterKo = playerCharacter.hpCurrent <= 0
   const afkPenalties = parseAfkPenalties(run.afkPenalties)
   const currentTurnIsAfk =
     run.currentTurnId !== null && (afkPenalties[String(run.currentTurnId)] || 0) > 0
+  const lastSoloFlashRef = useRef<string | null>(null)
+  const previousRunIdRef = useRef(initialRun.id)
 
   // Sync from Inertia props
   useEffect(() => {
@@ -341,6 +368,24 @@ export default function DungeonRun({
     setEnemy(initialEnemy)
     setPreview(combatPreview)
   }, [character, initialRun, initialEnemy, combatPreview])
+
+  useEffect(() => {
+    if (previousRunIdRef.current === initialRun.id) return
+
+    previousRunIdRef.current = initialRun.id
+    setSoloLog([])
+    lastSoloFlashRef.current = null
+  }, [initialRun.id, setSoloLog])
+
+  useEffect(() => {
+    if (!Array.isArray(combatLog) || combatLog.length === 0 || isGroupRun) return
+
+    const signature = JSON.stringify(combatLog)
+    if (lastSoloFlashRef.current === signature) return
+
+    setSoloLog((current) => [...current, ...combatLog])
+    lastSoloFlashRef.current = signature
+  }, [combatLog, isGroupRun, setSoloLog])
 
   // Poll run state for group dungeons
   useEffect(() => {
@@ -740,7 +785,7 @@ export default function DungeonRun({
             </div>
           </div>
 
-          {!isGroupRun && <CombatLog log={combatLog} className="xl:sticky xl:top-24" />}
+          {!isGroupRun && <CombatLog log={soloLog} className="xl:sticky xl:top-24" />}
         </div>
       )}
 
@@ -860,6 +905,23 @@ export default function DungeonRun({
                         <span className="text-cyber-orange ml-1">
                           tours suivants a {entry.nextTurnSeconds || 5}s
                         </span>
+                      </>
+                    )}
+                    {entry.action === 'item_use' && (
+                      <>
+                        <span
+                          className={`font-bold ${entry.characterId === playerCharacter.id ? 'text-cyber-blue' : 'text-cyber-purple'}`}
+                        >
+                          {entry.characterName}
+                        </span>
+                        <span className="text-gray-500 ml-1">utilise</span>
+                        <span className="text-cyber-green ml-1">{entry.itemName || 'un objet'}</span>
+                        {entry.healed !== undefined && (
+                          <span className="text-white font-bold ml-1">+{entry.healed} HP</span>
+                        )}
+                        {entry.message && entry.healed === undefined && (
+                          <span className="text-gray-400 ml-1">{entry.message}</span>
+                        )}
                       </>
                     )}
                     {entry.action === 'enemy_attack' && (

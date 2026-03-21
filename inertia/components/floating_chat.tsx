@@ -651,7 +651,7 @@ function ChatWidget({
 
       {/* Chat Panel */}
       {isOpen && (
-        <div className="fixed bottom-4 left-4 z-50 w-96 h-[500px] bg-cyber-black border border-cyber-green/30 rounded-lg shadow-2xl flex flex-col overflow-hidden">
+        <div className="fixed bottom-4 left-4 z-50 h-[min(500px,70vh)] w-[90vw] max-w-[90vw] bg-cyber-black border border-cyber-green/30 rounded-lg shadow-2xl flex flex-col overflow-hidden sm:h-[500px] sm:w-96 sm:max-w-none">
           {/* Header */}
           <div className="bg-cyber-dark border-b border-cyber-green/20 px-3 py-2 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2">

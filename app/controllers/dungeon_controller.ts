@@ -263,7 +263,8 @@ export default class DungeonController {
 
     try {
       const inventoryItemId = request.input('inventoryItemId')
-      await CombatService.useConsumable(character, params.runId, inventoryItemId)
+      const result = await CombatService.useConsumable(character, params.runId, inventoryItemId)
+      session.flash('combatLog', result.log)
     } catch (error) {
       if (this.isRunAccessError(error)) {
         return this.redirectAfterRunError(character, Number(params.runId), response, session)

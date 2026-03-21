@@ -23,6 +23,36 @@ interface ActiveEffect {
   targetType: 'enemy' | 'player'
 }
 
+interface CombatLogEntry {
+  action: string
+  damage?: number
+  isCrit?: boolean
+  enemyHpLeft?: number
+  playerHpLeft?: number
+  blocked?: boolean
+  creditsReward?: number
+  xpReward?: number
+  loot?: { name: string; rarity: string }[]
+  newLevel?: number
+  bossName?: string
+  enemyName?: string
+  enemyHp?: number
+  defenderId?: number
+  defenderName?: string
+  skillName?: string
+  healed?: number
+  stolen?: number
+  message?: string
+  auto?: boolean
+  characterName?: string
+  characterId?: number
+  afkCount?: number
+  nextTurnSeconds?: number
+  creditsLost?: number
+  revivedHp?: number
+  itemName?: string
+}
+
 export default class CombatService {
   private static readonly DEFAULT_TURN_MS = 30000
   private static readonly AFK_TURN_MS = 5000
@@ -697,16 +727,28 @@ export default class CombatService {
     }
 
     let effect = ''
+    const log: CombatLogEntry[] = []
     switch (invItem.item.effectType) {
       case 'hp_restore': {
         const effectiveHpMax = await CompanionService.getEffectiveHpMax(character)
         const healed = Math.min(invItem.item.effectValue || 0, effectiveHpMax - character.hpCurrent)
         character.hpCurrent += healed
         effect = `Restored ${healed} HP`
+        log.push({
+          action: 'item_use',
+          itemName: invItem.item.name,
+          healed,
+          playerHpLeft: character.hpCurrent,
+        })
         break
       }
       default:
         effect = `Used ${invItem.item.name}`
+        log.push({
+          action: 'item_use',
+          itemName: invItem.item.name,
+          message: effect,
+        })
     }
 
     invItem.quantity -= 1
@@ -717,9 +759,18 @@ export default class CombatService {
     }
 
     await character.save()
+
+    if (run.partyId) {
+      const persistentLog = JSON.parse(run.combatLog || '[]')
+      for (const entry of log) {
+        persistentLog.push({ ...entry, characterName: character.name, characterId: character.id })
+      }
+      run.combatLog = JSON.stringify(persistentLog)
+    }
+
     await run.save()
 
-    return { effect, character: character.serialize() }
+    return { effect, log, character: character.serialize(), run: run.serialize() }
   }
 
   private static async rollLoot(enemyId: number, characterId: number) {
