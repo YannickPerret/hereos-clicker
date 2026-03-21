@@ -18,6 +18,7 @@ import DailyRewardConfigReward from '#models/daily_reward_config_reward'
 import DungeonRun from '#models/dungeon_run'
 import Season from '#models/season'
 import Quest from '#models/quest'
+import QuestArc from '#models/quest_arc'
 import BlackMarketService from '#services/black_market_service'
 import SeasonService from '#services/season_service'
 import TalentService from '#services/talent_service'
@@ -64,6 +65,10 @@ export default class AdminController {
       : Number(rawParentQuestId)
     const arcKey = String(request.input('arcKey', fallback.arcKey || '')).trim().toLowerCase().replace(/\s+/g, '_')
     const arcTitle = String(request.input('arcTitle', fallback.arcTitle || '')).trim()
+    const rawQuestArcId = request.input('questArcId', fallback.questArcId ?? '')
+    const questArcId = rawQuestArcId === '' || rawQuestArcId === null || rawQuestArcId === undefined
+      ? null
+      : Number(rawQuestArcId)
     const giverName = String(request.input('giverName', fallback.giverName || '')).trim()
     const title = String(request.input('title', fallback.title || '')).trim()
     const summary = String(request.input('summary', fallback.summary || '')).trim()
@@ -80,6 +85,7 @@ export default class AdminController {
       parentQuestId,
       arcKey,
       arcTitle,
+      questArcId,
       giverName: giverName || null,
       title,
       summary,
@@ -161,9 +167,22 @@ export default class AdminController {
     rewards: AdminQuestReward[],
     currentQuestId?: number
   ) {
-    if (!payload.key || !payload.arcKey || !payload.arcTitle || !payload.title || !payload.summary) {
-      return 'Les champs cle, arc, titre et resume sont obligatoires'
+    if (!payload.key || !payload.title || !payload.summary) {
+      return 'Les champs cle, titre et resume sont obligatoires'
     }
+
+    if (!payload.questArcId) {
+      return 'Choisis un arc pour la quete'
+    }
+
+    const arc = await QuestArc.find(payload.questArcId)
+    if (!arc) {
+      return 'Arc introuvable'
+    }
+
+    // Auto-fill arcKey/arcTitle from the arc for backward compatibility
+    payload.arcKey = arc.key
+    payload.arcTitle = arc.title
 
     const allowedObjectives = [
       'hack_clicks',
@@ -226,7 +245,7 @@ export default class AdminController {
         return 'Quete parente introuvable'
       }
 
-      if (parentQuest.arcKey !== payload.arcKey) {
+      if (parentQuest.questArcId !== payload.questArcId) {
         return 'La quete parente doit etre dans le meme arc'
       }
 
@@ -1231,16 +1250,18 @@ export default class AdminController {
   // ── Quests ──
 
   async quests({ inertia }: HttpContext) {
-    const [quests, seasons, items] = await Promise.all([
+    const [quests, seasons, items, arcs] = await Promise.all([
       Quest.query()
         .preload('season')
         .preload('parentQuest')
+        .preload('questArc')
         .orderBy('questType', 'asc')
         .orderBy('arcTitle', 'asc')
         .orderBy('sortOrder', 'asc')
         .orderBy('id', 'asc'),
       Season.query().orderBy('sortOrder', 'desc').orderBy('name', 'asc'),
       Item.query().orderBy('name', 'asc'),
+      QuestArc.query().preload('parentArc').orderBy('sortOrder', 'asc').orderBy('title', 'asc'),
     ])
 
     return inertia.render('admin/quests', {
@@ -1248,15 +1269,26 @@ export default class AdminController {
         ...quest.serialize(),
         seasonName: quest.season?.name || null,
         parentQuestTitle: quest.parentQuest?.title || null,
+        arcTitle: quest.questArc?.title || quest.arcTitle,
         rewards: this.getQuestRewards(quest),
       })),
       questOptions: quests.map((quest) => ({
         id: quest.id,
         key: quest.key,
         title: quest.title,
-        arcTitle: quest.arcTitle,
+        arcTitle: quest.questArc?.title || quest.arcTitle,
         questType: quest.questType,
         seasonId: quest.seasonId,
+        questArcId: quest.questArcId,
+      })),
+      arcs: arcs.map((arc) => ({
+        id: arc.id,
+        key: arc.key,
+        title: arc.title,
+        parentArcId: arc.parentArcId,
+        parentArcTitle: arc.parentArc?.title || null,
+        isActive: arc.isActive,
+        sortOrder: arc.sortOrder,
       })),
       seasons: seasons.map((season) => ({
         id: season.id,
@@ -1345,6 +1377,92 @@ export default class AdminController {
     await quest.delete()
 
     session.flash('success', `Quete ${title} supprimee`)
+    return response.redirect('/admin/quests')
+  }
+
+  // ── Quest Arcs ──
+
+  async createQuestArc({ request, response, session }: HttpContext) {
+    const key = String(request.input('key', '')).trim().toLowerCase().replace(/\s+/g, '_')
+    const title = String(request.input('title', '')).trim()
+    const rawParentArcId = request.input('parentArcId', '')
+    const parentArcId = rawParentArcId === '' || rawParentArcId === null ? null : Number(rawParentArcId)
+    const isActive = request.input('isActive') === 'true' || request.input('isActive') === true
+    const sortOrder = Math.max(1, Number(request.input('sortOrder', 1)) || 1)
+
+    if (!key || !title) {
+      session.flash('errors', { message: 'La cle et le titre sont obligatoires' })
+      return response.redirect('/admin/quests')
+    }
+
+    const duplicate = await QuestArc.query().where('key', key).first()
+    if (duplicate) {
+      session.flash('errors', { message: `La cle ${key} existe deja` })
+      return response.redirect('/admin/quests')
+    }
+
+    if (parentArcId) {
+      const parent = await QuestArc.find(parentArcId)
+      if (!parent) {
+        session.flash('errors', { message: 'Arc parent introuvable' })
+        return response.redirect('/admin/quests')
+      }
+    }
+
+    await QuestArc.create({ key, title, parentArcId, isActive, sortOrder })
+
+    session.flash('success', `Arc "${title}" cree`)
+    return response.redirect('/admin/quests')
+  }
+
+  async updateQuestArc({ params, request, response, session }: HttpContext) {
+    const arc = await QuestArc.findOrFail(params.id)
+    const key = String(request.input('key', arc.key)).trim().toLowerCase().replace(/\s+/g, '_')
+    const title = String(request.input('title', arc.title)).trim()
+    const rawParentArcId = request.input('parentArcId', '')
+    const parentArcId = rawParentArcId === '' || rawParentArcId === null ? null : Number(rawParentArcId)
+    const isActive = request.input('isActive') === 'true' || request.input('isActive') === true
+    const sortOrder = Math.max(1, Number(request.input('sortOrder', arc.sortOrder)) || 1)
+
+    if (!key || !title) {
+      session.flash('errors', { message: 'La cle et le titre sont obligatoires' })
+      return response.redirect('/admin/quests')
+    }
+
+    if (parentArcId === arc.id) {
+      session.flash('errors', { message: 'Un arc ne peut pas etre son propre parent' })
+      return response.redirect('/admin/quests')
+    }
+
+    const duplicate = await QuestArc.query().where('key', key).whereNot('id', arc.id).first()
+    if (duplicate) {
+      session.flash('errors', { message: `La cle ${key} existe deja` })
+      return response.redirect('/admin/quests')
+    }
+
+    arc.merge({ key, title, parentArcId, isActive, sortOrder })
+    await arc.save()
+
+    // Sync arcKey/arcTitle on related quests
+    await Quest.query().where('questArcId', arc.id).update({ arcKey: arc.key, arcTitle: arc.title })
+
+    session.flash('success', `Arc "${title}" mis a jour`)
+    return response.redirect('/admin/quests')
+  }
+
+  async deleteQuestArc({ params, response, session }: HttpContext) {
+    const arc = await QuestArc.findOrFail(params.id)
+
+    const questCount = await Quest.query().where('questArcId', arc.id).count('* as total')
+    if (Number(questCount[0].$extras.total) > 0) {
+      session.flash('errors', { message: 'Impossible de supprimer un arc qui contient des quetes' })
+      return response.redirect('/admin/quests')
+    }
+
+    const title = arc.title
+    await arc.delete()
+
+    session.flash('success', `Arc "${title}" supprime`)
     return response.redirect('/admin/quests')
   }
 

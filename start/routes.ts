@@ -12,11 +12,12 @@ const TalentController = () => import('#controllers/talent_controller')
 const PartyController = () => import('#controllers/party_controller')
 const PvpController = () => import('#controllers/pvp_controller')
 const MissionController = () => import('#controllers/mission_controller')
-const FriendsController = () => import('#controllers/friends_controller')
 const QuestController = () => import('#controllers/quest_controller')
 const CompanionController = () => import('#controllers/companion_controller')
+const FriendsController = () => import('#controllers/friends_controller')
 const ChatController = () => import('#controllers/chat_controller')
 const BugReportController = () => import('#controllers/bug_report_controller')
+const MapsController = () => import('#controllers/maps_controller')
 
 // Transmit SSE routes
 transmit.registerRoutes()
@@ -43,8 +44,8 @@ router
     router.post('/play/character', [PlayController, 'createCharacter'])
     router.post('/play/click', [PlayController, 'click'])
     router.post('/play/tick', [PlayController, 'autoTick'])
-
     router.post('/play/collect-offline', [PlayController, 'collectOffline'])
+
     // Inventory
     router.get('/inventory', [InventoryController, 'index'])
     router.post('/inventory/:id/equip', [InventoryController, 'equip'])
@@ -105,6 +106,8 @@ router
     router.post('/missions/:missionId/claim', [MissionController, 'claim'])
 
     // Quetes principales
+    router.get('/quests', [QuestController, 'index'])
+
     // Amis
     router.get('/friends', [FriendsController, 'index'])
     router.get('/friends/requests', [FriendsController, 'requests'])
@@ -115,7 +118,6 @@ router
     router.post('/friends/:id/remove', [FriendsController, 'remove'])
     router.post('/friends/requests/:id/accept', [FriendsController, 'acceptRequest'])
     router.post('/friends/requests/:id/decline', [FriendsController, 'declineRequest'])
-    router.get('/quests', [QuestController, 'index'])
 
     // Compagnons
     router.get('/companions', [CompanionController, 'index'])
@@ -136,6 +138,11 @@ router
     // Bug Reports (user)
     router.post('/report', [BugReportController, 'create'])
     router.get('/reports', [BugReportController, 'myReports'])
+
+    // World Map
+    router.get('/map', [MapsController, 'index'])
+    router.post('/map/move', [MapsController, 'move'])
+    router.post('/map/join', [MapsController, 'join'])
 
     // Leaderboard
     router.get('/leaderboard/state', [DungeonController, 'leaderboardState'])
@@ -217,6 +224,9 @@ router
     router.post('/admin/quests/create', [AdminController, 'createQuest'])
     router.post('/admin/quests/:id/update', [AdminController, 'updateQuest'])
     router.post('/admin/quests/:id/delete', [AdminController, 'deleteQuest'])
+    router.post('/admin/quest-arcs/create', [AdminController, 'createQuestArc'])
+    router.post('/admin/quest-arcs/:id/update', [AdminController, 'updateQuestArc'])
+    router.post('/admin/quest-arcs/:id/delete', [AdminController, 'deleteQuestArc'])
 
     // Black Market
     router.get('/admin/black-market', [AdminController, 'blackMarket'])

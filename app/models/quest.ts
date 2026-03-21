@@ -3,6 +3,7 @@ import { BaseModel, belongsTo, column, hasMany } from '@adonisjs/lucid/orm'
 import type { BelongsTo, HasMany } from '@adonisjs/lucid/types/relations'
 import CharacterQuest from '#models/character_quest'
 import Season from '#models/season'
+import QuestArc from '#models/quest_arc'
 
 export default class Quest extends BaseModel {
   @column({ isPrimary: true })
@@ -25,6 +26,9 @@ export default class Quest extends BaseModel {
 
   @column()
   declare arcTitle: string
+
+  @column()
+  declare questArcId: number | null
 
   @column()
   declare giverName: string | null
@@ -73,6 +77,9 @@ export default class Quest extends BaseModel {
 
   @belongsTo(() => Season)
   declare season: BelongsTo<typeof Season>
+
+  @belongsTo(() => QuestArc)
+  declare questArc: BelongsTo<typeof QuestArc>
 
   @belongsTo(() => Quest, {
     foreignKey: 'parentQuestId',
