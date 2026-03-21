@@ -86,31 +86,31 @@ function TalentCard({
       type="button"
       disabled={!canUnlock}
       onClick={canUnlock ? onClick : undefined}
-      className={`w-full rounded-lg border p-2.5 text-left transition-all ${
+      className={`w-full rounded-lg border p-3 text-left transition-all ${
         isUnlocked
           ? `${config.border}/50 ${config.bg}/10`
           : canUnlock
-            ? `${config.border}/30 hover:${config.bg}/10 cursor-pointer`
+            ? `${config.border}/30 hover:${config.bg}/15 cursor-pointer`
             : isExcluded
-              ? 'border-gray-800/30 opacity-25'
-              : 'border-gray-800/50 opacity-40'
+              ? 'border-gray-800/30 opacity-20'
+              : 'border-gray-800/50 opacity-50'
       }`}
     >
-      <div className="flex items-center gap-2 mb-0.5">
-        <span className={`text-[10px] font-bold ${isUnlocked ? config.color : canUnlock ? 'text-gray-300' : 'text-gray-700'}`}>
+      <div className="flex items-center gap-2 mb-1">
+        <span className={`text-xs font-bold ${isUnlocked ? config.color : canUnlock ? 'text-white' : 'text-gray-500'}`}>
           {talent.name}
         </span>
         {isUnlocked && (
-          <span className={`text-[8px] ${config.bg}/20 ${config.color} px-1 py-0.5 rounded uppercase`}>
+          <span className={`text-[9px] ${config.bg}/20 ${config.color} px-1.5 py-0.5 rounded uppercase font-bold`}>
             actif
           </span>
         )}
       </div>
-      <p className="text-[9px] text-gray-600 leading-tight mb-1">{talent.description}</p>
+      <p className={`text-[11px] leading-snug mb-1.5 ${isUnlocked ? 'text-gray-300' : canUnlock ? 'text-gray-400' : 'text-gray-600'}`}>{talent.description}</p>
       {!isUnlocked && !isExcluded && (
-        <div className="flex items-center gap-2 text-[9px]">
-          <span className={canUnlock ? 'text-cyber-purple' : 'text-gray-700'}>{talent.cost} PT</span>
-          <span className={characterLevel >= talent.requiresLevel ? 'text-gray-600' : 'text-cyber-red'}>
+        <div className="flex items-center gap-3 text-[11px]">
+          <span className={`font-bold ${canUnlock ? 'text-cyber-purple' : 'text-gray-600'}`}>{talent.cost} PT</span>
+          <span className={`font-medium ${characterLevel >= talent.requiresLevel ? 'text-gray-500' : 'text-cyber-red'}`}>
             LVL {talent.requiresLevel}
           </span>
         </div>
@@ -194,8 +194,8 @@ export default function Talents(props: Props) {
           { label: 'Economie', value: `-${bonuses.shopDiscount}% prix, +${bonuses.lootBonus}% loot, +${bonuses.dungeonCredits}% donjon`, color: 'text-cyber-yellow' },
         ].map((b) => (
           <div key={b.label} className="bg-cyber-dark/50 border border-gray-800 rounded px-3 py-2">
-            <div className="text-[10px] text-gray-600 uppercase">{b.label}</div>
-            <div className={`text-[10px] font-bold ${b.color}`}>{b.value}</div>
+            <div className="text-[11px] text-gray-400 uppercase tracking-wider">{b.label}</div>
+            <div className={`text-xs font-bold ${b.color}`}>{b.value}</div>
           </div>
         ))}
       </div>
@@ -226,22 +226,22 @@ export default function Talents(props: Props) {
               }`}
             >
               <div className="flex items-center justify-between mb-1">
-                <span className={`text-xs font-bold ${config.color} tracking-widest`}>{config.label}</span>
+                <span className={`text-sm font-bold ${config.color} tracking-widest`}>{config.label}</span>
                 {isChosenSpec && (
-                  <span className={`text-[8px] ${config.bg}/20 ${config.color} px-1.5 py-0.5 rounded-full uppercase`}>
+                  <span className={`text-[9px] ${config.bg}/20 ${config.color} px-2 py-0.5 rounded-full uppercase font-bold`}>
                     ta spec
                   </span>
                 )}
               </div>
-              <p className="text-[9px] text-gray-600 mb-2">{config.desc}</p>
+              <p className="text-[11px] text-gray-400 mb-2">{config.desc}</p>
               <div className="flex items-center justify-between">
-                <div className="flex-1 h-1 bg-cyber-black rounded-full overflow-hidden mr-2">
+                <div className="flex-1 h-1.5 bg-cyber-black rounded-full overflow-hidden mr-2">
                   <div
                     className={`h-full ${config.bg}/60 transition-all duration-500`}
                     style={{ width: `${(unlockedCount / (totalTiers * 2)) * 100}%` }}
                   />
                 </div>
-                <span className="text-[9px] text-gray-600">{unlockedCount}/{totalTiers}</span>
+                <span className="text-xs text-gray-400 font-medium">{unlockedCount}/{totalTiers}</span>
               </div>
             </button>
           )
@@ -265,8 +265,8 @@ export default function Talents(props: Props) {
 
         return (
           <div className={`bg-cyber-dark border rounded-lg p-5 ${config.border}/30 ${config.glow}`}>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className={`text-sm font-bold ${config.color} tracking-widest`}>
+            <div className="flex items-center justify-between mb-5">
+              <h2 className={`text-base font-bold ${config.color} tracking-widest`}>
                 {config.label} — ARBRE DE TALENTS
               </h2>
               {isLockedSpec && (
@@ -286,19 +286,19 @@ export default function Talents(props: Props) {
                   <div key={tier} className="relative">
                     {/* Tier connector */}
                     {tier > 1 && (
-                      <div className="flex justify-center mb-1">
-                        <div className={`w-0.5 h-3 ${
-                          tiers[tier - 1]?.some((t) => t.unlocked) ? `${config.bg}/40` : 'bg-gray-800'
+                      <div className="flex justify-center my-1">
+                        <div className={`w-0.5 h-4 ${
+                          tiers[tier - 1]?.some((t) => t.unlocked) ? `${config.bg}/50` : 'bg-gray-800'
                         }`} />
                       </div>
                     )}
 
                     <div className="flex items-stretch gap-2">
                       {/* Tier badge */}
-                      <div className={`flex items-center justify-center w-10 shrink-0 rounded border text-[10px] font-bold ${
+                      <div className={`flex items-center justify-center w-12 shrink-0 rounded-lg border text-xs font-bold ${
                         tierTalents.some((t) => t.unlocked)
-                          ? `${config.border}/50 ${config.color}`
-                          : 'border-gray-800 text-gray-700'
+                          ? `${config.border}/60 ${config.color} ${config.bg}/10`
+                          : 'border-gray-700 text-gray-500'
                       }`}>
                         T{tier}
                       </div>
@@ -317,7 +317,13 @@ export default function Talents(props: Props) {
 
                       {/* OR divider */}
                       <div className="flex items-center px-1">
-                        <span className="text-[8px] text-gray-700 uppercase font-bold">ou</span>
+                        <div className="flex flex-col items-center gap-1">
+                          <div className="w-px h-3 bg-gray-700" />
+                          <span className={`text-[10px] font-bold uppercase ${
+                            tierTalents.some((t) => t.canUnlock) ? 'text-gray-400' : 'text-gray-600'
+                          }`}>ou</span>
+                          <div className="w-px h-3 bg-gray-700" />
+                        </div>
                       </div>
 
                       {/* Choice B */}
