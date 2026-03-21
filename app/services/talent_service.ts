@@ -37,10 +37,8 @@ export default class TalentService {
         case 'cps_flat': bonuses.cpsFlat += val; break
         case 'cps_percent': bonuses.cpsPercent += val; break
         case 'atk_flat': bonuses.atkFlat += val; break
-        case 'def_flat':
-          bonuses.defFlat += val
-          bonuses.hpFlat += ct.talent.tier >= 4 ? 50 : ct.talent.tier >= 2 ? 20 : 0
-          break
+        case 'def_flat': bonuses.defFlat += val; break
+        case 'hp_flat': bonuses.hpFlat += val; break
         case 'combat_percent': bonuses.combatPercent += val; break
         case 'shop_discount': bonuses.shopDiscount += val; break
         case 'loot_bonus': bonuses.lootBonus += val; break
@@ -64,21 +62,9 @@ export default class TalentService {
       throw new Error('Pas assez de points de talent')
     }
 
-    // Enforce single spec: if character already chose a spec, block other specs
+    // Enforce single spec
     if (character.chosenSpec && character.chosenSpec !== talent.spec) {
       throw new Error(`Tu es specialise ${this.specLabel(character.chosenSpec)}. Achete un Neural Respec Chip pour changer.`)
-    }
-
-    // Check prerequisite
-    if (talent.requiresTalentId) {
-      const hasPrereq = await CharacterTalent.query()
-        .where('characterId', character.id)
-        .where('talentId', talent.requiresTalentId)
-        .first()
-
-      if (!hasPrereq) {
-        throw new Error('Talent prerequis non debloque')
-      }
     }
 
     // Check not already unlocked
@@ -89,6 +75,28 @@ export default class TalentService {
 
     if (existing) {
       throw new Error('Talent deja debloque')
+    }
+
+    // Get all unlocked talents for this character in this spec
+    const unlockedInSpec = await CharacterTalent.query()
+      .where('characterId', character.id)
+      .preload('talent', (q) => q.where('spec', talent.spec))
+
+    const unlockedTiers = new Set(
+      unlockedInSpec.filter((ct) => ct.talent).map((ct) => ct.talent.tier)
+    )
+
+    // Tier prerequisite: must have unlocked something in previous tier (except T1)
+    if (talent.tier > 1 && !unlockedTiers.has(talent.tier - 1)) {
+      throw new Error(`Debloque un talent du tier ${talent.tier - 1} d'abord`)
+    }
+
+    // Binary choice: check no other talent in same tier+spec is already unlocked
+    const conflicting = unlockedInSpec.find(
+      (ct) => ct.talent && ct.talent.tier === talent.tier && ct.talent.choiceGroup !== talent.choiceGroup
+    )
+    if (conflicting) {
+      throw new Error('Tu as deja choisi un talent a ce tier')
     }
 
     // Lock spec on first talent unlock
@@ -109,7 +117,6 @@ export default class TalentService {
   }
 
   static async respec(character: Character) {
-    // Count total points spent to refund
     const unlocked = await CharacterTalent.query()
       .where('characterId', character.id)
       .preload('talent')
@@ -119,15 +126,13 @@ export default class TalentService {
       refundedPoints += ct.talent.cost * ct.rank
     }
 
-    // Delete all talents
     await CharacterTalent.query()
       .where('characterId', character.id)
       .delete()
 
-    // Reset spec and refund points
     character.chosenSpec = null
     character.talentPoints += refundedPoints
-    character.creditsPerSecond = 0 // reset CPS from talents
+    character.creditsPerSecond = 0
     await character.save()
 
     return refundedPoints

@@ -17,6 +17,14 @@ interface MissionData {
   }
 }
 
+interface RewardEntry {
+  id: number
+  rewardType: string
+  rewardValue: number
+  rewardItemId: number | null
+  rewardItemName: string | null
+}
+
 interface Props {
   character: { id: number; name: string; credits: number }
   missions: MissionData[]
@@ -28,22 +36,12 @@ interface Props {
     nextClaimStreak: number
     todayRewardDay: number | null
     resetsAt: string | null
-    rewards: {
+    days: {
       id: number
       dayNumber: number
-      rewardType: string
-      rewardValue: number
-      rewardItemId: number | null
-      rewardItemName: string | null
+      rewards: RewardEntry[]
     }[]
-    nextReward: {
-      id: number
-      dayNumber: number
-      rewardType: string
-      rewardValue: number
-      rewardItemId: number | null
-      rewardItemName: string | null
-    } | null
+    nextRewards: RewardEntry[]
   } | null
 }
 
@@ -106,21 +104,26 @@ export default function Missions({ character, missions, dailyReward }: Props) {
                   {dailyReward.claimedToday ? 'Reclamee aujourd hui' : `Prochain claim: ${dailyReward.nextClaimStreak}`}
                 </div>
                 <div className="text-sm font-bold text-cyber-yellow">
-                  {dailyReward.nextReward
-                    ? rewardLabel(dailyReward.nextReward.rewardType, dailyReward.nextReward.rewardValue, dailyReward.nextReward.rewardItemName)
+                  {dailyReward.nextRewards.length > 0
+                    ? dailyReward.nextRewards.map((r, i) => (
+                        <span key={i}>
+                          {i > 0 && ' + '}
+                          {rewardLabel(r.rewardType, r.rewardValue, r.rewardItemName)}
+                        </span>
+                      ))
                     : 'Aucune recompense'}
                 </div>
               </div>
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
-              {dailyReward.rewards.map((reward) => {
-                const isCurrent = reward.dayNumber === dailyReward.todayRewardDay
-                const isReached = dailyReward.currentStreak >= reward.dayNumber
+              {dailyReward.days.map((day) => {
+                const isCurrent = day.dayNumber === dailyReward.todayRewardDay
+                const isReached = dailyReward.currentStreak >= day.dayNumber
 
                 return (
                   <div
-                    key={reward.id}
+                    key={day.id}
                     className={`rounded-lg border p-3 ${
                       isCurrent
                         ? 'border-cyber-yellow bg-cyber-yellow/10'
@@ -129,10 +132,15 @@ export default function Missions({ character, missions, dailyReward }: Props) {
                           : 'border-gray-800 bg-cyber-black/40'
                     }`}
                   >
-                    <div className="text-[10px] uppercase tracking-widest text-gray-500 mb-1">Jour {reward.dayNumber}</div>
-                    <div className={`text-xs font-bold ${isCurrent ? 'text-cyber-yellow' : isReached ? 'text-cyber-green' : 'text-gray-400'}`}>
-                      {rewardLabel(reward.rewardType, reward.rewardValue, reward.rewardItemName)}
-                    </div>
+                    <div className="text-[10px] uppercase tracking-widest text-gray-500 mb-1">Jour {day.dayNumber}</div>
+                    {day.rewards.map((r, i) => (
+                      <div key={i} className={`text-xs font-bold ${isCurrent ? 'text-cyber-yellow' : isReached ? 'text-cyber-green' : 'text-gray-400'}`}>
+                        {rewardLabel(r.rewardType, r.rewardValue, r.rewardItemName)}
+                      </div>
+                    ))}
+                    {day.rewards.length === 0 && (
+                      <div className="text-xs text-gray-600">-</div>
+                    )}
                   </div>
                 )
               })}

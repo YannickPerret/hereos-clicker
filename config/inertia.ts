@@ -3,6 +3,7 @@ import Character from '#models/character'
 import BlackMarketService from '#services/black_market_service'
 import PartyMember from '#models/party_member'
 import SeasonService from '#services/season_service'
+import DailyRewardService from '#services/daily_reward_service'
 
 export default defineConfig({
   rootView: 'inertia_layout',
@@ -57,6 +58,17 @@ export default defineConfig({
         return {
           minLevel: 12,
         }
+      }
+    },
+    dailyReward: async (ctx) => {
+      const user = ctx.auth?.user
+      if (!user) return null
+      try {
+        const character = await Character.query().where('userId', user.id).first()
+        if (!character) return null
+        return await DailyRewardService.getStatus(character.id)
+      } catch {
+        return null
       }
     },
     season: async () => {

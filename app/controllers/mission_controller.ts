@@ -68,10 +68,12 @@ export default class MissionController {
 
     try {
       const result = await DailyRewardService.claim(character.id)
-      const label = result.rewardType === 'item'
-        ? `${result.rewardValue}x ${result.rewardItemName || 'item'}`
-        : `+${result.rewardValue} ${result.rewardType}`
-      session.flash('success', `Recompense journaliere recue: ${label} • streak ${result.streak}`)
+      const labels = result.rewards.map((r) =>
+        r.rewardType === 'item'
+          ? `${r.rewardValue}x ${r.rewardItemName || 'item'}`
+          : `+${r.rewardValue} ${r.rewardType}`
+      )
+      session.flash('success', `Recompense journaliere recue: ${labels.join(' + ')} • streak ${result.streak}`)
     } catch {
       session.flash('errors', { message: 'Impossible de reclamer la recompense journaliere' })
     }

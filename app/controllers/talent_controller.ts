@@ -11,7 +11,7 @@ export default class TalentController {
       .where('userId', auth.user!.id)
       .firstOrFail()
 
-    const allTalents = await Talent.query().orderBy('spec').orderBy('tier')
+    const allTalents = await Talent.query().orderBy('spec').orderBy('tier').orderBy('choiceGroup')
     const unlockedTalents = await CharacterTalent.query()
       .where('characterId', character.id)
 
@@ -26,23 +26,53 @@ export default class TalentController {
       .first()
 
     const specs = ['hacker', 'netrunner', 'samurai', 'chrome_dealer']
+
+    // Build unlocked tiers per spec for prereq checks
+    const unlockedTiersBySpec: Record<string, Set<number>> = {}
+    // Build unlocked choice groups per tier per spec for binary exclusion
+    const chosenChoiceByTier: Record<string, Record<number, number>> = {}
+
+    for (const spec of specs) {
+      unlockedTiersBySpec[spec] = new Set()
+      chosenChoiceByTier[spec] = {}
+    }
+
+    for (const t of allTalents) {
+      if (unlockedIds.has(t.id)) {
+        unlockedTiersBySpec[t.spec].add(t.tier)
+        chosenChoiceByTier[t.spec][t.tier] = t.choiceGroup
+      }
+    }
+
     const tree: Record<string, any[]> = {}
 
     for (const spec of specs) {
       const isLockedSpec = character.chosenSpec !== null && character.chosenSpec !== spec
+      const specTiers = unlockedTiersBySpec[spec]
+      const specChoices = chosenChoiceByTier[spec]
 
       tree[spec] = allTalents
         .filter((t) => t.spec === spec)
-        .map((t) => ({
-          ...t.serialize(),
-          unlocked: unlockedIds.has(t.id),
-          canUnlock:
+        .map((t) => {
+          const isUnlocked = unlockedIds.has(t.id)
+          const hasPrevTier = t.tier === 1 || specTiers.has(t.tier - 1)
+          const otherChoicePicked = specChoices[t.tier] !== undefined && specChoices[t.tier] !== t.choiceGroup
+          const canUnlock =
             !isLockedSpec &&
-            !unlockedIds.has(t.id) &&
+            !isUnlocked &&
+            !otherChoicePicked &&
             character.talentPoints >= t.cost &&
             character.level >= t.requiresLevel &&
-            (!t.requiresTalentId || unlockedIds.has(t.requiresTalentId)),
-        }))
+            hasPrevTier
+
+          return {
+            ...t.serialize(),
+            choiceGroup: t.choiceGroup,
+            unlocked: isUnlocked,
+            canUnlock,
+            otherChoicePicked,
+          }
+        })
     }
 
     return inertia.render('talents/index', {
@@ -75,7 +105,6 @@ export default class TalentController {
       .where('userId', auth.user!.id)
       .firstOrFail()
 
-    // Check has respec chip
     const invItem = await InventoryItem.query()
       .where('characterId', character.id)
       .whereHas('item', (q) => q.where('effectType', 'talent_respec'))

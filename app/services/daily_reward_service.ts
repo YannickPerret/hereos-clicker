@@ -2,6 +2,7 @@ import { DateTime } from 'luxon'
 import Character from '#models/character'
 import CharacterDailyRewardState from '#models/character_daily_reward_state'
 import DailyRewardConfig from '#models/daily_reward_config'
+import DailyRewardConfigReward from '#models/daily_reward_config_reward'
 import InventoryItem from '#models/inventory_item'
 import CompanionService from '#services/companion_service'
 
@@ -23,7 +24,7 @@ export default class DailyRewardService {
   private static async getConfigs() {
     return DailyRewardConfig.query()
       .where('isActive', true)
-      .preload('rewardItem')
+      .preload('rewards', (q) => q.preload('rewardItem'))
       .orderBy('dayNumber', 'asc')
   }
 
@@ -46,43 +47,56 @@ export default class DailyRewardService {
     return exact || configs[configs.length - 1]
   }
 
-  private static async applyReward(character: Character, config: DailyRewardConfig) {
-    switch (config.rewardType) {
-      case 'credits':
-        character.credits += config.rewardValue
-        break
-      case 'xp':
-        character.xp += config.rewardValue
-        if (character.xp >= character.level * 100) {
-          character.levelUp()
-          await CompanionService.refillHpAfterLevelUp(character)
-        }
-        break
-      case 'item': {
-        if (!config.rewardItemId) {
-          throw new Error('Reward item missing')
-        }
+  private static async applyRewards(
+    character: Character,
+    rewards: DailyRewardConfigReward[]
+  ) {
+    for (const reward of rewards) {
+      switch (reward.rewardType) {
+        case 'credits':
+          character.credits += reward.rewardValue
+          break
+        case 'xp':
+          character.xp += reward.rewardValue
+          if (character.xp >= character.level * 100) {
+            character.levelUp()
+            await CompanionService.refillHpAfterLevelUp(character)
+          }
+          break
+        case 'item': {
+          if (!reward.rewardItemId) break
 
-        const quantity = Math.max(1, config.rewardValue)
-        const existing = await InventoryItem.query()
-          .where('characterId', character.id)
-          .where('itemId', config.rewardItemId)
-          .first()
+          const quantity = Math.max(1, reward.rewardValue)
+          const existing = await InventoryItem.query()
+            .where('characterId', character.id)
+            .where('itemId', reward.rewardItemId)
+            .first()
 
-        if (existing) {
-          existing.quantity += quantity
-          await existing.save()
-        } else {
-          await InventoryItem.create({
-            characterId: character.id,
-            itemId: config.rewardItemId,
-            quantity,
-            isEquipped: false,
-          })
+          if (existing) {
+            existing.quantity += quantity
+            await existing.save()
+          } else {
+            await InventoryItem.create({
+              characterId: character.id,
+              itemId: reward.rewardItemId,
+              quantity,
+              isEquipped: false,
+            })
+          }
+          break
         }
-        break
       }
     }
+  }
+
+  private static serializeRewards(rewards: DailyRewardConfigReward[]) {
+    return rewards.map((r) => ({
+      id: r.id,
+      rewardType: r.rewardType,
+      rewardValue: r.rewardValue,
+      rewardItemId: r.rewardItemId,
+      rewardItemName: r.rewardItem?.name || null,
+    }))
   }
 
   static async getStatus(characterId: number) {
@@ -97,35 +111,23 @@ export default class DailyRewardService {
         ? activeStreak + 1
         : 1
 
-    const nextReward = this.getConfigForStreak(nextClaimStreak, configs)
-    const todayRewardDay = nextReward?.dayNumber ?? null
+    const nextConfig = this.getConfigForStreak(nextClaimStreak, configs)
+    const todayRewardDay = nextConfig?.dayNumber ?? null
 
     return {
       currentStreak: activeStreak,
       highestStreak: state.highestStreak,
       claimedToday,
-      canClaimToday: !claimedToday && !!nextReward,
+      canClaimToday: !claimedToday && !!nextConfig,
       nextClaimStreak,
       todayRewardDay,
       resetsAt: DateTime.now().endOf('day').toISO(),
-      rewards: configs.map((config) => ({
+      days: configs.map((config) => ({
         id: config.id,
         dayNumber: config.dayNumber,
-        rewardType: config.rewardType,
-        rewardValue: config.rewardValue,
-        rewardItemId: config.rewardItemId,
-        rewardItemName: config.rewardItem?.name || null,
+        rewards: this.serializeRewards(config.rewards),
       })),
-      nextReward: nextReward
-        ? {
-            id: nextReward.id,
-            dayNumber: nextReward.dayNumber,
-            rewardType: nextReward.rewardType,
-            rewardValue: nextReward.rewardValue,
-            rewardItemId: nextReward.rewardItemId,
-            rewardItemName: nextReward.rewardItem?.name || null,
-          }
-        : null,
+      nextRewards: nextConfig ? this.serializeRewards(nextConfig.rewards) : [],
     }
   }
 
@@ -145,12 +147,12 @@ export default class DailyRewardService {
     }
 
     const nextStreak = this.claimedYesterday(state) ? state.currentStreak + 1 : 1
-    const reward = this.getConfigForStreak(nextStreak, configs)
-    if (!reward) {
+    const config = this.getConfigForStreak(nextStreak, configs)
+    if (!config || config.rewards.length === 0) {
       throw new Error('No matching reward config')
     }
 
-    await this.applyReward(character, reward)
+    await this.applyRewards(character, config.rewards)
 
     state.currentStreak = nextStreak
     state.highestStreak = Math.max(state.highestStreak, nextStreak)
@@ -161,9 +163,7 @@ export default class DailyRewardService {
 
     return {
       streak: nextStreak,
-      rewardType: reward.rewardType,
-      rewardValue: reward.rewardValue,
-      rewardItemName: reward.rewardItem?.name || null,
+      rewards: this.serializeRewards(config.rewards),
     }
   }
 }

@@ -1,7 +1,7 @@
 import { DateTime } from 'luxon'
-import { BaseModel, belongsTo, column } from '@adonisjs/lucid/orm'
-import type { BelongsTo } from '@adonisjs/lucid/types/relations'
-import Item from '#models/item'
+import { BaseModel, column, hasMany } from '@adonisjs/lucid/orm'
+import type { HasMany } from '@adonisjs/lucid/types/relations'
+import DailyRewardConfigReward from '#models/daily_reward_config_reward'
 
 export default class DailyRewardConfig extends BaseModel {
   @column({ isPrimary: true })
@@ -9,15 +9,6 @@ export default class DailyRewardConfig extends BaseModel {
 
   @column()
   declare dayNumber: number
-
-  @column()
-  declare rewardType: 'credits' | 'xp' | 'item'
-
-  @column()
-  declare rewardValue: number
-
-  @column()
-  declare rewardItemId: number | null
 
   @column()
   declare isActive: boolean
@@ -28,6 +19,6 @@ export default class DailyRewardConfig extends BaseModel {
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime
 
-  @belongsTo(() => Item, { foreignKey: 'rewardItemId' })
-  declare rewardItem: BelongsTo<typeof Item>
+  @hasMany(() => DailyRewardConfigReward)
+  declare rewards: HasMany<typeof DailyRewardConfigReward>
 }

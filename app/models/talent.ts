@@ -35,6 +35,9 @@ export default class Talent extends BaseModel {
   @column()
   declare requiresLevel: number
 
+  @column()
+  declare choiceGroup: number
+
   @belongsTo(() => Talent, { foreignKey: 'requiresTalentId' })
   declare prerequisite: BelongsTo<typeof Talent>
 }

@@ -11,11 +11,24 @@ const ROLE_COLORS: Record<string, string> = {
 
 const REPORT_CATEGORIES = ['bug', 'exploit', 'player', 'suggestion', 'other'] as const
 
+const REWARD_ICONS: Record<string, string> = {
+  credits: '💰',
+  xp: '⭐',
+  item: '📦',
+}
+
+function rewardLabel(rewardType: string, rewardValue: number, rewardItemName: string | null = null) {
+  if (rewardType === 'item') return `${rewardValue}x ${rewardItemName || 'item'}`
+  return `+${rewardValue.toLocaleString()} ${rewardType}`
+}
+
 export default function GameLayout({ children }: { children: ReactNode }) {
-  const { auth, blackMarket, success, errors } = usePage().props as any
+  const { auth, blackMarket, success, errors, dailyReward } = usePage().props as any
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [toast, setToast] = useState<null | { type: 'success' | 'error'; message: string }>(null)
   const [reportModalOpen, setReportModalOpen] = useState(false)
+  const [dailyRewardModalOpen, setDailyRewardModalOpen] = useState(false)
+  const [claimingReward, setClaimingReward] = useState(false)
   const [reportTitle, setReportTitle] = useState('')
   const [reportDescription, setReportDescription] = useState('')
   const [reportCategory, setReportCategory] = useState<(typeof REPORT_CATEGORIES)[number]>('bug')
@@ -44,6 +57,12 @@ export default function GameLayout({ children }: { children: ReactNode }) {
     { href: '/missions', label: 'MISSIONS' },
     { href: '/leaderboard', label: 'CLASSEMENT' },
   ]
+
+  useEffect(() => {
+    if (dailyReward?.canClaimToday) {
+      setDailyRewardModalOpen(true)
+    }
+  }, [])
 
   useEffect(() => {
     if (success) {
@@ -143,7 +162,7 @@ export default function GameLayout({ children }: { children: ReactNode }) {
               <img
                 src="/images/hereos_logo.webp"
                 alt="HEREOS"
-                className="h-10 w-auto object-contain"
+                className="h-20 w-auto object-contain"
               />
             </Link>
           </div>
@@ -364,6 +383,135 @@ export default function GameLayout({ children }: { children: ReactNode }) {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {dailyRewardModalOpen && dailyReward && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-cyber-black/80 px-4">
+          <button
+            type="button"
+            aria-label="Fermer"
+            onClick={() => setDailyRewardModalOpen(false)}
+            className="absolute inset-0"
+          />
+          <div className="relative z-[81] w-full max-w-lg rounded-2xl border border-cyber-yellow/30 bg-cyber-dark p-5 shadow-2xl">
+            <div className="mb-4 flex items-start justify-between gap-4">
+              <div>
+                <div className="text-[10px] uppercase tracking-[0.32em] text-cyber-yellow">
+                  Recompense Journaliere
+                </div>
+                <h2 className="mt-1 text-lg font-bold tracking-widest text-white">
+                  JOUR {dailyReward.nextClaimStreak}
+                </h2>
+                <div className="mt-1 text-xs text-gray-500">
+                  Streak actuel: {dailyReward.currentStreak} | Meilleur: {dailyReward.highestStreak}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDailyRewardModalOpen(false)}
+                className="text-xs uppercase tracking-widest text-gray-500 transition hover:text-white"
+              >
+                FERMER
+              </button>
+            </div>
+
+            <div className="mb-4 grid grid-cols-7 gap-2">
+              {(dailyReward.days || []).map(
+                (day: {
+                  dayNumber: number
+                  rewards: { rewardType: string; rewardValue: number; rewardItemName: string | null }[]
+                }) => {
+                  const isClaimed =
+                    dailyReward.claimedToday
+                      ? day.dayNumber <= dailyReward.currentStreak
+                      : day.dayNumber < dailyReward.nextClaimStreak
+                  const isCurrent = day.dayNumber === dailyReward.nextClaimStreak
+                  const isFuture = !isClaimed && !isCurrent
+
+                  return (
+                    <div
+                      key={day.dayNumber}
+                      className={`flex flex-col items-center rounded-lg border p-2 text-center transition-all ${
+                        isCurrent
+                          ? 'border-cyber-yellow/50 bg-cyber-yellow/10 shadow-lg shadow-cyber-yellow/10'
+                          : isClaimed
+                            ? 'border-cyber-green/30 bg-cyber-green/5'
+                            : 'border-gray-800 bg-cyber-black/40'
+                      }`}
+                    >
+                      <div
+                        className={`text-[9px] font-bold uppercase tracking-wider ${
+                          isCurrent
+                            ? 'text-cyber-yellow'
+                            : isClaimed
+                              ? 'text-cyber-green'
+                              : 'text-gray-600'
+                        }`}
+                      >
+                        J{day.dayNumber}
+                      </div>
+                      <div className="my-1 text-base">
+                        {isClaimed ? '✅' : '🎁'}
+                      </div>
+                      <div
+                        className={`text-[9px] ${
+                          isFuture ? 'text-gray-600' : 'text-gray-400'
+                        }`}
+                      >
+                        {day.rewards.map((r, i) => (
+                          <div key={i}>{rewardLabel(r.rewardType, r.rewardValue, r.rewardItemName)}</div>
+                        ))}
+                        {day.rewards.length === 0 && <span>-</span>}
+                      </div>
+                    </div>
+                  )
+                }
+              )}
+            </div>
+
+            {dailyReward.canClaimToday && dailyReward.nextRewards?.length > 0 ? (
+              <div className="text-center">
+                <div className="mb-3 text-sm text-gray-400">
+                  Recompenses du jour:{' '}
+                  <span className="font-bold text-cyber-yellow">
+                    {dailyReward.nextRewards.map((r: any, i: number) => (
+                      <span key={i}>
+                        {i > 0 && ' + '}
+                        {REWARD_ICONS[r.rewardType] || '🎁'}{' '}
+                        {rewardLabel(r.rewardType, r.rewardValue, r.rewardItemName)}
+                      </span>
+                    ))}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  disabled={claimingReward}
+                  onClick={() => {
+                    setClaimingReward(true)
+                    router.post(
+                      '/missions/daily-reward/claim',
+                      {},
+                      {
+                        preserveScroll: true,
+                        onFinish: () => {
+                          setClaimingReward(false)
+                          setDailyRewardModalOpen(false)
+                        },
+                      }
+                    )
+                  }}
+                  className="rounded border border-cyber-yellow/40 bg-cyber-yellow/10 px-6 py-2.5 text-xs font-bold uppercase tracking-[0.24em] text-cyber-yellow transition-all hover:bg-cyber-yellow/20 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {claimingReward ? 'RECUPERATION...' : '[ RECUPERER LA RECOMPENSE ]'}
+                </button>
+              </div>
+            ) : (
+              <div className="text-center text-sm text-gray-500">
+                Recompense deja recuperee aujourd&apos;hui. Reviens demain !
+              </div>
+            )}
           </div>
         </div>
       )}
