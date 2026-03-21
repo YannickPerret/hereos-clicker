@@ -124,13 +124,69 @@ function parseAfkPenalties(raw?: string) {
   }
 }
 
+function isNearLogBottom(element: HTMLDivElement, threshold = 32) {
+  return element.scrollHeight - element.scrollTop - element.clientHeight <= threshold
+}
+
+function useAutoFollowLog(entryCount: number) {
+  const containerRef = useRef<HTMLDivElement | null>(null)
+  const bottomRef = useRef<HTMLDivElement | null>(null)
+  const [isPinnedToBottom, setIsPinnedToBottom] = useState(true)
+  const [hasUnseenEntries, setHasUnseenEntries] = useState(false)
+
+  const scrollToLatest = (behavior: ScrollBehavior = 'smooth') => {
+    bottomRef.current?.scrollIntoView({ behavior })
+    setIsPinnedToBottom(true)
+    setHasUnseenEntries(false)
+  }
+
+  const handleScroll = () => {
+    const container = containerRef.current
+    if (!container) return
+
+    const atBottom = isNearLogBottom(container)
+    setIsPinnedToBottom(atBottom)
+    if (atBottom) {
+      setHasUnseenEntries(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!containerRef.current) return
+
+    if (isPinnedToBottom) {
+      window.requestAnimationFrame(() => {
+        scrollToLatest(entryCount <= 1 ? 'auto' : 'smooth')
+      })
+      return
+    }
+
+    setHasUnseenEntries(true)
+  }, [entryCount, isPinnedToBottom])
+
+  return {
+    containerRef,
+    bottomRef,
+    hasUnseenEntries,
+    handleScroll,
+    scrollToLatest,
+  }
+}
+
 function CombatLog({ log, className = '' }: { log: CombatLogEntry[]; className?: string }) {
   if (!log || log.length === 0) return null
 
+  const { containerRef, bottomRef, hasUnseenEntries, handleScroll, scrollToLatest } =
+    useAutoFollowLog(log.length)
+
   return (
-    <div className={`bg-cyber-dark border border-gray-800 rounded-lg p-4 ${className}`}>
+    <div className={`relative bg-cyber-dark border border-gray-800 rounded-lg p-4 ${className}`}>
       <h3 className="text-[10px] text-gray-600 uppercase tracking-widest mb-2">Combat Log</h3>
-      <div className="space-y-1 max-h-[32rem] overflow-y-auto">
+      <div
+        ref={containerRef}
+        onScroll={handleScroll}
+        className="space-y-1 max-h-[32rem] overflow-y-auto pr-1"
+      >
         {log.map((entry, i) => {
           switch (entry.action) {
             case 'player_attack':
@@ -322,7 +378,17 @@ function CombatLog({ log, className = '' }: { log: CombatLogEntry[]; className?:
               return null
           }
         })}
+        <div ref={bottomRef} />
       </div>
+      {hasUnseenEntries && (
+        <button
+          type="button"
+          onClick={() => scrollToLatest()}
+          className="absolute bottom-4 right-4 rounded border border-cyber-blue/40 bg-cyber-blue/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-cyber-blue transition hover:bg-cyber-blue/20"
+        >
+          Derniere action
+        </button>
+      )}
     </div>
   )
 }
@@ -360,6 +426,7 @@ export default function DungeonRun({
     run.currentTurnId !== null && (afkPenalties[String(run.currentTurnId)] || 0) > 0
   const lastSoloFlashRef = useRef<string | null>(null)
   const previousRunIdRef = useRef(initialRun.id)
+  const groupLogScroll = useAutoFollowLog(groupLog.length)
 
   // Sync from Inertia props
   useEffect(() => {
@@ -851,9 +918,13 @@ export default function DungeonRun({
           </div>
 
           {/* Combat log */}
-          <div className="md:col-span-2 bg-cyber-dark border border-gray-800 rounded-lg p-4">
+          <div className="relative md:col-span-2 bg-cyber-dark border border-gray-800 rounded-lg p-4">
             <h3 className="text-[10px] text-gray-600 uppercase tracking-widest mb-2">Combat Log</h3>
-            <div className="space-y-1 max-h-64 overflow-y-auto">
+            <div
+              ref={groupLogScroll.containerRef}
+              onScroll={groupLogScroll.handleScroll}
+              className="space-y-1 max-h-64 overflow-y-auto pr-1"
+            >
               {groupLog.length === 0 ? (
                 <div className="text-gray-700 text-xs text-center py-4">
                   En attente de la premiere action...
@@ -997,7 +1068,17 @@ export default function DungeonRun({
                   </div>
                 ))
               )}
+              <div ref={groupLogScroll.bottomRef} />
             </div>
+            {groupLogScroll.hasUnseenEntries && (
+              <button
+                type="button"
+                onClick={() => groupLogScroll.scrollToLatest()}
+                className="absolute bottom-4 right-4 rounded border border-cyber-blue/40 bg-cyber-blue/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-cyber-blue transition hover:bg-cyber-blue/20"
+              >
+                Derniere action
+              </button>
+            )}
           </div>
         </div>
       )}

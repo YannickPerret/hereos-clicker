@@ -123,6 +123,55 @@ function effectLabel(effect: ActiveEffect) {
   }
 }
 
+function isNearLogBottom(element: HTMLDivElement, threshold = 32) {
+  return element.scrollHeight - element.scrollTop - element.clientHeight <= threshold
+}
+
+function useAutoFollowLog(entryCount: number) {
+  const containerRef = useRef<HTMLDivElement | null>(null)
+  const bottomRef = useRef<HTMLDivElement | null>(null)
+  const [isPinnedToBottom, setIsPinnedToBottom] = useState(true)
+  const [hasUnseenEntries, setHasUnseenEntries] = useState(false)
+
+  const scrollToLatest = (behavior: ScrollBehavior = 'smooth') => {
+    bottomRef.current?.scrollIntoView({ behavior })
+    setIsPinnedToBottom(true)
+    setHasUnseenEntries(false)
+  }
+
+  const handleScroll = () => {
+    const container = containerRef.current
+    if (!container) return
+
+    const atBottom = isNearLogBottom(container)
+    setIsPinnedToBottom(atBottom)
+    if (atBottom) {
+      setHasUnseenEntries(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!containerRef.current) return
+
+    if (isPinnedToBottom) {
+      window.requestAnimationFrame(() => {
+        scrollToLatest(entryCount <= 1 ? 'auto' : 'smooth')
+      })
+      return
+    }
+
+    setHasUnseenEntries(true)
+  }, [entryCount, isPinnedToBottom])
+
+  return {
+    containerRef,
+    bottomRef,
+    hasUnseenEntries,
+    handleScroll,
+    scrollToLatest,
+  }
+}
+
 function LogLine({ entry, myId }: { entry: LogEntry; myId: number }) {
   const actorClass = entry.attackerId === myId ? 'text-cyber-blue' : 'text-cyber-red'
 
@@ -315,9 +364,9 @@ export default function PvpMatch({
   const [activeEffects, setActiveEffects] = useState(initialEffects)
   const [selectedTargetId, setSelectedTargetId] = useState<number | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const logEndRef = useRef<HTMLDivElement>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const { errors } = usePage().props as { errors?: { message?: string } }
+  const logScroll = useAutoFollowLog(match.log.length)
 
   const myTeam = useMemo(
     () => teams.find((team) => team.members.some((member) => member.id === myId)) || teams[0],
@@ -375,10 +424,6 @@ export default function PvpMatch({
     setSkills(initialSkills)
     setActiveEffects(initialEffects)
   }, [initialMatch, initialTeams, initialSkills, initialEffects])
-
-  useEffect(() => {
-    logEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [match.log])
 
   const handleAttack = () => {
     if (!isMyTurn || isSubmitting) return
@@ -736,16 +781,29 @@ export default function PvpMatch({
                 )}
               </div>
 
-              <div className="rounded-lg border border-gray-800 bg-cyber-dark p-4 xl:sticky xl:top-24">
+              <div className="relative rounded-lg border border-gray-800 bg-cyber-dark p-4 xl:sticky xl:top-24">
                 <h3 className="mb-2 text-[10px] uppercase tracking-widest text-gray-600">
                   Combat Log
                 </h3>
-                <div className="max-h-80 space-y-1 overflow-y-auto xl:max-h-[36rem]">
+                <div
+                  ref={logScroll.containerRef}
+                  onScroll={logScroll.handleScroll}
+                  className="max-h-80 space-y-1 overflow-y-auto pr-1 xl:max-h-[36rem]"
+                >
                   {match.log.map((entry, index) => (
                     <LogLine key={index} entry={entry} myId={myId} />
                   ))}
-                  <div ref={logEndRef} />
+                  <div ref={logScroll.bottomRef} />
                 </div>
+                {logScroll.hasUnseenEntries && (
+                  <button
+                    type="button"
+                    onClick={() => logScroll.scrollToLatest()}
+                    className="absolute bottom-4 right-4 rounded border border-cyber-blue/40 bg-cyber-blue/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-cyber-blue transition hover:bg-cyber-blue/20"
+                  >
+                    Derniere action
+                  </button>
+                )}
               </div>
             </div>
           </>
