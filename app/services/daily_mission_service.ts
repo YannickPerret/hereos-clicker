@@ -14,7 +14,7 @@ export default class DailyMissionService {
     return DateTime.now().startOf('day')
   }
 
-  private static async getTodayAssignments(characterId: number) {
+  private static getTodayAssignments(characterId: number) {
     return CharacterDailyMission.query()
       .where('characterId', characterId)
       .where('assignedAt', '>=', this.getToday().toSQL()!)
