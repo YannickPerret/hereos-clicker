@@ -95,6 +95,11 @@ export default function Inventory({ character, inventory, equipBonuses, talentBo
   const { props } = usePage<{ errors?: { message?: string }; success?: string }>()
   const [discardTarget, setDiscardTarget] = useState<InventoryEntry | null>(null)
   const [discardQuantity, setDiscardQuantity] = useState('1')
+  const inventoryActionOptions = {
+    only: ['character', 'inventory', 'equipBonuses', 'talentBonuses', 'errors', 'success'],
+    preserveScroll: true,
+    preserveState: true,
+  } as const
   const equipped = inventory.filter((i) => i.isEquipped)
   const backpack = inventory.filter((i) => !i.isEquipped)
   const groupedBackpack = TYPE_ORDER.map((type) => ({
@@ -151,7 +156,7 @@ export default function Inventory({ character, inventory, equipBonuses, talentBo
     const quantity = getDiscardQuantity()
     const inventoryId = discardTarget.id
     closeDiscardModal()
-    router.post(`/inventory/${inventoryId}/discard`, { quantity }, { preserveScroll: true })
+    router.post(`/inventory/${inventoryId}/discard`, { quantity }, inventoryActionOptions)
   }
 
   return (
@@ -209,7 +214,9 @@ export default function Inventory({ character, inventory, equipBonuses, talentBo
                         )}
                         <div className="mt-2 flex gap-2">
                           <button
-                            onClick={() => router.post(`/inventory/${item.id}/unequip`)}
+                            onClick={() =>
+                              router.post(`/inventory/${item.id}/unequip`, {}, inventoryActionOptions)
+                            }
                             className="text-[10px] text-cyber-red hover:underline uppercase"
                           >
                             Retirer
@@ -350,7 +357,9 @@ export default function Inventory({ character, inventory, equipBonuses, talentBo
                           <div className="flex gap-1 mt-2">
                             {entry.item.type !== 'consumable' && entry.item.type !== 'upgrade' && (
                               <button
-                                onClick={() => router.post(`/inventory/${entry.id}/equip`)}
+                                onClick={() =>
+                                  router.post(`/inventory/${entry.id}/equip`, {}, inventoryActionOptions)
+                                }
                                 className="flex-1 text-[10px] py-1 bg-cyber-blue/10 border border-cyber-blue/30 text-cyber-blue rounded hover:bg-cyber-blue/20 transition-all uppercase"
                               >
                                 Equiper
@@ -359,7 +368,9 @@ export default function Inventory({ character, inventory, equipBonuses, talentBo
                             {(entry.item.type === 'consumable' ||
                               entry.item.type === 'upgrade') && (
                               <button
-                                onClick={() => router.post(`/inventory/${entry.id}/use`)}
+                                onClick={() =>
+                                  router.post(`/inventory/${entry.id}/use`, {}, inventoryActionOptions)
+                                }
                                 className="flex-1 text-[10px] py-1 bg-cyber-green/10 border border-cyber-green/30 text-cyber-green rounded hover:bg-cyber-green/20 transition-all uppercase"
                               >
                                 Utiliser
