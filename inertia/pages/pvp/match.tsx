@@ -129,12 +129,19 @@ function isNearLogBottom(element: HTMLDivElement, threshold = 32) {
 
 function useAutoFollowLog(entryCount: number) {
   const containerRef = useRef<HTMLDivElement | null>(null)
-  const bottomRef = useRef<HTMLDivElement | null>(null)
   const [isPinnedToBottom, setIsPinnedToBottom] = useState(true)
   const [hasUnseenEntries, setHasUnseenEntries] = useState(false)
 
   const scrollToLatest = (behavior: ScrollBehavior = 'smooth') => {
-    bottomRef.current?.scrollIntoView({ behavior })
+    const container = containerRef.current
+    if (!container) return
+
+    const top = container.scrollHeight
+    if (behavior === 'smooth') {
+      container.scrollTo({ top, behavior })
+    } else {
+      container.scrollTop = top
+    }
     setIsPinnedToBottom(true)
     setHasUnseenEntries(false)
   }
@@ -165,7 +172,6 @@ function useAutoFollowLog(entryCount: number) {
 
   return {
     containerRef,
-    bottomRef,
     hasUnseenEntries,
     handleScroll,
     scrollToLatest,
@@ -433,6 +439,7 @@ export default function PvpMatch({
       { targetId: selectedTargetId },
       {
         preserveScroll: true,
+        preserveState: true,
         onFinish: () => setIsSubmitting(false),
       }
     )
@@ -449,6 +456,7 @@ export default function PvpMatch({
       },
       {
         preserveScroll: true,
+        preserveState: true,
         onFinish: () => setIsSubmitting(false),
       }
     )
@@ -793,7 +801,6 @@ export default function PvpMatch({
                   {match.log.map((entry, index) => (
                     <LogLine key={index} entry={entry} myId={myId} />
                   ))}
-                  <div ref={logScroll.bottomRef} />
                 </div>
                 {logScroll.hasUnseenEntries && (
                   <button

@@ -86,6 +86,11 @@ const formatEffect = (item: Item) => {
 export default function Shop({ character, listings }: Props) {
   const [quantities, setQuantities] = useState<Record<number, string>>({})
   const [filter, setFilter] = useState<string>('all')
+  const shopActionOptions = {
+    only: ['character', 'listings', 'errors', 'success'],
+    preserveScroll: true,
+    preserveState: true,
+  } as const
   const categoryCounts = Object.fromEntries(
     TYPE_ORDER.map((type) => [
       type,
@@ -256,11 +261,7 @@ export default function Shop({ character, listings }: Props) {
 
                       <button
                         onClick={() =>
-                          router.post(
-                            `/shop/${listing.id}/buy`,
-                            { quantity },
-                            { preserveScroll: true }
-                          )
+                          router.post(`/shop/${listing.id}/buy`, { quantity }, shopActionOptions)
                         }
                         disabled={!canAfford || outOfStock || !hasEnoughStock}
                         className={`w-full py-2 text-xs uppercase tracking-widest rounded font-bold transition-all ${

@@ -156,12 +156,19 @@ function isNearLogBottom(element: HTMLDivElement, threshold = 32) {
 
 function useAutoFollowLog(entryCount: number) {
   const containerRef = useRef<HTMLDivElement | null>(null)
-  const bottomRef = useRef<HTMLDivElement | null>(null)
   const [isPinnedToBottom, setIsPinnedToBottom] = useState(true)
   const [hasUnseenEntries, setHasUnseenEntries] = useState(false)
 
   const scrollToLatest = (behavior: ScrollBehavior = 'smooth') => {
-    bottomRef.current?.scrollIntoView({ behavior })
+    const container = containerRef.current
+    if (!container) return
+
+    const top = container.scrollHeight
+    if (behavior === 'smooth') {
+      container.scrollTo({ top, behavior })
+    } else {
+      container.scrollTop = top
+    }
     setIsPinnedToBottom(true)
     setHasUnseenEntries(false)
   }
@@ -192,7 +199,6 @@ function useAutoFollowLog(entryCount: number) {
 
   return {
     containerRef,
-    bottomRef,
     hasUnseenEntries,
     handleScroll,
     scrollToLatest,
@@ -202,8 +208,9 @@ function useAutoFollowLog(entryCount: number) {
 function CombatLog({ log, className = '' }: { log: CombatLogEntry[]; className?: string }) {
   if (!log || log.length === 0) return null
 
-  const { containerRef, bottomRef, hasUnseenEntries, handleScroll, scrollToLatest } =
-    useAutoFollowLog(log.length)
+  const { containerRef, hasUnseenEntries, handleScroll, scrollToLatest } = useAutoFollowLog(
+    log.length
+  )
 
   return (
     <div className={`relative bg-cyber-dark border border-gray-800 rounded-lg p-4 ${className}`}>
@@ -404,7 +411,6 @@ function CombatLog({ log, className = '' }: { log: CombatLogEntry[]; className?:
               return null
           }
         })}
-        <div ref={bottomRef} />
       </div>
       {hasUnseenEntries && (
         <button
@@ -453,6 +459,22 @@ export default function DungeonRun({
   const lastSoloFlashRef = useRef<string | null>(null)
   const previousRunIdRef = useRef(initialRun.id)
   const groupLogScroll = useAutoFollowLog(groupLog.length)
+  const combatActionOptions = {
+    preserveScroll: true,
+    preserveState: true,
+    only: [
+      'character',
+      'run',
+      'currentEnemy',
+      'combatPreview',
+      'consumables',
+      'skills',
+      'activeEffects',
+      'combatLog',
+      'errors',
+      'success',
+    ],
+  } as const
   const rewardSummary = useMemo(
     () => summarizeRewards(isGroupRun ? groupLog : soloLog),
     [groupLog, isGroupRun, soloLog]
@@ -731,7 +753,7 @@ export default function DungeonRun({
 
               <div className="space-y-2 w-full">
                 <button
-                  onClick={() => router.post(`/dungeon/run/${run.id}/attack`)}
+                  onClick={() => router.post(`/dungeon/run/${run.id}/attack`, {}, combatActionOptions)}
                   disabled={(isGroupRun && !isMyTurn) || isCharacterKo}
                   className={`w-full py-3 border font-bold uppercase tracking-widest rounded transition-all text-sm ${
                     (isGroupRun && !isMyTurn) || isCharacterKo
@@ -760,7 +782,11 @@ export default function DungeonRun({
                           <button
                             onClick={() =>
                               !disabled &&
-                              router.post(`/dungeon/run/${run.id}/skill`, { skillId: skill.id })
+                              router.post(
+                                `/dungeon/run/${run.id}/skill`,
+                                { skillId: skill.id },
+                                combatActionOptions
+                              )
                             }
                             disabled={disabled}
                             className={`w-full py-2 border rounded text-xs transition-all relative ${
@@ -824,7 +850,11 @@ export default function DungeonRun({
                       <button
                         key={c.id}
                         onClick={() =>
-                          router.post(`/dungeon/run/${run.id}/use-item`, { inventoryItemId: c.id })
+                          router.post(
+                            `/dungeon/run/${run.id}/use-item`,
+                            { inventoryItemId: c.id },
+                            combatActionOptions
+                          )
                         }
                         disabled={isCharacterKo}
                         className={`w-full py-2 rounded transition-all text-xs ${
@@ -841,7 +871,7 @@ export default function DungeonRun({
                 )}
 
                 <button
-                  onClick={() => router.post(`/dungeon/run/${run.id}/flee`)}
+                  onClick={() => router.post(`/dungeon/run/${run.id}/flee`, {}, combatActionOptions)}
                   className="w-full py-2 bg-gray-900 border border-gray-700 text-gray-500 uppercase tracking-widest rounded hover:bg-gray-800 hover:text-gray-400 transition-all text-xs"
                 >
                   [ FUIR ]
@@ -1135,7 +1165,6 @@ export default function DungeonRun({
                   </div>
                 ))
               )}
-              <div ref={groupLogScroll.bottomRef} />
             </div>
             {groupLogScroll.hasUnseenEntries && (
               <button

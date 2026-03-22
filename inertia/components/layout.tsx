@@ -197,7 +197,6 @@ export default function GameLayout({ children }: { children: ReactNode }) {
 
       <div className="flex">
         <aside className="sticky top-14 hidden h-[calc(100vh-3.5rem)] w-72 shrink-0 border-r border-cyber-blue/20 bg-cyber-dark/40 px-4 py-5 md:block">
-          <div className="mb-4 text-[10px] uppercase tracking-[0.32em] text-gray-500">Navigation</div>
           <nav className="flex flex-col gap-2">
             {navLinks.map((link) => (
               <Link
@@ -240,7 +239,6 @@ export default function GameLayout({ children }: { children: ReactNode }) {
             className="fixed inset-0 z-[55] bg-cyber-black/70 md:hidden"
           />
           <aside className="fixed left-0 top-14 z-[60] h-[calc(100vh-3.5rem)] w-72 border-r border-cyber-blue/20 bg-cyber-dark/95 px-4 py-5 shadow-2xl md:hidden">
-            <div className="mb-4 text-[10px] uppercase tracking-[0.32em] text-gray-500">Navigation</div>
             <nav className="flex flex-col gap-2">
               {navLinks.map((link) => (
                 <Link
