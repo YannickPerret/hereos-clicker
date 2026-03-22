@@ -84,6 +84,7 @@ export default function Quests({ character, journal, flowStates: initialFlowStat
   const [flowStates, setFlowStates] = useState<Record<number, FlowState>>(initialFlowStates || {})
   const [activeOverlayQuestId, setActiveOverlayQuestId] = useState<number | null>(null)
   const [activeOverlayTitle, setActiveOverlayTitle] = useState('')
+  const [expandedQuestId, setExpandedQuestId] = useState<number | null>(null)
 
   const openOverlay = useCallback((questId: number, title: string) => {
     setActiveOverlayQuestId(questId)
@@ -116,9 +117,7 @@ export default function Quests({ character, journal, flowStates: initialFlowStat
             <div className="text-[10px] uppercase tracking-[0.3em] text-cyber-blue mb-1">
               Journal des Quetes
             </div>
-            <h1 className="text-3xl font-bold text-white tracking-[0.12em] uppercase">
-              {character.name}
-            </h1>
+            <h1 className="text-3xl font-bold text-white tracking-[0.12em] uppercase">Journal</h1>
             <p className="text-sm text-gray-500 mt-2">
               Quetes principales permanentes et suite de saison active dans le meme journal.
             </p>
@@ -166,20 +165,24 @@ export default function Quests({ character, journal, flowStates: initialFlowStat
                           {track.completedCount}/{track.totalCount}
                         </div>
                       </div>
-                      <div className="rounded-lg border border-gray-800 bg-cyber-black/30 p-3">
-                        <div className="text-[10px] uppercase tracking-widest text-gray-500">Niveau</div>
-                        <div className="text-lg font-bold text-cyber-yellow mt-1">LVL {character.level}</div>
-                      </div>
                     </div>
                   </div>
 
                   <div className="space-y-3">
                     {track.quests.map((quest) => {
                       const progressPercent = Math.min(100, (quest.progress / quest.targetValue) * 100)
+                      const isExpanded = expandedQuestId === quest.id
 
                       return (
-                        <div key={quest.id} className={`rounded-xl border p-4 ${STATUS_STYLES[quest.status]}`}>
-                          <div className="flex items-start justify-between gap-4 mb-3">
+                        <button
+                          key={quest.id}
+                          type="button"
+                          onClick={() =>
+                            setExpandedQuestId((current) => (current === quest.id ? null : quest.id))
+                          }
+                          className={`w-full rounded-xl border p-4 text-left transition-all hover:border-cyber-blue/40 ${STATUS_STYLES[quest.status]}`}
+                        >
+                          <div className="flex items-start justify-between gap-4">
                             <div>
                               <div className="text-[10px] uppercase tracking-[0.28em] text-gray-500 mb-1">
                                 Etape {quest.sortOrder}
@@ -187,23 +190,19 @@ export default function Quests({ character, journal, flowStates: initialFlowStat
                               <h3 className="text-lg font-bold text-white uppercase tracking-[0.08em]">
                                 {quest.title}
                               </h3>
-                              <p className="text-sm text-gray-400 mt-1">{quest.summary}</p>
+                              <p className="mt-1 text-sm text-gray-400">{quest.summary}</p>
                             </div>
 
-                            <div className="text-right shrink-0">
-                              <div className="text-[10px] uppercase tracking-widest text-gray-500 mb-1">
+                            <div className="shrink-0 text-right">
+                              <div className="mb-1 text-[10px] uppercase tracking-widest text-gray-500">
                                 {STATUS_LABELS[quest.status]}
                               </div>
                               <div className="text-xs font-bold text-cyber-yellow">{quest.rewardLabel}</div>
+                              <div className="mt-2 text-lg text-gray-500">{isExpanded ? '−' : '+'}</div>
                             </div>
                           </div>
 
-                          <div className="grid gap-2 text-[11px] text-gray-500 sm:grid-cols-2 mb-2">
-                            <div>Objectif: {quest.objectiveLabel}</div>
-                            <div>Parent: {quest.parentQuestTitle || 'Aucun'}</div>
-                          </div>
-
-                          <div className="flex justify-between text-[10px] text-gray-500 mb-1">
+                          <div className="mt-3 flex justify-between text-[10px] text-gray-500 mb-1">
                             <span>Progression</span>
                             <span>
                               {quest.progress}/{quest.targetValue}
@@ -224,21 +223,38 @@ export default function Quests({ character, journal, flowStates: initialFlowStat
                             />
                           </div>
 
-                          {quest.narrative && (
-                            <div className="mt-3 rounded-lg border border-gray-800 bg-cyber-black/30 px-3 py-2 text-xs text-gray-500 leading-relaxed">
-                              {quest.narrative}
+                          {isExpanded && (
+                            <div className="mt-3">
+                              <div className="mb-2 grid gap-2 text-[11px] text-gray-500 sm:grid-cols-2">
+                                <div>Objectif: {quest.objectiveLabel}</div>
+                                <div>Parent: {quest.parentQuestTitle || 'Aucun'}</div>
+                              </div>
+
+                              {quest.narrative && (
+                                <div className="rounded-lg border border-gray-800 bg-cyber-black/30 px-3 py-2 text-xs text-gray-500 leading-relaxed">
+                                  {quest.narrative}
+                                </div>
+                              )}
+
+                              {quest.mode === 'advanced' &&
+                                quest.status === 'active' &&
+                                flowStates[quest.id] && (
+                                  <div className="mt-3">
+                                    <button
+                                      type="button"
+                                      onClick={(event) => {
+                                        event.stopPropagation()
+                                        openOverlay(quest.id, quest.title)
+                                      }}
+                                      className="w-full rounded-lg border border-cyber-purple/40 bg-cyber-purple/10 px-4 py-2.5 text-[11px] uppercase tracking-widest text-cyber-purple hover:bg-cyber-purple/20 transition-all"
+                                    >
+                                      Ouvrir le flow narratif
+                                    </button>
+                                  </div>
+                                )}
                             </div>
                           )}
-
-                          {quest.mode === 'advanced' && quest.status === 'active' && flowStates[quest.id] && (
-                            <button
-                              onClick={() => openOverlay(quest.id, quest.title)}
-                              className="mt-3 w-full rounded-lg border border-cyber-purple/40 bg-cyber-purple/10 px-4 py-2.5 text-[11px] uppercase tracking-widest text-cyber-purple hover:bg-cyber-purple/20 transition-all"
-                            >
-                              Ouvrir le flow narratif
-                            </button>
-                          )}
-                        </div>
+                        </button>
                       )
                     })}
                   </div>
