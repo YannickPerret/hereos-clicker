@@ -10,6 +10,7 @@ export default class MissionController {
       .firstOrFail()
 
     const missions = await DailyMissionService.ensureDailyMissions(character.id)
+    const missionReset = await DailyMissionService.getResetStatus(character)
     let dailyReward = null
 
     try {
@@ -42,6 +43,7 @@ export default class MissionController {
     return inertia.render('missions/index', {
       character: character.serialize(),
       missions: loaded,
+      missionReset,
       dailyReward,
     })
   }
@@ -76,6 +78,29 @@ export default class MissionController {
       session.flash('success', `Recompense journaliere recue: ${labels.join(' + ')} • streak ${result.streak}`)
     } catch {
       session.flash('errors', { message: 'Impossible de reclamer la recompense journaliere' })
+    }
+
+    return response.redirect('/missions')
+  }
+
+  async reset({ auth, response, session }: HttpContext) {
+    const character = await Character.query()
+      .where('userId', auth.user!.id)
+      .firstOrFail()
+
+    try {
+      const result = await DailyMissionService.resetDailyMissions(character)
+      session.flash(
+        'success',
+        result.cost > 0
+          ? `Missions quotidiennes reinitialisees pour ${result.cost.toLocaleString()} credits`
+          : 'Missions quotidiennes reinitialisees gratuitement'
+      )
+    } catch (error) {
+      session.flash('errors', {
+        message:
+          error instanceof Error ? error.message : 'Impossible de reinitialiser les missions',
+      })
     }
 
     return response.redirect('/missions')

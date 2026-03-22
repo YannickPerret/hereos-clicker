@@ -8,8 +8,26 @@ import QuestService from '#services/quest_service'
 import CompanionService from '#services/companion_service'
 
 export default class CompanionController {
-  async index({ inertia, auth }: HttpContext) {
-    const character = await Character.query().where('userId', auth.user!.id).firstOrFail()
+  private static readonly MIN_LEVEL = 10
+
+  private async getCurrentCharacter(userId: number) {
+    return Character.query().where('userId', userId).firstOrFail()
+  }
+
+  private ensureUnlocked(character: Character) {
+    if (character.level < CompanionController.MIN_LEVEL) {
+      throw new Error(`Drones verrouilles jusqu'au niveau ${CompanionController.MIN_LEVEL}`)
+    }
+  }
+
+  async index({ inertia, auth, response, session }: HttpContext) {
+    const character = await this.getCurrentCharacter(auth.user!.id)
+    try {
+      this.ensureUnlocked(character)
+    } catch (error) {
+      session.flash('errors', { message: error instanceof Error ? error.message : 'Drones verrouilles' })
+      return response.redirect('/play')
+    }
 
     const owned = await CharacterCompanion.query()
       .where('characterId', character.id)
@@ -42,7 +60,13 @@ export default class CompanionController {
   }
 
   async buy({ params, auth, response, session }: HttpContext) {
-    const character = await Character.query().where('userId', auth.user!.id).firstOrFail()
+    const character = await this.getCurrentCharacter(auth.user!.id)
+    try {
+      this.ensureUnlocked(character)
+    } catch (error) {
+      session.flash('errors', { message: error instanceof Error ? error.message : 'Drones verrouilles' })
+      return response.redirect('/play')
+    }
 
     const companion = await Companion.findOrFail(params.id)
 
@@ -85,7 +109,13 @@ export default class CompanionController {
   }
 
   async activate({ params, auth, response, session }: HttpContext) {
-    const character = await Character.query().where('userId', auth.user!.id).firstOrFail()
+    const character = await this.getCurrentCharacter(auth.user!.id)
+    try {
+      this.ensureUnlocked(character)
+    } catch (error) {
+      session.flash('errors', { message: error instanceof Error ? error.message : 'Drones verrouilles' })
+      return response.redirect('/play')
+    }
 
     const currentlyActive = await CharacterCompanion.query()
       .where('characterId', character.id)
@@ -131,8 +161,14 @@ export default class CompanionController {
     return response.redirect('/companions')
   }
 
-  async deactivate({ params, auth, response }: HttpContext) {
-    const character = await Character.query().where('userId', auth.user!.id).firstOrFail()
+  async deactivate({ params, auth, response, session }: HttpContext) {
+    const character = await this.getCurrentCharacter(auth.user!.id)
+    try {
+      this.ensureUnlocked(character)
+    } catch (error) {
+      session.flash('errors', { message: error instanceof Error ? error.message : 'Drones verrouilles' })
+      return response.redirect('/play')
+    }
 
     const cc = await CharacterCompanion.query()
       .where('id', params.id)
@@ -153,7 +189,13 @@ export default class CompanionController {
   }
 
   async upgrade({ params, auth, response, session }: HttpContext) {
-    const character = await Character.query().where('userId', auth.user!.id).firstOrFail()
+    const character = await this.getCurrentCharacter(auth.user!.id)
+    try {
+      this.ensureUnlocked(character)
+    } catch (error) {
+      session.flash('errors', { message: error instanceof Error ? error.message : 'Drones verrouilles' })
+      return response.redirect('/play')
+    }
 
     const ownedCompanion = await CharacterCompanion.query()
       .where('id', params.id)

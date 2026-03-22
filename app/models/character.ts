@@ -58,6 +58,12 @@ export default class Character extends BaseModel {
   declare unclaimedOfflineCredits: number
 
   @column()
+  declare dailyMissionResetsUsed: number
+
+  @column.dateTime()
+  declare dailyMissionLastResetAt: DateTime | null
+
+  @column()
   declare chosenSpec: string | null
 
   @column()
@@ -83,6 +89,9 @@ export default class Character extends BaseModel {
 
   @column()
   declare posY: number
+
+  @column.dateTime()
+  declare lastSeenAt: DateTime | null
 
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime

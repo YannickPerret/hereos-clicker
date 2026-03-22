@@ -38,6 +38,8 @@ export default function GameLayout({ children }: { children: ReactNode }) {
   const roleLabel = auth?.user?.roleLabel || 'RUNNER'
   const blackMarketMinLevel = Number(blackMarket?.minLevel || 12)
   const hasBlackMarketAccess = Number(auth?.activeCharacterLevel || 0) >= blackMarketMinLevel
+  const companionMinLevel = 10
+  const hasCompanionAccess = Number(auth?.activeCharacterLevel || 0) >= companionMinLevel
   const activeCharacterName = auth?.activeCharacterName || null
   const publicProfileHref = activeCharacterName
     ? `/profile/${encodeURIComponent(activeCharacterName)}`
@@ -45,7 +47,7 @@ export default function GameLayout({ children }: { children: ReactNode }) {
   const navLinks = [
     { href: '/play', label: 'ACCUEIL' },
     { href: '/inventory', label: 'INVENTAIRE' },
-    { href: '/companions', label: 'DRONES' },
+    ...(hasCompanionAccess ? [{ href: '/companions', label: 'DRONES' }] : []),
     { href: '/talents', label: 'TALENTS' },
     { href: '/shop', label: 'SHOP' },
     ...(hasBlackMarketAccess ? [{ href: '/black-market', label: 'MARCHE NOIR' }] : []),

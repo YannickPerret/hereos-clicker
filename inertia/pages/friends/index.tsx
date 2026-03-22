@@ -9,6 +9,8 @@ interface FriendEntry {
   level: number
   pvpRating: number
   chosenSpec: string | null
+  isOnline?: boolean
+  lastSeenAt?: string | null
   acceptedAt?: string | null
   createdAt?: string | null
 }
@@ -30,6 +32,8 @@ function CharacterCard({
   entry: FriendEntry
   rightSlot: React.ReactNode
 }) {
+  const presenceLabel = formatPresenceLabel(entry)
+
   return (
     <div className="rounded-lg border border-gray-800 bg-cyber-dark p-4">
       <div className="flex items-start justify-between gap-3">
@@ -38,6 +42,13 @@ function CharacterCard({
           <div className="mt-1 text-[10px] uppercase tracking-[0.24em] text-gray-500">
             LVL {entry.level} • ELO {entry.pvpRating}
             {entry.chosenSpec ? ` • ${entry.chosenSpec}` : ''}
+          </div>
+          <div
+            className={`mt-2 text-[10px] uppercase tracking-[0.2em] ${
+              entry.isOnline ? 'text-cyber-green' : 'text-gray-600'
+            }`}
+          >
+            {presenceLabel}
           </div>
         </div>
         <div className="shrink-0">{rightSlot}</div>
@@ -52,6 +63,37 @@ function CharacterCard({
       </div>
     </div>
   )
+}
+
+function formatPresenceLabel(entry: FriendEntry) {
+  if (entry.isOnline) {
+    return 'En ligne'
+  }
+
+  if (!entry.lastSeenAt) {
+    return 'Hors ligne'
+  }
+
+  const diffMs = Date.now() - new Date(entry.lastSeenAt).getTime()
+  if (!Number.isFinite(diffMs) || diffMs < 0) {
+    return 'Hors ligne'
+  }
+
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+  if (diffHours < 1) {
+    return "Hors ligne il y a moins d'une heure"
+  }
+
+  if (diffHours < 24) {
+    return `Hors ligne il y a ${diffHours}h`
+  }
+
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+  if (diffDays < 7) {
+    return `Hors ligne il y a ${diffDays} jour${diffDays > 1 ? 's' : ''}`
+  }
+
+  return "Hors ligne il y a plus d'une semaine"
 }
 
 export default function FriendsIndex({

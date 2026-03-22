@@ -40,6 +40,17 @@ class ChatPresenceService {
       .filter((name, index, names) => names.indexOf(name) === index)
       .sort((left, right) => left.localeCompare(right, 'fr', { sensitivity: 'base' }))
   }
+
+  isCharacterOnline(characterName: string) {
+    const normalizedName = characterName.trim().toLowerCase()
+    if (!normalizedName) return false
+
+    this.pruneStaleEntries()
+
+    return Array.from(this.onlineUsers.values()).some(
+      (entry) => entry.characterName.trim().toLowerCase() === normalizedName
+    )
+  }
 }
 
 export default new ChatPresenceService()

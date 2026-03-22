@@ -1,4 +1,5 @@
 import type { HttpContext } from '@adonisjs/core/http'
+import { DateTime } from 'luxon'
 import Character from '#models/character'
 import ChatMessage from '#models/chat_message'
 import ChatChannel from '#models/chat_channel'
@@ -7,12 +8,6 @@ import transmit from '@adonisjs/transmit/services/main'
 import ChatPresenceService from '#services/chat_presence_service'
 
 export default class ChatController {
-  private async resolveCurrentChatIdentity(userId: number, fallbackName: string) {
-    const character = await Character.query().where('userId', userId).first()
-
-    return character?.name || fallbackName
-  }
-
   /** API: get channels list */
   async channels({ response }: HttpContext) {
     const channels = await ChatChannel.query().where('isPublic', true).orderBy('createdAt', 'asc')
@@ -42,10 +37,15 @@ export default class ChatController {
   async presence({ request, auth, response }: HttpContext) {
     const requestedName = request.input('characterName', '').trim()
     const fallbackName = auth.user!.username
-    const currentName =
-      requestedName || (await this.resolveCurrentChatIdentity(auth.user!.id, fallbackName))
+    const character = await Character.query().where('userId', auth.user!.id).first()
+    const currentName = requestedName || character?.name || fallbackName
 
     ChatPresenceService.touch(auth.user!.id, currentName)
+
+    if (character) {
+      character.lastSeenAt = DateTime.now()
+      await character.save()
+    }
 
     return response.json({ ok: true })
   }

@@ -2,6 +2,7 @@ import type { HttpContext } from '@adonisjs/core/http'
 import { DateTime } from 'luxon'
 import Character from '#models/character'
 import Friendship from '#models/friendship'
+import ChatPresenceService from '#services/chat_presence_service'
 
 export default class FriendsController {
   private async getCurrentCharacter(userId: number) {
@@ -43,6 +44,8 @@ export default class FriendsController {
           level: friend.level,
           pvpRating: friend.pvpRating,
           chosenSpec: friend.chosenSpec,
+          isOnline: ChatPresenceService.isCharacterOnline(friend.name),
+          lastSeenAt: friend.lastSeenAt?.toISO() || null,
           acceptedAt: entry.acceptedAt?.toISO() || null,
         }
       }),
@@ -53,6 +56,8 @@ export default class FriendsController {
         level: entry.requester.level,
         pvpRating: entry.requester.pvpRating,
         chosenSpec: entry.requester.chosenSpec,
+        isOnline: ChatPresenceService.isCharacterOnline(entry.requester.name),
+        lastSeenAt: entry.requester.lastSeenAt?.toISO() || null,
         createdAt: entry.createdAt.toISO(),
       })),
       outgoingRequests: outgoing.map((entry) => ({
@@ -62,6 +67,8 @@ export default class FriendsController {
         level: entry.addressee.level,
         pvpRating: entry.addressee.pvpRating,
         chosenSpec: entry.addressee.chosenSpec,
+        isOnline: ChatPresenceService.isCharacterOnline(entry.addressee.name),
+        lastSeenAt: entry.addressee.lastSeenAt?.toISO() || null,
         createdAt: entry.createdAt.toISO(),
       })),
     })
@@ -84,6 +91,8 @@ export default class FriendsController {
         level: entry.requester.level,
         pvpRating: entry.requester.pvpRating,
         chosenSpec: entry.requester.chosenSpec,
+        isOnline: ChatPresenceService.isCharacterOnline(entry.requester.name),
+        lastSeenAt: entry.requester.lastSeenAt?.toISO() || null,
         createdAt: entry.createdAt.toISO(),
       }))
     )
