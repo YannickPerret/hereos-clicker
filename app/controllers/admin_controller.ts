@@ -1334,10 +1334,6 @@ export default class AdminController {
     const payload = this.normalizeQuestInput(request)
     const rewards = await this.normalizeQuestRewards(request)
 
-    console.log('[DEBUG createQuest] request.input(mode):', request.input('mode'))
-    console.log('[DEBUG createQuest] payload.mode:', payload.mode)
-    console.log('[DEBUG createQuest] all request body:', request.all())
-
     const validationError = await this.validateQuestPayload(payload, rewards)
 
     if (validationError) {
@@ -1356,7 +1352,22 @@ export default class AdminController {
       requiredQuestKey: parentQuest?.key || null,
     })
 
-    console.log('[DEBUG createQuest] created quest mode:', created.mode, 'id:', created.id)
+    // Create flow steps if any
+    const rawSteps = request.input('flowSteps', [])
+    if (Array.isArray(rawSteps) && rawSteps.length > 0 && payload.mode === 'advanced') {
+      for (let i = 0; i < rawSteps.length; i++) {
+        const s = rawSteps[i]
+        const contentJson = String(s?.contentJson || '{}').trim()
+        try { JSON.parse(contentJson) } catch { continue }
+        await QuestFlowStep.create({
+          questId: created.id,
+          stepType: s?.stepType || 'narration',
+          sortOrder: i + 1,
+          contentJson,
+          nextStepId: null,
+        })
+      }
+    }
 
     session.flash('success', `Quete ${payload.title} ajoutee`)
     return response.redirect('/admin/quests')
@@ -1384,6 +1395,24 @@ export default class AdminController {
       requiredQuestKey: parentQuest?.key || null,
     })
     await quest.save()
+
+    // Sync flow steps from form (replace all existing)
+    const rawSteps = request.input('flowSteps', null)
+    if (Array.isArray(rawSteps) && payload.mode === 'advanced') {
+      await QuestFlowStep.query().where('questId', quest.id).delete()
+      for (let i = 0; i < rawSteps.length; i++) {
+        const s = rawSteps[i]
+        const contentJson = String(s?.contentJson || '{}').trim()
+        try { JSON.parse(contentJson) } catch { continue }
+        await QuestFlowStep.create({
+          questId: quest.id,
+          stepType: s?.stepType || 'narration',
+          sortOrder: i + 1,
+          contentJson,
+          nextStepId: null,
+        })
+      }
+    }
 
     session.flash('success', `Quete ${quest.title} mise a jour`)
     return response.redirect('/admin/quests')

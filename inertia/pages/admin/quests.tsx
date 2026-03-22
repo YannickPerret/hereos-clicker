@@ -76,6 +76,7 @@ interface Props {
 }
 
 type QuestFormReward = { type: string; value: number; itemId: string }
+type QuestFormStep = { stepType: string; contentJson: string; nextStepId: string }
 
 type QuestFormState = {
   key: string
@@ -93,9 +94,18 @@ type QuestFormState = {
   icon: string
   sortOrder: number
   rewards: QuestFormReward[]
+  flowSteps: QuestFormStep[]
 }
 
 const emptyReward = (): QuestFormReward => ({ type: 'credits', value: 100, itemId: '' })
+
+const STEP_TEMPLATES: Record<string, string> = {
+  narration: '{"text": "", "speaker": "Narrateur"}',
+  conversation: '{"lines": [{"speaker": "", "text": "", "avatar": ""}]}',
+  objective: '{"objectiveType": "hack_clicks", "targetValue": 100, "label": ""}',
+  wait: '{"duration": 5, "unit": "minutes"}',
+  choice: '{"prompt": "", "options": [{"label": "", "nextStepId": null}]}',
+}
 
 const emptyForm = (arcs: ArcRecord[]): QuestFormState => ({
   key: '',
@@ -113,6 +123,7 @@ const emptyForm = (arcs: ArcRecord[]): QuestFormState => ({
   icon: 'terminal',
   sortOrder: 1,
   rewards: [],
+  flowSteps: [],
 })
 
 function serializeQuestToForm(quest: QuestRecord): QuestFormState {
@@ -132,6 +143,7 @@ function serializeQuestToForm(quest: QuestRecord): QuestFormState {
     icon: quest.icon,
     sortOrder: quest.sortOrder,
     rewards: quest.rewards.map((r) => ({ type: r.type, value: r.value, itemId: r.itemId ? String(r.itemId) : '' })),
+    flowSteps: quest.flowSteps.map((s) => ({ stepType: s.stepType, contentJson: s.contentJson, nextStepId: s.nextStepId ? String(s.nextStepId) : '' })),
   }
 }
 
@@ -386,6 +398,64 @@ export default function AdminQuests({ quests, questOptions, arcs, seasons, items
         <input type="number" min={1} value={form.sortOrder} onChange={(e) => update('sortOrder', Number(e.target.value))} className={inputCls} />
       </div>
       {renderRewardsEditor(form, update)}
+
+      {/* ── INLINE FLOW STEPS (visible when mode = advanced) ── */}
+      {form.mode === 'advanced' && (
+        <div className="md:col-span-2 rounded-lg border border-cyber-green/30 bg-cyber-green/5 p-3">
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <div>
+              <div className="text-[10px] uppercase tracking-widest text-cyber-green">Flow Steps</div>
+              <div className="text-xs text-gray-600">{form.flowSteps.length} step(s) — narration, conversation, objectif, attente, choix.</div>
+            </div>
+            <button type="button" onClick={() => update('flowSteps', [...form.flowSteps, { stepType: 'narration', contentJson: STEP_TEMPLATES.narration, nextStepId: '' }])}
+              className="rounded border border-cyber-green/30 px-3 py-1.5 text-[10px] uppercase tracking-widest text-cyber-green hover:bg-cyber-green/10">
+              + Step
+            </button>
+          </div>
+          {form.flowSteps.length === 0 ? (
+            <div className="text-xs text-gray-600 text-center py-2">Aucune step. Cliquez "+ Step" pour commencer le flow.</div>
+          ) : (
+            <div className="space-y-3">
+              {form.flowSteps.map((step, idx) => (
+                <div key={idx} className="rounded border border-gray-800 bg-cyber-black/30 p-3 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-gray-600">#{idx + 1}</span>
+                      <select value={step.stepType} onChange={(e) => {
+                        const next = [...form.flowSteps]
+                        next[idx] = { ...next[idx], stepType: e.target.value, contentJson: STEP_TEMPLATES[e.target.value] || '{}' }
+                        update('flowSteps', next)
+                      }} className={inputCls + ' !w-auto'}>
+                        {Object.entries(stepTypeLabels).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                      </select>
+                    </div>
+                    <div className="flex gap-1">
+                      {idx > 0 && (
+                        <button type="button" onClick={() => {
+                          const next = [...form.flowSteps]; [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]]
+                          update('flowSteps', next)
+                        }} className="text-[10px] px-2 py-1 text-gray-500 hover:text-white">↑</button>
+                      )}
+                      {idx < form.flowSteps.length - 1 && (
+                        <button type="button" onClick={() => {
+                          const next = [...form.flowSteps]; [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]]
+                          update('flowSteps', next)
+                        }} className="text-[10px] px-2 py-1 text-gray-500 hover:text-white">↓</button>
+                      )}
+                      <button type="button" onClick={() => update('flowSteps', form.flowSteps.filter((_, i) => i !== idx))}
+                        className="text-[10px] px-2 py-1 rounded border border-cyber-red/30 text-cyber-red hover:bg-cyber-red/10">X</button>
+                    </div>
+                  </div>
+                  <textarea value={step.contentJson} onChange={(e) => {
+                    const next = [...form.flowSteps]; next[idx] = { ...next[idx], contentJson: e.target.value }
+                    update('flowSteps', next)
+                  }} rows={3} className={inputCls + ' font-mono text-xs'} placeholder="Content JSON" />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 
@@ -489,16 +559,6 @@ export default function AdminQuests({ quests, questOptions, arcs, seasons, items
             </div>
           </form>
         </div>
-
-        {/* ═══ DEBUG ═══ */}
-        {quests.length > 0 && (
-          <div className="mb-4 rounded border border-cyber-yellow/30 bg-cyber-yellow/5 p-3">
-            <div className="text-[10px] uppercase tracking-widest text-cyber-yellow mb-1">DEBUG — Modes des quetes</div>
-            <div className="text-xs text-gray-400 font-mono">
-              {quests.map((q) => `#${q.id} ${q.key}: mode="${q.mode}" (type: ${typeof q.mode})`).join(' | ')}
-            </div>
-          </div>
-        )}
 
         {/* ═══ QUEST LIST ═══ */}
         <div className="space-y-4">
