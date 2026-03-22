@@ -198,7 +198,6 @@ export default function BlackMarket({ character, profile, vendors, cleaners, nig
             <div className="rounded-xl border border-cyber-blue/20 bg-cyber-black/60 px-4 py-3">
               <div className="text-[10px] uppercase tracking-[0.28em] text-gray-500">Refresh</div>
               <div className="mt-1 text-2xl font-bold text-cyber-blue">{timeLeft}</div>
-              <div className="text-xs text-gray-500">{totalDeals} offres en rotation</div>
             </div>
           </div>
         </div>
