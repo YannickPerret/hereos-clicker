@@ -38,7 +38,7 @@ export default class IsoDungeonRun extends BaseModel {
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime
 
-  @belongsTo(() => IsoDungeon)
+  @belongsTo(() => IsoDungeon, { foreignKey: 'dungeonId' })
   declare dungeon: BelongsTo<typeof IsoDungeon>
 
   @belongsTo(() => Character)

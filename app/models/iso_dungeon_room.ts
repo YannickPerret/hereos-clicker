@@ -68,7 +68,7 @@ export default class IsoDungeonRoom extends BaseModel {
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime
 
-  @belongsTo(() => IsoDungeon)
+  @belongsTo(() => IsoDungeon, { foreignKey: 'dungeonId' })
   declare dungeon: BelongsTo<typeof IsoDungeon>
 
   @hasMany(() => IsoRoomEnemy, { foreignKey: 'roomId' })

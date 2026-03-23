@@ -37,6 +37,6 @@ export default class IsoDungeon extends BaseModel {
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime
 
-  @hasMany(() => IsoDungeonRoom)
+  @hasMany(() => IsoDungeonRoom, { foreignKey: 'dungeonId' })
   declare rooms: HasMany<typeof IsoDungeonRoom>
 }
