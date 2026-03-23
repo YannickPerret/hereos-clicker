@@ -127,6 +127,13 @@ export default function AdminDashboard({ currentUser, stats, topCredits, activeS
             <p className="text-xs text-gray-600">Niveau mini, rotation, catalogue fixers, cleaners</p>
           </Link>
           <Link
+            href="/admin/iso-dungeons"
+            className="bg-cyber-dark border border-cyber-purple/30 rounded-lg p-6 hover:border-cyber-purple/60 hover:bg-cyber-purple/5 transition-all"
+          >
+            <h3 className="text-sm font-bold text-cyber-purple tracking-widest mb-1">DONJONS 2.5D</h3>
+            <p className="text-xs text-gray-600">Tilesets, sprites, donjons iso, salles, ennemis</p>
+          </Link>
+          <Link
             href="/admin/seasons"
             className="bg-cyber-dark border border-cyber-blue/30 rounded-lg p-6 hover:border-cyber-blue/60 hover:bg-cyber-blue/5 transition-all"
           >

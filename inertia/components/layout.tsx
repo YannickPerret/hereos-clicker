@@ -53,6 +53,7 @@ export default function GameLayout({ children }: { children: ReactNode }) {
     ...(hasBlackMarketAccess ? [{ href: '/black-market', label: 'MARCHE NOIR' }] : []),
     { href: '/party', label: 'GROUPE' },
     { href: '/dungeon', label: 'DONJON' },
+    { href: '/iso-dungeon', label: 'DONJON 2.5D' },
     { href: '/pvp', label: 'PVP' },
     { href: '/quests', label: 'QUETES' },
     { href: '/missions', label: 'MISSIONS' },
