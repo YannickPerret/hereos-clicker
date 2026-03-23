@@ -18,6 +18,8 @@ const FriendsController = () => import('#controllers/friends_controller')
 const ChatController = () => import('#controllers/chat_controller')
 const BugReportController = () => import('#controllers/bug_report_controller')
 const MapsController = () => import('#controllers/maps_controller')
+const IsoDungeonController = () => import('#controllers/iso_dungeon_controller')
+const IsoAdminController = () => import('#controllers/iso_admin_controller')
 
 // Transmit SSE routes
 transmit.registerRoutes()
@@ -147,6 +149,16 @@ router
     router.post('/map/move', [MapsController, 'move'])
     router.post('/map/join', [MapsController, 'join'])
 
+    // Iso Dungeons (2.5D)
+    router.get('/iso-dungeon', [IsoDungeonController, 'index'])
+    router.post('/iso-dungeon/enter/:dungeonId', [IsoDungeonController, 'enter'])
+    router.get('/iso-dungeon/run/:runId', [IsoDungeonController, 'show'])
+    router.get('/iso-dungeon/run/:runId/state', [IsoDungeonController, 'state'])
+    router.post('/iso-dungeon/run/:runId/move', [IsoDungeonController, 'move'])
+    router.post('/iso-dungeon/run/:runId/engage', [IsoDungeonController, 'engage'])
+    router.post('/iso-dungeon/run/:runId/next-room', [IsoDungeonController, 'nextRoom'])
+    router.post('/iso-dungeon/run/:runId/flee', [IsoDungeonController, 'flee'])
+
     // Leaderboard
     router.get('/leaderboard/state', [DungeonController, 'leaderboardState'])
     router.get('/leaderboard', [DungeonController, 'leaderboard'])
@@ -236,6 +248,21 @@ router
     router.post('/admin/quest-steps/:id/update', [AdminController, 'updateQuestStep'])
     router.post('/admin/quest-steps/:id/delete', [AdminController, 'deleteQuestStep'])
     router.post('/admin/quest-steps/reorder', [AdminController, 'reorderQuestSteps'])
+
+    // Iso Dungeons Admin
+    router.get('/admin/iso-dungeons', [IsoAdminController, 'index'])
+    router.post('/admin/iso-dungeons/create', [IsoAdminController, 'createDungeon'])
+    router.post('/admin/iso-dungeons/:id/delete', [IsoAdminController, 'deleteDungeon'])
+    router.post('/admin/iso-tilesets/upload', [IsoAdminController, 'uploadTileset'])
+    router.post('/admin/iso-tilesets/:id/delete', [IsoAdminController, 'deleteTileset'])
+    router.post('/admin/iso-sprites/upload', [IsoAdminController, 'uploadSprite'])
+    router.post('/admin/iso-sprites/:id/delete', [IsoAdminController, 'deleteSprite'])
+    router.post('/admin/iso-rooms/create', [IsoAdminController, 'createRoom'])
+    router.post('/admin/iso-rooms/:id/update', [IsoAdminController, 'updateRoom'])
+    router.post('/admin/iso-rooms/:id/import-tiled', [IsoAdminController, 'importRoomTiled'])
+    router.post('/admin/iso-rooms/:id/delete', [IsoAdminController, 'deleteRoom'])
+    router.post('/admin/iso-room-enemies/create', [IsoAdminController, 'addRoomEnemy'])
+    router.post('/admin/iso-room-enemies/:id/delete', [IsoAdminController, 'deleteRoomEnemy'])
 
     // Black Market
     router.get('/admin/black-market', [AdminController, 'blackMarket'])
