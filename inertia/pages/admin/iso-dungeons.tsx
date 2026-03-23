@@ -43,14 +43,14 @@ export default function AdminIsoDungeons({ dungeons, tilesets, sprites, enemies 
         <div className="mb-6 rounded-lg border border-cyber-blue/30 bg-cyber-dark p-4">
           <h2 className="text-sm font-bold uppercase tracking-widest text-cyber-blue mb-3">TILESETS</h2>
           <form onSubmit={(e) => { e.preventDefault(); const fd = new FormData(e.currentTarget); router.post('/admin/iso-tilesets/upload', fd as any) }} className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3" encType="multipart/form-data">
-            <input name="key" placeholder="Cle (snake_case)" className={inputCls} required />
-            <input name="name" placeholder="Nom" className={inputCls} required />
-            <input name="tileWidth" type="number" defaultValue={64} placeholder="Tile W" className={inputCls} />
-            <input name="tileHeight" type="number" defaultValue={32} placeholder="Tile H" className={inputCls} />
-            <input name="columns" type="number" defaultValue={8} placeholder="Colonnes" className={inputCls} />
-            <input name="tileCount" type="number" defaultValue={64} placeholder="Nb tiles" className={inputCls} />
-            <select name="tilesetType" className={inputCls}><option value="isometric">Isometrique</option><option value="orthogonal">Orthogonal</option></select>
-            <input ref={tilesetFileRef} name="image" type="file" accept=".png,.jpg,.webp" className={inputCls} required />
+            <div><label className="mb-1 block text-[10px] uppercase text-gray-500">Cle</label><input name="key" placeholder="snake_case" className={inputCls} required /></div>
+            <div><label className="mb-1 block text-[10px] uppercase text-gray-500">Nom</label><input name="name" placeholder="Mon tileset" className={inputCls} required /></div>
+            <div><label className="mb-1 block text-[10px] uppercase text-gray-500">Largeur tile</label><input name="tileWidth" type="number" defaultValue={64} className={inputCls} /></div>
+            <div><label className="mb-1 block text-[10px] uppercase text-gray-500">Hauteur tile</label><input name="tileHeight" type="number" defaultValue={32} className={inputCls} /></div>
+            <div><label className="mb-1 block text-[10px] uppercase text-gray-500">Colonnes</label><input name="columns" type="number" defaultValue={8} className={inputCls} /></div>
+            <div><label className="mb-1 block text-[10px] uppercase text-gray-500">Nb tiles</label><input name="tileCount" type="number" defaultValue={64} className={inputCls} /></div>
+            <div><label className="mb-1 block text-[10px] uppercase text-gray-500">Type</label><select name="tilesetType" className={inputCls}><option value="isometric">Isometrique</option><option value="orthogonal">Orthogonal</option></select></div>
+            <div><label className="mb-1 block text-[10px] uppercase text-gray-500">Image</label><input ref={tilesetFileRef} name="image" type="file" accept=".png,.jpg,.webp" className={inputCls} required /></div>
             <button type="submit" className="rounded border border-cyber-blue/30 px-3 py-2 text-[10px] uppercase tracking-widest text-cyber-blue hover:bg-cyber-blue/10 col-span-2 md:col-span-4">Upload tileset</button>
           </form>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
@@ -69,14 +69,14 @@ export default function AdminIsoDungeons({ dungeons, tilesets, sprites, enemies 
         <div className="mb-6 rounded-lg border border-cyber-green/30 bg-cyber-dark p-4">
           <h2 className="text-sm font-bold uppercase tracking-widest text-cyber-green mb-3">SPRITES</h2>
           <form onSubmit={(e) => { e.preventDefault(); const fd = new FormData(e.currentTarget); router.post('/admin/iso-sprites/upload', fd as any) }} className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3" encType="multipart/form-data">
-            <input name="key" placeholder="Cle (ex: player, enemy_drone)" className={inputCls} required />
-            <input name="name" placeholder="Nom" className={inputCls} required />
-            <input name="frameWidth" type="number" defaultValue={64} placeholder="Frame W" className={inputCls} />
-            <input name="frameHeight" type="number" defaultValue={64} placeholder="Frame H" className={inputCls} />
-            <input name="frameCount" type="number" defaultValue={1} placeholder="Nb frames" className={inputCls} />
-            <select name="spriteType" className={inputCls}><option value="character">Personnage</option><option value="enemy">Ennemi</option><option value="npc">NPC</option></select>
-            <input ref={spriteFileRef} name="image" type="file" accept=".png,.jpg,.webp" className={inputCls} required />
-            <button type="submit" className="rounded border border-cyber-green/30 px-3 py-2 text-[10px] uppercase tracking-widest text-cyber-green hover:bg-cyber-green/10">Upload sprite</button>
+            <div><label className="mb-1 block text-[10px] uppercase text-gray-500">Cle</label><input name="key" placeholder="player, enemy_drone" className={inputCls} required /></div>
+            <div><label className="mb-1 block text-[10px] uppercase text-gray-500">Nom</label><input name="name" placeholder="Mon sprite" className={inputCls} required /></div>
+            <div><label className="mb-1 block text-[10px] uppercase text-gray-500">Largeur frame</label><input name="frameWidth" type="number" defaultValue={64} className={inputCls} /></div>
+            <div><label className="mb-1 block text-[10px] uppercase text-gray-500">Hauteur frame</label><input name="frameHeight" type="number" defaultValue={64} className={inputCls} /></div>
+            <div><label className="mb-1 block text-[10px] uppercase text-gray-500">Nb frames</label><input name="frameCount" type="number" defaultValue={1} className={inputCls} /></div>
+            <div><label className="mb-1 block text-[10px] uppercase text-gray-500">Type</label><select name="spriteType" className={inputCls}><option value="character">Personnage</option><option value="enemy">Ennemi</option><option value="npc">NPC</option></select></div>
+            <div><label className="mb-1 block text-[10px] uppercase text-gray-500">Image</label><input ref={spriteFileRef} name="image" type="file" accept=".png,.jpg,.webp" className={inputCls} required /></div>
+            <button type="submit" className="rounded border border-cyber-green/30 px-3 py-2 text-[10px] uppercase tracking-widest text-cyber-green hover:bg-cyber-green/10 self-end">Upload sprite</button>
           </form>
           <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
             {sprites.map((s) => (
@@ -96,11 +96,11 @@ export default function AdminIsoDungeons({ dungeons, tilesets, sprites, enemies 
 
           {/* Create dungeon */}
           <form onSubmit={(e) => { e.preventDefault(); const fd = new FormData(e.currentTarget); router.post('/admin/iso-dungeons/create', fd as any) }} className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-4">
-            <input name="name" placeholder="Nom" className={inputCls} required />
-            <input name="slug" placeholder="slug-url" className={inputCls} required />
-            <input name="minLevel" type="number" defaultValue={1} placeholder="Niveau min" className={inputCls} />
-            <input name="description" placeholder="Description" className={inputCls} />
-            <button type="submit" className="rounded border border-cyber-purple/30 px-3 py-2 text-[10px] uppercase tracking-widest text-cyber-purple hover:bg-cyber-purple/10">Creer</button>
+            <div><label className="mb-1 block text-[10px] uppercase text-gray-500">Nom</label><input name="name" placeholder="Catacombes" className={inputCls} required /></div>
+            <div><label className="mb-1 block text-[10px] uppercase text-gray-500">Slug</label><input name="slug" placeholder="catacombes" className={inputCls} required /></div>
+            <div><label className="mb-1 block text-[10px] uppercase text-gray-500">Niveau min</label><input name="minLevel" type="number" defaultValue={1} className={inputCls} /></div>
+            <div><label className="mb-1 block text-[10px] uppercase text-gray-500">Description</label><input name="description" placeholder="Un donjon sombre..." className={inputCls} /></div>
+            <button type="submit" className="rounded border border-cyber-purple/30 px-3 py-2 text-[10px] uppercase tracking-widest text-cyber-purple hover:bg-cyber-purple/10 self-end">Creer</button>
           </form>
 
           {/* Dungeon list */}
@@ -128,17 +128,17 @@ export default function AdminIsoDungeons({ dungeons, tilesets, sprites, enemies 
                     {/* Add room */}
                     <form onSubmit={(e) => { e.preventDefault(); const fd = new FormData(e.currentTarget); fd.append('dungeonId', String(d.id)); router.post('/admin/iso-rooms/create', fd as any) }}
                       className="grid grid-cols-2 md:grid-cols-6 gap-2">
-                      <input name="name" placeholder="Nom salle" className={inputCls} required />
-                      <input name="width" type="number" defaultValue={16} placeholder="Largeur" className={inputCls} />
-                      <input name="height" type="number" defaultValue={16} placeholder="Hauteur" className={inputCls} />
-                      <select name="tilesetKey" className={inputCls}>
-                        <option value="">Tileset</option>
+                      <div><label className="mb-1 block text-[10px] uppercase text-gray-500">Nom salle</label><input name="name" placeholder="Salle 1" className={inputCls} required /></div>
+                      <div><label className="mb-1 block text-[10px] uppercase text-gray-500">Largeur</label><input name="width" type="number" defaultValue={16} className={inputCls} /></div>
+                      <div><label className="mb-1 block text-[10px] uppercase text-gray-500">Hauteur</label><input name="height" type="number" defaultValue={16} className={inputCls} /></div>
+                      <div><label className="mb-1 block text-[10px] uppercase text-gray-500">Tileset</label><select name="tilesetKey" className={inputCls}>
+                        <option value="">Aucun</option>
                         {tilesets.map((t) => <option key={t.key} value={t.key}>{t.name}</option>)}
-                      </select>
-                      <label className="flex items-center gap-1 text-[10px] text-gray-400">
-                        <input name="isBossRoom" type="checkbox" value="true" /> Boss
+                      </select></div>
+                      <label className="flex items-center gap-1 text-[10px] text-gray-400 self-end py-2">
+                        <input name="isBossRoom" type="checkbox" value="true" /> Salle boss
                       </label>
-                      <button type="submit" className="rounded border border-cyber-purple/30 px-3 py-1 text-[10px] uppercase text-cyber-purple hover:bg-cyber-purple/10">+ Salle</button>
+                      <button type="submit" className="rounded border border-cyber-purple/30 px-3 py-1 text-[10px] uppercase text-cyber-purple hover:bg-cyber-purple/10 self-end">+ Salle</button>
                     </form>
 
                     {/* Room list */}
@@ -180,19 +180,19 @@ export default function AdminIsoDungeons({ dungeons, tilesets, sprites, enemies 
                           </div>
                           <form onSubmit={(e) => { e.preventDefault(); const fd = new FormData(e.currentTarget); fd.append('roomId', String(room.id)); router.post('/admin/iso-room-enemies/create', fd as any) }}
                             className="grid grid-cols-3 md:grid-cols-7 gap-1">
-                            <select name="enemyId" className={inputCls + ' text-xs'} required>
-                              <option value="">Ennemi</option>
+                            <div><label className="mb-0.5 block text-[9px] uppercase text-gray-500">Ennemi</label><select name="enemyId" className={inputCls + ' text-xs'} required>
+                              <option value="">--</option>
                               {enemies.map((en) => <option key={en.id} value={en.id}>{en.name} (T{en.tier})</option>)}
-                            </select>
-                            <input name="gridX" type="number" defaultValue={0} placeholder="X" className={inputCls + ' text-xs'} />
-                            <input name="gridY" type="number" defaultValue={0} placeholder="Y" className={inputCls + ' text-xs'} />
-                            <select name="spriteKey" className={inputCls + ' text-xs'}>
-                              <option value="">Sprite</option>
+                            </select></div>
+                            <div><label className="mb-0.5 block text-[9px] uppercase text-gray-500">Pos X</label><input name="gridX" type="number" defaultValue={0} className={inputCls + ' text-xs'} /></div>
+                            <div><label className="mb-0.5 block text-[9px] uppercase text-gray-500">Pos Y</label><input name="gridY" type="number" defaultValue={0} className={inputCls + ' text-xs'} /></div>
+                            <div><label className="mb-0.5 block text-[9px] uppercase text-gray-500">Sprite</label><select name="spriteKey" className={inputCls + ' text-xs'}>
+                              <option value="">Aucun</option>
                               {sprites.filter((s) => s.spriteType === 'enemy').map((s) => <option key={s.key} value={s.key}>{s.name}</option>)}
-                            </select>
-                            <label className="flex items-center gap-1 text-[9px] text-gray-400"><input name="isBoss" type="checkbox" value="true" />Boss</label>
-                            <label className="flex items-center gap-1 text-[9px] text-gray-400"><input name="blocksExit" type="checkbox" value="true" />Bloque</label>
-                            <button type="submit" className="rounded border border-cyber-yellow/30 px-2 py-1 text-[9px] uppercase text-cyber-yellow hover:bg-cyber-yellow/10">+</button>
+                            </select></div>
+                            <label className="flex items-center gap-1 text-[9px] text-gray-400 self-end py-2"><input name="isBoss" type="checkbox" value="true" />Boss</label>
+                            <label className="flex items-center gap-1 text-[9px] text-gray-400 self-end py-2"><input name="blocksExit" type="checkbox" value="true" />Bloque sortie</label>
+                            <button type="submit" className="rounded border border-cyber-yellow/30 px-2 py-1 text-[9px] uppercase text-cyber-yellow hover:bg-cyber-yellow/10 self-end">+ Ennemi</button>
                           </form>
                         </div>
                       </div>
