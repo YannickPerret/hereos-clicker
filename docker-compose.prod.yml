@@ -7,6 +7,8 @@ services:
       - "3333"
     volumes:
       - app_data:/app/tmp
+      - uploads_data:/app/build/public/assets/maps
+      - sprites_data:/app/build/public/assets/sprites
     environment:
       - TZ=UTC
       - PORT=3333
@@ -31,3 +33,5 @@ services:
 
 volumes:
   app_data:
+  uploads_data:
+  sprites_data:
