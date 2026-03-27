@@ -711,18 +711,34 @@ export default function IsoRoomEditor({ room, tileset, enemyOptions, spriteOptio
             </div>
 
             {/* Tile Palette */}
-            <div className="border-b border-gray-800 overflow-y-auto p-3" style={{ maxHeight: '40vh' }}>
+            <div className="border-b border-gray-800 overflow-y-auto p-3" style={{ maxHeight: '50vh' }}>
               <div className="mb-2 text-[10px] uppercase tracking-widest text-gray-500">PALETTE DE TILES</div>
               {!tileset ? (
                 <div className="text-[10px] text-gray-600">Aucun tileset associe</div>
               ) : (
                 <>
-                  <div className="mb-2 text-[9px] text-gray-600">
-                    {tileset.name} ({tilesetCols} col, {tilesetCount} tiles)
+                  <div className="mb-1 text-[9px] text-gray-600">
+                    {tileset.name} — {tilePxW}x{tilePxH}px/tile, {tilesetCols} col, {tilesetCount} tiles
                   </div>
                   <div className="mb-2 text-[9px] text-gray-500">
                     Tile actif: <span className="text-cyber-blue font-bold">GID {selectedGid}</span>
                   </div>
+
+                  {/* Full tileset preview */}
+                  <details className="mb-3">
+                    <summary className="text-[9px] text-gray-500 cursor-pointer hover:text-gray-300">Apercu tileset complet</summary>
+                    <img
+                      src={`/assets/maps/tilesets/${tileset.imagePath}`}
+                      alt={tileset.name}
+                      className="mt-1 w-full border border-gray-800 rounded"
+                      style={{ imageRendering: 'pixelated' }}
+                    />
+                    <div className="mt-1 text-[8px] text-gray-600">
+                      Si le decoupage ne correspond pas, re-uploadez le tileset avec les bonnes dimensions par tile.
+                    </div>
+                  </details>
+
+                  {/* Tile grid */}
                   <div
                     className="grid gap-0.5"
                     style={{ gridTemplateColumns: `repeat(${Math.min(tilesetCols, 6)}, 1fr)` }}
@@ -733,9 +749,10 @@ export default function IsoRoomEditor({ room, tileset, enemyOptions, spriteOptio
                       const row = Math.floor(i / tilesetCols)
                       const bgX = -(col * tilePxW)
                       const bgY = -(row * tilePxH)
-                      const displaySize = Math.floor(220 / Math.min(tilesetCols, 6)) - 2
-                      const scaleX = displaySize / tilePxW
-                      const scaleY = displaySize / tilePxH
+                      const displayW = Math.floor(220 / Math.min(tilesetCols, 6)) - 2
+                      const displayH = Math.round(displayW * (tilePxH / tilePxW))
+                      const scaleX = displayW / tilePxW
+                      const scaleY = displayH / tilePxH
 
                       return (
                         <button
@@ -747,8 +764,8 @@ export default function IsoRoomEditor({ room, tileset, enemyOptions, spriteOptio
                               : 'border-gray-800 hover:border-gray-600'
                           }`}
                           style={{
-                            width: displaySize,
-                            height: displaySize,
+                            width: displayW,
+                            height: displayH,
                             backgroundImage: `url(/assets/maps/tilesets/${tileset.imagePath})`,
                             backgroundPosition: `${bgX * scaleX}px ${bgY * scaleY}px`,
                             backgroundSize: `${tilePxW * tilesetCols * scaleX}px ${tilePxH * paletteRows * scaleY}px`,
