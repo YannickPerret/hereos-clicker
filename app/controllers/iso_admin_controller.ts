@@ -215,7 +215,7 @@ export default class IsoAdminController {
   /** Import a Tiled JSON for a room */
   async importRoomTiled({ params, request, response, session }: HttpContext) {
     const room = await IsoDungeonRoom.findOrFail(params.id)
-    const file = request.file('tiledJson', { size: '10mb', extnames: ['json'] })
+    const file = request.file('tiledJson', { size: '10mb', extnames: ['json', 'tmj'] })
     if (!file) {
       session.flash('errors', { message: 'Fichier JSON Tiled requis' })
       return response.redirect('/admin/iso-dungeons')

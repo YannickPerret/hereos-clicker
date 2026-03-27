@@ -154,7 +154,7 @@ export default function AdminIsoDungeons({ dungeons, tilesets, sprites, enemies 
                           <div className="flex gap-1">
                             <label className="text-[10px] px-2 py-1 rounded border border-cyber-yellow/30 text-cyber-yellow hover:bg-cyber-yellow/10 uppercase cursor-pointer">
                               Import Tiled
-                              <input type="file" accept=".json" className="hidden" onChange={(e) => {
+                              <input type="file" accept=".json,.tmj" className="hidden" onChange={(e) => {
                                 const file = e.target.files?.[0]
                                 if (!file) return
                                 const fd = new FormData()
