@@ -2,7 +2,7 @@ import { router, usePage } from '@inertiajs/react'
 import { useState, useRef, useEffect, useCallback } from 'react'
 import Phaser from 'phaser'
 
-/* ─── Types ─── */
+/* Types */
 
 interface TilesetData {
   id: number
@@ -59,7 +59,7 @@ interface Props {
 type LayerName = 'ground' | 'walls' | 'decor' | 'collisions'
 type ToolName = 'pencil' | 'eraser' | 'fill' | 'spawn' | 'exit'
 
-/* ─── Iso math helpers ─── */
+/* Iso math helpers */
 
 function gridToIso(gx: number, gy: number, tw: number, th: number) {
   return { x: (gx - gy) * (tw / 2), y: (gx + gy) * (th / 2) }
@@ -71,7 +71,7 @@ function isoToGrid(sx: number, sy: number, tw: number, th: number) {
   return { x: gx, y: gy }
 }
 
-/* ─── Phaser Editor Scene ─── */
+/* Phaser Editor Scene */
 
 interface EditorSharedState {
   layers: {
@@ -441,7 +441,7 @@ class EditorScene extends Phaser.Scene {
   }
 }
 
-/* ─── React Component ─── */
+/* React Component */
 
 export default function IsoRoomEditor({ room, tileset }: Props) {
   const { props } = usePage<{ success?: string; errors?: { message?: string } }>()
@@ -635,7 +635,7 @@ export default function IsoRoomEditor({ room, tileset }: Props) {
         {/* Main area */}
         <div className="flex flex-1 overflow-hidden">
 
-          {/* ═══ LEFT SIDEBAR ═══ */}
+          {/* LEFT SIDEBAR */}
           <div className="flex w-[250px] flex-shrink-0 flex-col border-r border-gray-800 bg-cyber-dark overflow-y-auto">
 
             {/* Tools */}
@@ -755,10 +755,10 @@ export default function IsoRoomEditor({ room, tileset }: Props) {
             </div>
           </div>
 
-          {/* ═══ CENTER — PHASER CANVAS ═══ */}
-          <div className="flex-1 relative" ref={containerRef} />
+          {/* CENTER - PHASER CANVAS */}
+          <div className="flex-1 relative" ref={containerRef}></div>
 
-          {/* ═══ RIGHT SIDEBAR ═══ */}
+          {/* RIGHT SIDEBAR */}
           <div className="flex w-[200px] flex-shrink-0 flex-col border-l border-gray-800 bg-cyber-dark overflow-y-auto">
 
             {/* Spawn */}
@@ -823,9 +823,8 @@ export default function IsoRoomEditor({ room, tileset }: Props) {
               )}
             </div>
           </div>
-        </div>
 
-        {/* ═══ BOTTOM BAR ═══ */}
+        {/* BOTTOM BAR */}
         <div className="flex items-center justify-between border-t border-gray-800 bg-cyber-dark px-4 py-2">
           <div className="flex items-center gap-4">
             <span className="text-xs font-bold text-white">{room.dungeon.name}</span>
