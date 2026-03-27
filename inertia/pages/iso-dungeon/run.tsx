@@ -118,7 +118,7 @@ export default function IsoDungeonRun({ character, run, dungeon, room, tilesets,
         </div>
 
         {/* Game + Log */}
-        <div className="flex-1 flex min-h-0">
+        <div className="flex-1 flex flex-col min-h-0">
           {/* Phaser canvas */}
           <div className="flex-1 min-h-0">
             <IsoGame
@@ -133,13 +133,15 @@ export default function IsoDungeonRun({ character, run, dungeon, room, tilesets,
             />
           </div>
 
-          {/* Combat log sidebar */}
-          <div className="w-64 border-l border-gray-800 bg-cyber-black/50 p-3 overflow-y-auto shrink-0 hidden lg:block">
-            <div className="text-[10px] uppercase tracking-widest text-gray-500 mb-2">Journal de combat</div>
-            <div className="space-y-1">
+          {/* Combat log bottom */}
+          <div className="h-28 border-t border-gray-800 bg-cyber-black/50 px-4 py-2 overflow-y-auto shrink-0">
+            <div className="flex items-center gap-3 mb-1">
+              <div className="text-[10px] uppercase tracking-widest text-gray-500">Journal de combat</div>
               {combatLog.length === 0 && (
-                <div className="text-[10px] text-gray-600">Cliquez sur un ennemi pour combattre. Atteignez la sortie pour passer a la salle suivante.</div>
+                <div className="text-[10px] text-gray-600">Cliquez sur un ennemi pour combattre. Atteignez la sortie pour avancer.</div>
               )}
+            </div>
+            <div className="flex flex-wrap gap-x-4 gap-y-0.5">
               {combatLog.map((line, i) => (
                 <div key={i} className={`text-[10px] ${line.startsWith('>>') ? 'text-cyber-blue' : line.startsWith('!!') ? 'text-cyber-red' : line.startsWith('===') ? 'text-cyber-green font-bold' : 'text-gray-400'}`}>
                   {line}
