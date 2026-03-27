@@ -636,7 +636,7 @@ export default function IsoRoomEditor({ room, tileset }: Props) {
         <div className="flex flex-1 overflow-hidden">
 
           {/* LEFT SIDEBAR */}
-          <div className="flex w-[250px] flex-shrink-0 flex-col border-r border-gray-800 bg-cyber-dark overflow-y-auto">
+          <div className="flex w-1/4 flex-shrink-0 flex-col border-r border-gray-800 bg-cyber-dark overflow-y-auto">
 
             {/* Tools */}
             <div className="border-b border-gray-800 p-3">
@@ -756,10 +756,10 @@ export default function IsoRoomEditor({ room, tileset }: Props) {
           </div>
 
           {/* CENTER - PHASER CANVAS */}
-          <div className="flex-1 relative" ref={containerRef}></div>
+          <div className="w-1/2 relative" ref={containerRef}></div>
 
           {/* RIGHT SIDEBAR */}
-          <div className="flex w-[200px] flex-shrink-0 flex-col border-l border-gray-800 bg-cyber-dark overflow-y-auto">
+          <div className="flex w-1/4 flex-shrink-0 flex-col border-l border-gray-800 bg-cyber-dark overflow-y-auto">
 
             {/* Spawn */}
             <div className="border-b border-gray-800 p-3">
