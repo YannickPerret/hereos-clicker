@@ -51,9 +51,14 @@ interface RoomData {
   enemies: RoomEnemy[]
 }
 
+interface EnemyOption { id: number; name: string; tier: number }
+interface SpriteOption { key: string; name: string }
+
 interface Props {
   room: RoomData
   tileset: TilesetData | null
+  enemyOptions: EnemyOption[]
+  spriteOptions: SpriteOption[]
 }
 
 type LayerName = 'ground' | 'walls' | 'decor' | 'collisions'
@@ -443,7 +448,7 @@ class EditorScene extends Phaser.Scene {
 
 /* React Component */
 
-export default function IsoRoomEditor({ room, tileset }: Props) {
+export default function IsoRoomEditor({ room, tileset, enemyOptions, spriteOptions }: Props) {
   const { props } = usePage<{ success?: string; errors?: { message?: string } }>()
 
   // Parse initial data
@@ -797,22 +802,55 @@ export default function IsoRoomEditor({ room, tileset }: Props) {
               <div className="mb-2 text-[10px] uppercase tracking-widest text-gray-500">
                 ENNEMIS ({room.enemies.length})
               </div>
-              {room.enemies.length === 0 ? (
-                <div className="text-[10px] text-gray-600">Aucun ennemi</div>
-              ) : (
-                <div className="space-y-1">
+              {room.enemies.length > 0 && (
+                <div className="space-y-1 mb-3">
                   {room.enemies.map((e) => (
                     <div
                       key={e.id}
-                      className={`rounded border p-1.5 text-[9px] ${
+                      className={`flex items-center justify-between rounded border p-1.5 text-[9px] ${
                         e.isBoss ? 'border-cyber-red/30 text-cyber-red' : 'border-gray-700 text-gray-400'
                       }`}
                     >
-                      {e.enemyName} ({e.gridX},{e.gridY}) {e.isBoss ? '★' : ''} {e.blocksExit ? '🚫' : ''}
+                      <span>{e.enemyName} ({e.gridX},{e.gridY}) {e.isBoss ? '★' : ''} {e.blocksExit ? '🚫' : ''}</span>
+                      <button
+                        onClick={() => { if (confirm('Retirer cet ennemi ?')) router.post(`/admin/iso-room-enemies/${e.id}/delete`) }}
+                        className="text-cyber-red hover:text-white ml-1 shrink-0"
+                      >
+                        ×
+                      </button>
                     </div>
                   ))}
                 </div>
               )}
+              {room.enemies.length === 0 && (
+                <div className="text-[10px] text-gray-600 mb-3">Aucun ennemi</div>
+              )}
+              <form onSubmit={(e) => {
+                e.preventDefault()
+                const fd = new FormData(e.currentTarget)
+                fd.append('roomId', String(room.id))
+                router.post('/admin/iso-room-enemies/create', fd as any)
+              }} className="space-y-1.5">
+                <select name="enemyId" className="w-full rounded border border-gray-800 bg-cyber-black px-2 py-1 text-[10px] text-white focus:border-cyber-blue/50 focus:outline-none" required>
+                  <option value="">+ Ajouter ennemi</option>
+                  {enemyOptions.map((en) => <option key={en.id} value={en.id}>{en.name} (T{en.tier})</option>)}
+                </select>
+                <div className="grid grid-cols-2 gap-1">
+                  <input name="gridX" type="number" defaultValue={Math.floor(room.width / 2)} placeholder="X" className="w-full rounded border border-gray-800 bg-cyber-black px-2 py-1 text-[10px] text-white focus:border-cyber-blue/50 focus:outline-none" />
+                  <input name="gridY" type="number" defaultValue={Math.floor(room.height / 2)} placeholder="Y" className="w-full rounded border border-gray-800 bg-cyber-black px-2 py-1 text-[10px] text-white focus:border-cyber-blue/50 focus:outline-none" />
+                </div>
+                <select name="spriteKey" className="w-full rounded border border-gray-800 bg-cyber-black px-2 py-1 text-[10px] text-white focus:border-cyber-blue/50 focus:outline-none">
+                  <option value="">Sprite (aucun)</option>
+                  {spriteOptions.map((s) => <option key={s.key} value={s.key}>{s.name}</option>)}
+                </select>
+                <div className="flex gap-2">
+                  <label className="flex items-center gap-1 text-[9px] text-gray-400"><input name="isBoss" type="checkbox" value="true" />Boss</label>
+                  <label className="flex items-center gap-1 text-[9px] text-gray-400"><input name="blocksExit" type="checkbox" value="true" />Bloque</label>
+                </div>
+                <button type="submit" className="w-full rounded border border-cyber-yellow/30 px-2 py-1 text-[9px] uppercase tracking-widest text-cyber-yellow hover:bg-cyber-yellow/10">
+                  Placer ennemi
+                </button>
+              </form>
             </div>
           </div>
 

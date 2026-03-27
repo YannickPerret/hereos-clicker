@@ -339,6 +339,11 @@ export default class IsoAdminController {
       tileset = await IsoTileset.findBy('key', room.tilesetKey)
     }
 
+    const [allEnemies, allSprites] = await Promise.all([
+      Enemy.query().orderBy('name', 'asc'),
+      IsoSprite.query().where('spriteType', 'enemy').orderBy('name', 'asc'),
+    ])
+
     return inertia.render('admin/iso-room-editor', {
       room: {
         ...room.serialize(),
@@ -349,6 +354,8 @@ export default class IsoAdminController {
         })),
       },
       tileset: tileset ? tileset.serialize() : null,
+      enemyOptions: allEnemies.map((e) => ({ id: e.id, name: e.name, tier: e.tier })),
+      spriteOptions: allSprites.map((s) => ({ key: s.key, name: s.name })),
     })
   }
 
