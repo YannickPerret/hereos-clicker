@@ -152,6 +152,10 @@ export default function AdminIsoDungeons({ dungeons, tilesets, sprites, enemies 
                             <span className="text-[9px] text-gray-600">{room.width}x{room.height} • tileset: {room.tilesetKey || 'aucun'} • spawn({room.spawnX},{room.spawnY})</span>
                           </div>
                           <div className="flex gap-1">
+                            <a href={`/admin/iso-rooms/${room.id}/editor`}
+                              className="text-[10px] px-2 py-1 rounded border border-cyber-blue/30 text-cyber-blue hover:bg-cyber-blue/10 uppercase">
+                              Editeur
+                            </a>
                             <label className="text-[10px] px-2 py-1 rounded border border-cyber-yellow/30 text-cyber-yellow hover:bg-cyber-yellow/10 uppercase cursor-pointer">
                               Import Tiled
                               <input type="file" accept=".json,.tmj" className="hidden" onChange={(e) => {

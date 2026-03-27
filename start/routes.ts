@@ -263,6 +263,8 @@ router
     router.post('/admin/iso-rooms/:id/delete', [IsoAdminController, 'deleteRoom'])
     router.post('/admin/iso-room-enemies/create', [IsoAdminController, 'addRoomEnemy'])
     router.post('/admin/iso-room-enemies/:id/delete', [IsoAdminController, 'deleteRoomEnemy'])
+    router.get('/admin/iso-rooms/:id/editor', [IsoAdminController, 'editor'])
+    router.post('/admin/iso-rooms/:id/save-map', [IsoAdminController, 'saveMap'])
 
     // Black Market
     router.get('/admin/black-market', [AdminController, 'blackMarket'])

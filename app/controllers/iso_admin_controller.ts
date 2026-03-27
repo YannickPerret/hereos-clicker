@@ -318,4 +318,49 @@ export default class IsoAdminController {
     session.flash('success', 'Ennemi retire')
     return response.redirect('/admin/iso-dungeons')
   }
+
+  // ── Room Editor ──
+
+  async editor({ params, inertia }: HttpContext) {
+    const room = await IsoDungeonRoom.findOrFail(params.id)
+    await room.load('dungeon')
+    await room.load('enemies', (q) => q.preload('enemy'))
+
+    let tileset = null
+    if (room.tilesetKey) {
+      tileset = await IsoTileset.findBy('key', room.tilesetKey)
+    }
+
+    return inertia.render('admin/iso-room-editor', {
+      room: {
+        ...room.serialize(),
+        dungeon: room.dungeon.serialize(),
+        enemies: room.enemies.map((e) => ({
+          ...e.serialize(),
+          enemyName: e.enemy?.name || `Ennemi #${e.enemyId}`,
+        })),
+      },
+      tileset: tileset ? tileset.serialize() : null,
+    })
+  }
+
+  async saveMap({ params, request, response, session }: HttpContext) {
+    const room = await IsoDungeonRoom.findOrFail(params.id)
+
+    room.merge({
+      layerGround: request.input('layerGround') ?? room.layerGround,
+      layerWalls: request.input('layerWalls') ?? room.layerWalls,
+      layerDecor: request.input('layerDecor') ?? room.layerDecor,
+      collisions: request.input('collisions') ?? room.collisions,
+      objectsJson: request.input('objectsJson') ?? room.objectsJson,
+      spawnX: Number(request.input('spawnX', room.spawnX)) || 0,
+      spawnY: Number(request.input('spawnY', room.spawnY)) || 0,
+      exitX: request.input('exitX') != null ? Number(request.input('exitX')) : room.exitX,
+      exitY: request.input('exitY') != null ? Number(request.input('exitY')) : room.exitY,
+    })
+    await room.save()
+
+    session.flash('success', 'Map sauvegardee')
+    return response.redirect(`/admin/iso-rooms/${room.id}/editor`)
+  }
 }
