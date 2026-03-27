@@ -816,37 +816,37 @@ export default function IsoRoomEditor({ room, tileset }: Props) {
             </div>
           </div>
 
-          {/* MAP - PHASER CANVAS */}
-          <div className="flex-1 h-full relative overflow-hidden" ref={containerRef}></div>
-
-        {/* BOTTOM BAR */}
-        <div className="flex items-center justify-between border-t border-gray-800 bg-cyber-dark px-4 py-2">
-          <div className="flex items-center gap-4">
-            <span className="text-xs font-bold text-white">{room.dungeon.name}</span>
-            <span className="text-[10px] text-gray-500">
-              {room.name} - {room.width}x{room.height} - {room.tileWidth}x{room.tileHeight}px
-            </span>
-            <span className="text-[9px] text-gray-600">
-              Sol: {layers.ground.filter((g) => g > 0).length} | Murs: {layers.walls.filter((g) => g > 0).length} | Decor: {layers.decor.filter((g) => g > 0).length} | Collisions: {collisions.length}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <a
-              href="/admin/iso-dungeons"
-              className="rounded border border-gray-700 px-3 py-1.5 text-[10px] uppercase tracking-widest text-gray-400 hover:border-gray-500 hover:text-white"
-            >
-              Retour
-            </a>
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="rounded border border-cyber-green/50 bg-cyber-green/10 px-4 py-1.5 text-[10px] uppercase tracking-widest text-cyber-green hover:bg-cyber-green/20 disabled:opacity-50"
-            >
-              {saving ? 'Sauvegarde...' : 'Sauvegarder'}
-            </button>
+          {/* MAP + BOTTOM BAR */}
+          <div className="flex-1 flex flex-col min-w-0">
+            <div className="flex-1 relative overflow-hidden" ref={containerRef}></div>
+            <div className="flex items-center justify-between border-t border-gray-800 bg-cyber-dark px-4 py-2 shrink-0">
+              <div className="flex items-center gap-4 min-w-0 overflow-hidden">
+                <span className="text-xs font-bold text-white shrink-0">{room.dungeon.name}</span>
+                <span className="text-[10px] text-gray-500 shrink-0">
+                  {room.name} - {room.width}x{room.height}
+                </span>
+                <span className="text-[9px] text-gray-600 truncate">
+                  Sol: {layers.ground.filter((g) => g > 0).length} | Murs: {layers.walls.filter((g) => g > 0).length} | Collisions: {collisions.length}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <a
+                  href="/admin/iso-dungeons"
+                  className="rounded border border-gray-700 px-3 py-1.5 text-[10px] uppercase tracking-widest text-gray-400 hover:border-gray-500 hover:text-white"
+                >
+                  Retour
+                </a>
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="rounded border border-cyber-green/50 bg-cyber-green/10 px-4 py-1.5 text-[10px] uppercase tracking-widest text-cyber-green hover:bg-cyber-green/20 disabled:opacity-50"
+                >
+                  {saving ? 'Sauvegarde...' : 'Sauvegarder'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
     </div>
   )
 }
