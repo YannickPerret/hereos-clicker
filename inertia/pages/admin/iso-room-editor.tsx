@@ -552,16 +552,22 @@ export default function IsoRoomEditor({ room, tileset }: Props) {
 
     sharedRef.current = shared
 
+    const el = containerRef.current
+    const w = el.clientWidth || el.offsetWidth || 800
+    const h = el.clientHeight || el.offsetHeight || 600
+
     const game = new Phaser.Game({
       type: Phaser.AUTO,
-      parent: containerRef.current,
-      width: containerRef.current.clientWidth,
-      height: containerRef.current.clientHeight,
+      parent: el,
+      width: w,
+      height: h,
       backgroundColor: '#0a0a0f',
       scene: [],
       scale: {
         mode: Phaser.Scale.RESIZE,
-        autoCenter: Phaser.Scale.CENTER_BOTH,
+        parent: el,
+        width: '100%',
+        height: '100%',
       },
       input: {
         mouse: { preventDefaultWheel: true },
@@ -756,7 +762,7 @@ export default function IsoRoomEditor({ room, tileset }: Props) {
           </div>
 
           {/* CENTER - PHASER CANVAS */}
-          <div className="w-1/2 relative" ref={containerRef}></div>
+          <div className="w-1/2 h-full relative overflow-hidden" ref={containerRef}></div>
 
           {/* RIGHT SIDEBAR */}
           <div className="flex w-1/4 flex-shrink-0 flex-col border-l border-gray-800 bg-cyber-dark overflow-y-auto">
