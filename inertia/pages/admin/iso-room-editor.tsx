@@ -71,8 +71,8 @@ function gridToIso(gx: number, gy: number, tw: number, th: number) {
 }
 
 function isoToGrid(sx: number, sy: number, tw: number, th: number) {
-  const gx = Math.round((sx / (tw / 2) + sy / (th / 2)) / 2)
-  const gy = Math.round((sy / (th / 2) - sx / (tw / 2)) / 2)
+  const gx = Math.floor((sx / (tw / 2) + sy / (th / 2)) / 2)
+  const gy = Math.floor((sy / (th / 2) - sx / (tw / 2)) / 2)
   return { x: gx, y: gy }
 }
 
