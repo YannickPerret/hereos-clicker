@@ -642,7 +642,7 @@ export default function IsoRoomEditor({ room, tileset }: Props) {
         <div className="flex flex-1 overflow-hidden">
 
           {/* LEFT SIDEBAR */}
-          <div className="flex w-1/4 flex-shrink-0 flex-col border-r border-gray-800 bg-cyber-dark overflow-y-auto">
+          <div className="flex w-[280px] flex-shrink-0 flex-col border-r border-gray-800 bg-cyber-dark overflow-y-auto">
 
             {/* Tools */}
             <div className="border-b border-gray-800 p-3">
@@ -706,7 +706,7 @@ export default function IsoRoomEditor({ room, tileset }: Props) {
             </div>
 
             {/* Tile Palette */}
-            <div className="flex-1 overflow-y-auto p-3">
+            <div className="border-b border-gray-800 overflow-y-auto p-3" style={{ maxHeight: '40vh' }}>
               <div className="mb-2 text-[10px] uppercase tracking-widest text-gray-500">PALETTE DE TILES</div>
               {!tileset ? (
                 <div className="text-[10px] text-gray-600">Aucun tileset associe</div>
@@ -728,7 +728,6 @@ export default function IsoRoomEditor({ room, tileset }: Props) {
                       const row = Math.floor(i / tilesetCols)
                       const bgX = -(col * tilePxW)
                       const bgY = -(row * tilePxH)
-                      // Scale tiles to fit in palette
                       const displaySize = Math.floor(220 / Math.min(tilesetCols, 6)) - 2
                       const scaleX = displaySize / tilePxW
                       const scaleY = displaySize / tilePxH
@@ -759,52 +758,42 @@ export default function IsoRoomEditor({ room, tileset }: Props) {
                 </>
               )}
             </div>
-          </div>
 
-          {/* CENTER - PHASER CANVAS */}
-          <div className="w-1/2 h-full relative overflow-hidden" ref={containerRef}></div>
-
-          {/* RIGHT SIDEBAR */}
-          <div className="flex w-1/4 flex-shrink-0 flex-col border-l border-gray-800 bg-cyber-dark overflow-y-auto">
-
-            {/* Spawn */}
+            {/* Spawn & Exit */}
             <div className="border-b border-gray-800 p-3">
-              <div className="mb-2 text-[10px] uppercase tracking-widest text-gray-500">SPAWN</div>
-              <div className="text-xs text-white mb-1">
-                ({spawnX}, {spawnY})
+              <div className="mb-2 text-[10px] uppercase tracking-widest text-gray-500">PARAMETRES</div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <div className="text-[9px] text-gray-500 mb-0.5">Spawn ({spawnX}, {spawnY})</div>
+                  <button
+                    onClick={() => setActiveTool('spawn')}
+                    className={`w-full rounded border px-2 py-1 text-[10px] uppercase tracking-wider transition-colors ${
+                      activeTool === 'spawn'
+                        ? 'border-cyber-green bg-cyber-green/20 text-cyber-green'
+                        : 'border-gray-700 text-gray-400 hover:border-gray-600'
+                    }`}
+                  >
+                    Spawn
+                  </button>
+                </div>
+                <div>
+                  <div className="text-[9px] text-gray-500 mb-0.5">Sortie ({exitX != null ? `${exitX}, ${exitY}` : '?'})</div>
+                  <button
+                    onClick={() => setActiveTool('exit')}
+                    className={`w-full rounded border px-2 py-1 text-[10px] uppercase tracking-wider transition-colors ${
+                      activeTool === 'exit'
+                        ? 'border-cyber-yellow bg-cyber-yellow/20 text-cyber-yellow'
+                        : 'border-gray-700 text-gray-400 hover:border-gray-600'
+                    }`}
+                  >
+                    Sortie
+                  </button>
+                </div>
               </div>
-              <button
-                onClick={() => setActiveTool('spawn')}
-                className={`w-full rounded border px-2 py-1 text-[10px] uppercase tracking-wider transition-colors ${
-                  activeTool === 'spawn'
-                    ? 'border-cyber-green bg-cyber-green/20 text-cyber-green'
-                    : 'border-gray-700 text-gray-400 hover:border-gray-600'
-                }`}
-              >
-                Placer spawn
-              </button>
-            </div>
-
-            {/* Exit */}
-            <div className="border-b border-gray-800 p-3">
-              <div className="mb-2 text-[10px] uppercase tracking-widest text-gray-500">SORTIE</div>
-              <div className="text-xs text-white mb-1">
-                {exitX != null && exitY != null ? `(${exitX}, ${exitY})` : 'Non definie'}
-              </div>
-              <button
-                onClick={() => setActiveTool('exit')}
-                className={`w-full rounded border px-2 py-1 text-[10px] uppercase tracking-wider transition-colors ${
-                  activeTool === 'exit'
-                    ? 'border-cyber-yellow bg-cyber-yellow/20 text-cyber-yellow'
-                    : 'border-gray-700 text-gray-400 hover:border-gray-600'
-                }`}
-              >
-                Placer sortie
-              </button>
             </div>
 
             {/* Enemies */}
-            <div className="flex-1 p-3">
+            <div className="flex-1 overflow-y-auto p-3">
               <div className="mb-2 text-[10px] uppercase tracking-widest text-gray-500">
                 ENNEMIS ({room.enemies.length})
               </div>
@@ -815,20 +804,20 @@ export default function IsoRoomEditor({ room, tileset }: Props) {
                   {room.enemies.map((e) => (
                     <div
                       key={e.id}
-                      className={`rounded border p-2 text-[10px] ${
+                      className={`rounded border p-1.5 text-[9px] ${
                         e.isBoss ? 'border-cyber-red/30 text-cyber-red' : 'border-gray-700 text-gray-400'
                       }`}
                     >
-                      <div className="font-bold">{e.enemyName}</div>
-                      <div className="text-[9px] text-gray-500">
-                        ({e.gridX}, {e.gridY}) {e.isBoss ? '- BOSS' : ''} {e.blocksExit ? '- Bloque' : ''}
-                      </div>
+                      {e.enemyName} ({e.gridX},{e.gridY}) {e.isBoss ? '★' : ''} {e.blocksExit ? '🚫' : ''}
                     </div>
                   ))}
                 </div>
               )}
             </div>
           </div>
+
+          {/* MAP - PHASER CANVAS */}
+          <div className="flex-1 h-full relative overflow-hidden" ref={containerRef}></div>
 
         {/* BOTTOM BAR */}
         <div className="flex items-center justify-between border-t border-gray-800 bg-cyber-dark px-4 py-2">
