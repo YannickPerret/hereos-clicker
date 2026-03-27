@@ -116,6 +116,10 @@ export default function AdminIsoDungeons({ dungeons, tilesets, sprites, enemies 
                     </span>
                   </div>
                   <div className="flex gap-1">
+                    <button onClick={() => router.post(`/admin/iso-dungeons/${d.id}/toggle`)}
+                      className={`text-[10px] px-2 py-1 rounded border uppercase ${d.isActive ? 'border-cyber-yellow/30 text-cyber-yellow hover:bg-cyber-yellow/10' : 'border-cyber-green/30 text-cyber-green hover:bg-cyber-green/10'}`}>
+                      {d.isActive ? 'Desactiver' : 'Activer'}
+                    </button>
                     <button onClick={() => setExpandedDungeon(expandedDungeon === d.id ? null : d.id)} className="text-[10px] px-2 py-1 rounded border border-cyber-purple/30 text-cyber-purple hover:bg-cyber-purple/10 uppercase">
                       Salles ({d.rooms.length})
                     </button>

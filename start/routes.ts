@@ -253,6 +253,7 @@ router
     router.get('/admin/iso-dungeons', [IsoAdminController, 'index'])
     router.post('/admin/iso-dungeons/create', [IsoAdminController, 'createDungeon'])
     router.post('/admin/iso-dungeons/:id/delete', [IsoAdminController, 'deleteDungeon'])
+    router.post('/admin/iso-dungeons/:id/toggle', [IsoAdminController, 'toggleDungeon'])
     router.post('/admin/iso-tilesets/upload', [IsoAdminController, 'uploadTileset'])
     router.post('/admin/iso-tilesets/:id/delete', [IsoAdminController, 'deleteTileset'])
     router.post('/admin/iso-sprites/upload', [IsoAdminController, 'uploadSprite'])

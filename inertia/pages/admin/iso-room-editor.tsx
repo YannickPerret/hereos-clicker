@@ -1,6 +1,5 @@
 import { router, usePage } from '@inertiajs/react'
 import { useState, useRef, useEffect, useCallback } from 'react'
-import GameLayout from '~/components/layout'
 import Phaser from 'phaser'
 
 /* ─── Types ─── */
@@ -620,8 +619,7 @@ export default function IsoRoomEditor({ room, tileset }: Props) {
   const paletteRows = Math.ceil(tilesetCount / tilesetCols)
 
   return (
-    <GameLayout>
-      <div className="flex flex-col" style={{ height: 'calc(100vh - 60px)' }}>
+    <div className="flex flex-col h-screen bg-cyber-black text-white">
         {/* Notifications */}
         {props.success && (
           <div className="mx-2 mt-1 rounded border border-cyber-green/50 bg-cyber-green/10 px-3 py-1.5 text-xs text-cyber-green">
@@ -855,6 +853,6 @@ export default function IsoRoomEditor({ room, tileset }: Props) {
           </div>
         </div>
       </div>
-    </GameLayout>
+    </div>
   )
 }

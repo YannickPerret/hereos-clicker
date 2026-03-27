@@ -153,6 +153,14 @@ export default class IsoAdminController {
     return response.redirect('/admin/iso-dungeons')
   }
 
+  async toggleDungeon({ params, response, session }: HttpContext) {
+    const dungeon = await IsoDungeon.findOrFail(params.id)
+    dungeon.isActive = !dungeon.isActive
+    await dungeon.save()
+    session.flash('success', `Donjon "${dungeon.name}" ${dungeon.isActive ? 'active' : 'desactive'}`)
+    return response.redirect('/admin/iso-dungeons')
+  }
+
   // ── Rooms ──
 
   async createRoom({ request, response, session }: HttpContext) {
