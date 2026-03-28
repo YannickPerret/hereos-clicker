@@ -23,6 +23,10 @@ export default class PartyController {
       : 'Les comptes invites ne peuvent pas rejoindre un groupe. Ils doivent creer un compte.'
   }
 
+  private noActiveCountdownMessage(locale: string) {
+    return locale === 'en' ? 'No active countdown.' : 'Aucun decompte actif.'
+  }
+
   private isMissingInviteTable(error: unknown) {
     return error instanceof Error && error.message.toLowerCase().includes('party_invites')
   }
@@ -548,6 +552,62 @@ export default class PartyController {
       characterId: character.id,
       isReady: membership.isReady,
     })
+
+    return response.redirect('/party')
+  }
+
+  async declineCountdown({ auth, response, session, request, locale }: HttpContext) {
+    if (auth.user!.isGuest) {
+      const message = this.guestPartyMessage(locale)
+      if (request.accepts(['html', 'json']) === 'json') {
+        return response.forbidden({ error: message })
+      }
+      session.flash('errors', { message })
+      return response.redirect('/play')
+    }
+
+    const character = await this.getCurrentCharacter(auth.user!.id)
+    const membership = await PartyMember.query()
+      .where('characterId', character.id)
+      .preload('party')
+      .first()
+
+    if (!membership) {
+      if (request.accepts(['html', 'json']) === 'json') {
+        return response.badRequest({ error: 'Groupe introuvable' })
+      }
+      session.flash('errors', { message: 'Groupe introuvable' })
+      return response.redirect('/party')
+    }
+
+    const party = membership.party
+    if (party.status !== 'countdown') {
+      const message = this.noActiveCountdownMessage(locale)
+      if (request.accepts(['html', 'json']) === 'json') {
+        return response.badRequest({ error: message })
+      }
+      session.flash('errors', { message })
+      return response.redirect('/party')
+    }
+
+    membership.isReady = false
+    await membership.save()
+
+    party.status = 'waiting'
+    party.countdownStart = null
+    party.dungeonFloorId = null
+    party.dungeonRunId = null
+    await party.save()
+
+    transmit.broadcast(`party/${party.id}`, {
+      event: 'countdown_declined',
+      characterId: character.id,
+      characterName: character.name,
+    })
+
+    if (request.accepts(['html', 'json']) === 'json') {
+      return response.json({ ok: true, redirectTo: '/party' })
+    }
 
     return response.redirect('/party')
   }

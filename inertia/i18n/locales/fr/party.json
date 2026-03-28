@@ -8,6 +8,8 @@
   "joinBtn": "[ REJOINDRE ]",
   "launchTitle": "LANCEMENT DU DONJON",
   "launchMessage": "Prepare-toi, Runner...",
+  "declineLaunch": "[ DECLINER LE LANCEMENT ]",
+  "decliningLaunch": "[ ANNULATION... ]",
   "code": "Code:",
   "members": "{{current}}/{{max}} joueurs",
   "leader": "Leader",

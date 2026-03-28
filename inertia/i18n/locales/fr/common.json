@@ -24,7 +24,9 @@
   },
   "partyLaunch": {
     "title": "Depart du donjon",
-    "message": "Le leader lance le run. Redirection imminente..."
+    "message": "Le leader lance le run. Redirection imminente...",
+    "decline": "Decliner le lancement",
+    "declining": "Annulation..."
   },
   "activityBanner": {
     "title": "Activite en cours",

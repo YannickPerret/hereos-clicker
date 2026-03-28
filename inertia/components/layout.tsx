@@ -1,5 +1,5 @@
 import { Link, router, usePage } from '@inertiajs/react'
-import { type ReactNode, useEffect, useState } from 'react'
+import { type ReactNode, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import FloatingChat from '~/components/floating_chat'
 import NotificationCenter from '~/components/notification_center'
@@ -36,6 +36,7 @@ export default function GameLayout({ children }: { children: ReactNode }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [toast, setToast] = useState<null | { type: 'success' | 'error'; message: string }>(null)
   const [partyCountdown, setPartyCountdown] = useState<number | null>(null)
+  const [decliningPartyCountdown, setDecliningPartyCountdown] = useState(false)
   const [reportModalOpen, setReportModalOpen] = useState(false)
   const [dailyRewardModalOpen, setDailyRewardModalOpen] = useState(false)
   const [claimingReward, setClaimingReward] = useState(false)
@@ -54,6 +55,7 @@ export default function GameLayout({ children }: { children: ReactNode }) {
   const hasCompanionAccess = Number(auth?.activeCharacterLevel || 0) >= companionMinLevel
   const activeCharacterName = auth?.activeCharacterName || null
   const activePartyId = auth?.activePartyId || null
+  const hadExternalPartyCountdown = useRef(false)
   const currentPath = typeof page.url === 'string' ? page.url.split('?')[0] : ''
   const isPartyPage = currentPath.startsWith('/party')
   const isDungeonRunPage = currentPath.startsWith('/dungeon/run/')
@@ -140,6 +142,7 @@ export default function GameLayout({ children }: { children: ReactNode }) {
 
         if (data.dungeonRunId) {
           setPartyCountdown(null)
+          hadExternalPartyCountdown.current = false
           if (!isDungeonRunPage || currentPath !== `/dungeon/run/${data.dungeonRunId}`) {
             active = false
             router.visit(`/dungeon/run/${data.dungeonRunId}`)
@@ -149,12 +152,19 @@ export default function GameLayout({ children }: { children: ReactNode }) {
 
         if (data.countdown !== null && data.countdown !== undefined) {
           setPartyCountdown(data.countdown)
+          hadExternalPartyCountdown.current = true
         } else {
           setPartyCountdown(null)
         }
 
         if (!data.party) {
           setPartyCountdown(null)
+          hadExternalPartyCountdown.current = false
+        } else if (hadExternalPartyCountdown.current && data.party.status === 'waiting') {
+          hadExternalPartyCountdown.current = false
+          active = false
+          router.visit('/party')
+          return
         }
       } catch {
         // Ignore transient poll failures
@@ -175,6 +185,19 @@ export default function GameLayout({ children }: { children: ReactNode }) {
     isPartyPage,
     partyCountdown,
   ])
+
+  const declinePartyCountdown = () => {
+    setDecliningPartyCountdown(true)
+    router.post(
+      '/party/decline-countdown',
+      {},
+      {
+        preserveScroll: true,
+        preserveState: true,
+        onFinish: () => setDecliningPartyCountdown(false),
+      }
+    )
+  }
 
   const submitBugReport = (event: React.FormEvent) => {
     event.preventDefault()
@@ -233,6 +256,14 @@ export default function GameLayout({ children }: { children: ReactNode }) {
               {partyCountdown}
             </div>
             <div className="text-sm text-gray-400">{t('partyLaunch.message')}</div>
+            <button
+              type="button"
+              disabled={decliningPartyCountdown}
+              onClick={declinePartyCountdown}
+              className="mt-6 rounded border border-cyber-red/40 bg-cyber-red/10 px-5 py-2 text-xs font-bold uppercase tracking-[0.24em] text-cyber-red transition-all hover:bg-cyber-red/20 disabled:opacity-50"
+            >
+              {decliningPartyCountdown ? t('partyLaunch.declining') : t('partyLaunch.decline')}
+            </button>
           </div>
         </div>
       )}

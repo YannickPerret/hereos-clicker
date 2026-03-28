@@ -58,6 +58,7 @@ export default function PartyIndex({ character, currentParty: initialParty, floo
   const [currentParty, setCurrentParty] = useState(initialParty)
   const [error, setError] = useState<string | null>(null)
   const [countdown, setCountdown] = useState<number | null>(null)
+  const [decliningCountdown, setDecliningCountdown] = useState(false)
 
   // Sync from Inertia props on navigation
   useEffect(() => {
@@ -69,6 +70,7 @@ export default function PartyIndex({ character, currentParty: initialParty, floo
   useEffect(() => {
     if (!currentParty) return
     let active = true
+    let hadCountdown = false
     const pollFn = async () => {
       if (!active) return
       try {
@@ -83,11 +85,17 @@ export default function PartyIndex({ character, currentParty: initialParty, floo
         }
         if (data.countdown !== null && data.countdown !== undefined) {
           setCountdown(data.countdown)
+          hadCountdown = true
         } else {
           setCountdown(null)
         }
         if (data.party) {
           setCurrentParty(data.party)
+          if (hadCountdown && data.party.status === 'waiting') {
+            hadCountdown = false
+            router.visit('/party')
+            return
+          }
         } else {
           setCurrentParty(null)
         }
@@ -203,6 +211,21 @@ export default function PartyIndex({ character, currentParty: initialParty, floo
     }
   }
 
+  const declineCountdown = () => {
+    setDecliningCountdown(true)
+    setError(null)
+    router.post(
+      '/party/decline-countdown',
+      {},
+      {
+        preserveScroll: true,
+        preserveState: true,
+        onError: (errors: any) => setError(errors.message || t('networkError')),
+        onFinish: () => setDecliningCountdown(false),
+      }
+    )
+  }
+
   return (
     <GameLayout>
       {/* Countdown overlay */}
@@ -221,6 +244,14 @@ export default function PartyIndex({ character, currentParty: initialParty, floo
               {countdown}
             </div>
             <div className="text-sm text-gray-500">{t('launchMessage')}</div>
+            <button
+              type="button"
+              disabled={decliningCountdown}
+              onClick={declineCountdown}
+              className="mt-6 rounded border border-cyber-red/40 bg-cyber-red/10 px-5 py-2 text-xs font-bold uppercase tracking-[0.24em] text-cyber-red transition-all hover:bg-cyber-red/20 disabled:opacity-50"
+            >
+              {decliningCountdown ? t('decliningLaunch') : t('declineLaunch')}
+            </button>
           </div>
         </div>
       )}

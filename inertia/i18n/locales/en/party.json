@@ -8,6 +8,8 @@
   "joinBtn": "[ JOIN ]",
   "launchTitle": "DUNGEON LAUNCH",
   "launchMessage": "Get ready, Runner...",
+  "declineLaunch": "[ DECLINE LAUNCH ]",
+  "decliningLaunch": "[ CANCELLING... ]",
   "code": "Code:",
   "members": "{{current}}/{{max}} players",
   "leader": "Leader",

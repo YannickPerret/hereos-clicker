@@ -103,6 +103,7 @@ router
     router.post('/party/invitations/:inviteId/accept', [PartyController, 'acceptInvite'])
     router.post('/party/invitations/:inviteId/decline', [PartyController, 'declineInvite'])
     router.post('/party/ready', [PartyController, 'ready'])
+    router.post('/party/decline-countdown', [PartyController, 'declineCountdown'])
     router.post('/party/members/:characterId/kick', [PartyController, 'kick'])
     router.post('/party/leave', [PartyController, 'leave'])
     router.post('/party/start-dungeon', [PartyController, 'startDungeon'])

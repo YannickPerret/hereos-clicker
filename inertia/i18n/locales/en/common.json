@@ -24,7 +24,9 @@
   },
   "partyLaunch": {
     "title": "Dungeon launch",
-    "message": "The leader is starting the run. Redirecting shortly..."
+    "message": "The leader is starting the run. Redirecting shortly...",
+    "decline": "Decline launch",
+    "declining": "Cancelling..."
   },
   "activityBanner": {
     "title": "Activity in progress",
