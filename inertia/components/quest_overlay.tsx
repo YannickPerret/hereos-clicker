@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-
+import { getCsrfToken } from '~/lib/csrf'
 interface FlowStep {
   id: number
   stepType: 'narration' | 'conversation' | 'objective' | 'wait' | 'choice'
@@ -25,19 +25,12 @@ interface Props {
   onUpdate: (flowState: FlowState) => void
 }
 
-function getCsrfToken() {
-  return document.cookie
-    .split('; ')
-    .find((row) => row.startsWith('XSRF-TOKEN='))
-    ?.split('=')[1]
-}
-
 async function postJson(url: string, body: any = {}) {
   const res = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-XSRF-TOKEN': decodeURIComponent(getCsrfToken() || ''),
+      'X-XSRF-TOKEN': getCsrfToken(),
     },
     body: JSON.stringify(body),
   })

@@ -85,8 +85,9 @@ export default function MapPage({ mapData, character: initialCharacter }: Props)
   }, [character.id])
 
   useEffect(() => {
-    transmitRef.current = new Transmit({ baseUrl: window.location.origin })
-    const subscription = transmitRef.current.subscription(`map:${map.id}`)
+    const transmit = new Transmit({ baseUrl: window.location.origin })
+    transmitRef.current = transmit
+    const subscription = transmit.subscription(`map:${map.id}`)
     subscription.create()
     subscription.onMessage((data: any) => {
       if (data.type === 'PLAYER_MOVED') {
@@ -97,7 +98,13 @@ export default function MapPage({ mapData, character: initialCharacter }: Props)
         setMap(prev => ({ ...prev, characters: prev.characters.filter(c => c.id !== data.characterId) }))
       }
     })
-    return () => { subscription.delete() }
+    return () => {
+      subscription.delete()
+      transmit.close()
+      if (transmitRef.current === transmit) {
+        transmitRef.current = null
+      }
+    }
   }, [map.id, animatePath])
 
   const findAStarPath = (startX: number, startY: number, endX: number, endY: number) => {

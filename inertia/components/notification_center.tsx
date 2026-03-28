@@ -161,8 +161,9 @@ export default function NotificationCenter() {
   useEffect(() => {
     if (!auth?.user?.id || typeof window === 'undefined') return
 
-    transmitRef.current = new Transmit({ baseUrl: window.location.origin })
-    const subscription = transmitRef.current.subscription(`user/${auth.user.id}/notifications`)
+    const transmit = new Transmit({ baseUrl: window.location.origin })
+    transmitRef.current = transmit
+    const subscription = transmit.subscription(`user/${auth.user.id}/notifications`)
     subscription.create()
     subscription.onMessage((data: PartyInviteEventPayload) => {
       if (data?.type === 'party_invite' && data.invite) {
@@ -172,7 +173,10 @@ export default function NotificationCenter() {
 
     return () => {
       subscription.delete()
-      transmitRef.current = null
+      transmit.close()
+      if (transmitRef.current === transmit) {
+        transmitRef.current = null
+      }
     }
   }, [auth?.user?.id, pushInviteNotification])
 

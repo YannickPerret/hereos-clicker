@@ -1,21 +1,20 @@
 import { useState, useCallback } from 'react'
 import { router } from '@inertiajs/react'
 import GameLayout from '~/components/layout'
-import IsoGame, { type RoomData, type RoomEnemy, type TilesetData, type SpriteData } from '~/components/iso_game'
-
-function getCsrfToken() {
-  return document.cookie
-    .split('; ')
-    .find((row) => row.startsWith('XSRF-TOKEN='))
-    ?.split('=')[1]
-}
+import IsoGame, {
+  type RoomData,
+  type RoomEnemy,
+  type TilesetData,
+  type SpriteData,
+} from '~/components/iso_game'
+import { getCsrfToken } from '~/lib/csrf'
 
 async function postJson(url: string, body: any = {}) {
   const res = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-XSRF-TOKEN': decodeURIComponent(getCsrfToken() || ''),
+      'X-XSRF-TOKEN': getCsrfToken(),
     },
     body: JSON.stringify(body),
   })
@@ -42,27 +41,38 @@ export default function IsoDungeonRun({ character, run, dungeon, room, tilesets,
   const [combatLog, setCombatLog] = useState<string[]>([])
   const [status, setStatus] = useState(run.status)
 
-  const handleMove = useCallback(async (x: number, y: number) => {
-    await postJson(`/iso-dungeon/run/${run.id}/move`, { x, y })
-  }, [run.id])
+  const handleMove = useCallback(
+    async (x: number, y: number) => {
+      await postJson(`/iso-dungeon/run/${run.id}/move`, { x, y })
+    },
+    [run.id]
+  )
 
-  const handleEnemyClick = useCallback(async (enemy: RoomEnemy) => {
-    setCombatLog((prev) => [...prev, `>> Combat contre ${enemy.name}${enemy.isBoss ? ' (BOSS)' : ''}...`])
-
-    const result = await postJson(`/iso-dungeon/run/${run.id}/engage`, { roomEnemyId: enemy.id })
-
-    if (result.status === 'defeated') {
-      const credits = Math.floor(Math.random() * (result.creditsMax - result.creditsMin + 1)) + result.creditsMin
+  const handleEnemyClick = useCallback(
+    async (enemy: RoomEnemy) => {
       setCombatLog((prev) => [
         ...prev,
-        `${result.enemyName} vaincu ! +${result.xpReward} XP, +${credits} credits`,
+        `>> Combat contre ${enemy.name}${enemy.isBoss ? ' (BOSS)' : ''}...`,
       ])
-      // Reload to update enemies list
-      router.reload()
-    } else {
-      setCombatLog((prev) => [...prev, `Erreur: ${result.error || 'inconnu'}`])
-    }
-  }, [run.id])
+
+      const result = await postJson(`/iso-dungeon/run/${run.id}/engage`, { roomEnemyId: enemy.id })
+
+      if (result.status === 'defeated') {
+        const credits =
+          Math.floor(Math.random() * (result.creditsMax - result.creditsMin + 1)) +
+          result.creditsMin
+        setCombatLog((prev) => [
+          ...prev,
+          `${result.enemyName} vaincu ! +${result.xpReward} XP, +${credits} credits`,
+        ])
+        // Reload to update enemies list
+        router.reload()
+      } else {
+        setCombatLog((prev) => [...prev, `Erreur: ${result.error || 'inconnu'}`])
+      }
+    },
+    [run.id]
+  )
 
   const handleExitReached = useCallback(async () => {
     const result = await postJson(`/iso-dungeon/run/${run.id}/next-room`)
@@ -83,11 +93,15 @@ export default function IsoDungeonRun({ character, run, dungeon, room, tilesets,
       <GameLayout>
         <div className="max-w-lg mx-auto text-center py-20">
           <div className="text-6xl mb-6">🏆</div>
-          <h1 className="text-3xl font-bold text-cyber-green uppercase tracking-widest mb-4">Victoire !</h1>
+          <h1 className="text-3xl font-bold text-cyber-green uppercase tracking-widest mb-4">
+            Victoire !
+          </h1>
           <p className="text-gray-400 mb-2">{dungeon.name} termine</p>
           <p className="text-sm text-gray-500 mb-8">{dungeon.totalRooms} salle(s) franchie(s)</p>
-          <button onClick={() => router.visit('/iso-dungeon')}
-            className="px-6 py-3 border border-cyber-green/40 text-cyber-green rounded text-xs uppercase tracking-widest hover:bg-cyber-green/10">
+          <button
+            onClick={() => router.visit('/iso-dungeon')}
+            className="px-6 py-3 border border-cyber-green/40 text-cyber-green rounded text-xs uppercase tracking-widest hover:bg-cyber-green/10"
+          >
             Retour aux donjons
           </button>
         </div>
@@ -102,16 +116,22 @@ export default function IsoDungeonRun({ character, run, dungeon, room, tilesets,
         <div className="flex items-center justify-between px-4 py-2 border-b border-cyber-purple/20 shrink-0">
           <div className="flex items-center gap-4">
             <div>
-              <div className="text-[10px] uppercase tracking-[0.3em] text-cyber-purple">{dungeon.name}</div>
-              <div className="text-sm font-bold text-white">{room.name} {room.isBossRoom && <span className="text-cyber-red">★ BOSS</span>}</div>
+              <div className="text-[10px] uppercase tracking-[0.3em] text-cyber-purple">
+                {dungeon.name}
+              </div>
+              <div className="text-sm font-bold text-white">
+                {room.name} {room.isBossRoom && <span className="text-cyber-red">★ BOSS</span>}
+              </div>
             </div>
             <div className="text-[10px] text-gray-500 uppercase">
               Salle {run.currentRoomOrder}/{dungeon.totalRooms}
             </div>
           </div>
           <div className="flex gap-2">
-            <button onClick={() => router.post(`/iso-dungeon/run/${run.id}/flee`)}
-              className="px-3 py-1.5 border border-cyber-red/30 text-cyber-red rounded text-[10px] uppercase tracking-widest hover:bg-cyber-red/10">
+            <button
+              onClick={() => router.post(`/iso-dungeon/run/${run.id}/flee`)}
+              className="px-3 py-1.5 border border-cyber-red/30 text-cyber-red rounded text-[10px] uppercase tracking-widest hover:bg-cyber-red/10"
+            >
               Fuir
             </button>
           </div>
@@ -136,14 +156,21 @@ export default function IsoDungeonRun({ character, run, dungeon, room, tilesets,
           {/* Combat log bottom */}
           <div className="h-28 border-t border-gray-800 bg-cyber-black/50 px-4 py-2 overflow-y-auto shrink-0">
             <div className="flex items-center gap-3 mb-1">
-              <div className="text-[10px] uppercase tracking-widest text-gray-500">Journal de combat</div>
+              <div className="text-[10px] uppercase tracking-widest text-gray-500">
+                Journal de combat
+              </div>
               {combatLog.length === 0 && (
-                <div className="text-[10px] text-gray-600">Cliquez sur un ennemi pour combattre. Atteignez la sortie pour avancer.</div>
+                <div className="text-[10px] text-gray-600">
+                  Cliquez sur un ennemi pour combattre. Atteignez la sortie pour avancer.
+                </div>
               )}
             </div>
             <div className="flex flex-wrap gap-x-4 gap-y-0.5">
               {combatLog.map((line, i) => (
-                <div key={i} className={`text-[10px] ${line.startsWith('>>') ? 'text-cyber-blue' : line.startsWith('!!') ? 'text-cyber-red' : line.startsWith('===') ? 'text-cyber-green font-bold' : 'text-gray-400'}`}>
+                <div
+                  key={i}
+                  className={`text-[10px] ${line.startsWith('>>') ? 'text-cyber-blue' : line.startsWith('!!') ? 'text-cyber-red' : line.startsWith('===') ? 'text-cyber-green font-bold' : 'text-gray-400'}`}
+                >
                   {line}
                 </div>
               ))}

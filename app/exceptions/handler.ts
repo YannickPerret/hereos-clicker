@@ -1,4 +1,5 @@
 import app from '@adonisjs/core/services/app'
+import logger from '@adonisjs/core/services/logger'
 import { HttpContext, ExceptionHandler } from '@adonisjs/core/http'
 import type { StatusPageRange, StatusPageRenderer } from '@adonisjs/core/types/http'
 
@@ -20,12 +21,7 @@ export default class HttpExceptionHandler extends ExceptionHandler {
    * Render Inertia error pages when available, fallback to plain text
    * when request did not pass through Inertia middleware (ex: static 404).
    */
-  private renderErrorPage(
-    ctx: HttpContext,
-    page: string,
-    status: number,
-    fallbackMessage: string
-  ) {
+  private renderErrorPage(ctx: HttpContext, page: string, status: number, fallbackMessage: string) {
     if (ctx.inertia) {
       return ctx.inertia.render(page)
     }
@@ -57,6 +53,22 @@ export default class HttpExceptionHandler extends ExceptionHandler {
    * @note You should not attempt to send a response from this method.
    */
   async report(error: unknown, ctx: HttpContext) {
+    if (error instanceof Error && error.message === 'Invalid or expired CSRF token') {
+      logger.warn(
+        {
+          request_id: ctx.request.id(),
+          method: ctx.request.method(),
+          url: ctx.request.url(true),
+          path: ctx.request.url(),
+          referer: ctx.request.header('referer'),
+          origin: ctx.request.header('origin'),
+          inertia: ctx.request.header('x-inertia'),
+          user_id: (ctx as any).auth?.user?.id ?? null,
+        },
+        'CSRF mismatch details'
+      )
+    }
+
     return super.report(error, ctx)
   }
 }

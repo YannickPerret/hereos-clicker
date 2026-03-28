@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react'
 import Phaser from 'phaser'
+import { getCsrfToken } from '~/lib/csrf'
 
 export interface TilesetData {
   key: string
@@ -65,13 +66,6 @@ interface Props {
   onExitReached: () => void
 }
 
-function getCsrfToken() {
-  return document.cookie
-    .split('; ')
-    .find((row) => row.startsWith('XSRF-TOKEN='))
-    ?.split('=')[1]
-}
-
 // Convert grid coords to isometric screen coords
 function gridToIso(gx: number, gy: number, tw: number, th: number): { x: number; y: number } {
   return {
@@ -90,11 +84,17 @@ function isoToGrid(sx: number, sy: number, tw: number, th: number): { x: number;
 
 // A* pathfinding on grid
 function findPath(
-  startX: number, startY: number, endX: number, endY: number,
-  width: number, height: number, collisions: { x: number; y: number }[]
+  startX: number,
+  startY: number,
+  endX: number,
+  endY: number,
+  width: number,
+  height: number,
+  collisions: { x: number; y: number }[]
 ): { x: number; y: number }[] {
   const collSet = new Set(collisions.map((c) => `${c.x},${c.y}`))
-  const isBlocked = (x: number, y: number) => x < 0 || x >= width || y < 0 || y >= height || collSet.has(`${x},${y}`)
+  const isBlocked = (x: number, y: number) =>
+    x < 0 || x >= width || y < 0 || y >= height || collSet.has(`${x},${y}`)
 
   if (isBlocked(endX, endY)) return []
 
@@ -109,12 +109,21 @@ function findPath(
     if (cur.x === endX && cur.y === endY) {
       const path: { x: number; y: number }[] = []
       let c = cur
-      while (c) { path.unshift({ x: c.x, y: c.y }); c = parents[`${c.x},${c.y}`] }
+      while (c) {
+        path.unshift({ x: c.x, y: c.y })
+        c = parents[`${c.x},${c.y}`]
+      }
       return path
     }
     closed.add(key)
-    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-      const nx = cur.x + dx, ny = cur.y + dy
+    for (const [dx, dy] of [
+      [1, 0],
+      [-1, 0],
+      [0, 1],
+      [0, -1],
+    ]) {
+      const nx = cur.x + dx,
+        ny = cur.y + dy
       if (isBlocked(nx, ny) || closed.has(`${nx},${ny}`)) continue
       const g = cur.g + 1
       const h = Math.abs(nx - endX) + Math.abs(ny - endY)
@@ -132,7 +141,16 @@ function findPath(
   return []
 }
 
-export default function IsoGame({ room, tilesets, sprites, playerX, playerY, onMove, onEnemyClick, onExitReached }: Props) {
+export default function IsoGame({
+  room,
+  tilesets,
+  sprites,
+  playerX,
+  playerY,
+  onMove,
+  onEnemyClick,
+  onExitReached,
+}: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const gameRef = useRef<Phaser.Game | null>(null)
   const sceneRef = useRef<Phaser.Scene | null>(null)
@@ -159,7 +177,9 @@ export default function IsoGame({ room, tilesets, sprites, playerX, playerY, onM
       private pathGraphics!: Phaser.GameObjects.Graphics
       private moving = false
 
-      constructor() { super({ key: 'DungeonScene' }) }
+      constructor() {
+        super({ key: 'DungeonScene' })
+      }
 
       preload() {
         // Load tilesets
@@ -195,7 +215,12 @@ export default function IsoGame({ room, tilesets, sprites, playerX, playerY, onM
               const gid = room.layerGround[gy * room.width + gx]
               if (gid <= 0) continue
               const iso = gridToIso(gx, gy, tw, th)
-              const tile = this.add.sprite(iso.x + offsetX, iso.y + offsetY, room.tilesetKey!, gid - 1)
+              const tile = this.add.sprite(
+                iso.x + offsetX,
+                iso.y + offsetY,
+                room.tilesetKey!,
+                gid - 1
+              )
               tile.setDepth(0)
             }
           }
@@ -205,7 +230,8 @@ export default function IsoGame({ room, tilesets, sprites, playerX, playerY, onM
             for (let gx = 0; gx < room.width; gx++) {
               const iso = gridToIso(gx, gy, tw, th)
               const g = this.add.graphics()
-              const cx = iso.x + offsetX, cy = iso.y + offsetY
+              const cx = iso.x + offsetX,
+                cy = iso.y + offsetY
               const isCollision = room.collisions.some((c) => c.x === gx && c.y === gy)
               const isExit = room.exitX === gx && room.exitY === gy
 
@@ -222,7 +248,10 @@ export default function IsoGame({ room, tilesets, sprites, playerX, playerY, onM
               g.setDepth(0)
 
               if (isExit) {
-                const exitText = this.add.text(cx, cy - 4, '▶', { fontSize: '12px', color: '#ffaa00' }).setOrigin(0.5).setDepth(1)
+                const exitText = this.add
+                  .text(cx, cy - 4, '▶', { fontSize: '12px', color: '#ffaa00' })
+                  .setOrigin(0.5)
+                  .setDepth(1)
               }
             }
           }
@@ -235,7 +264,12 @@ export default function IsoGame({ room, tilesets, sprites, playerX, playerY, onM
               const gid = room.layerWalls[gy * room.width + gx]
               if (gid <= 0) continue
               const iso = gridToIso(gx, gy, tw, th)
-              const tile = this.add.sprite(iso.x + offsetX, iso.y + offsetY, room.tilesetKey!, gid - 1)
+              const tile = this.add.sprite(
+                iso.x + offsetX,
+                iso.y + offsetY,
+                room.tilesetKey!,
+                gid - 1
+              )
               tile.setDepth(gy * room.width + gx + 1)
             }
           }
@@ -253,7 +287,8 @@ export default function IsoGame({ room, tilesets, sprites, playerX, playerY, onM
           } else {
             // Placeholder red diamond
             const g = this.add.graphics()
-            const cx = iso.x + offsetX, cy = iso.y + offsetY - 8
+            const cx = iso.x + offsetX,
+              cy = iso.y + offsetY - 8
             g.fillStyle(enemy.isBoss ? 0xff0000 : 0xcc3333, 1)
             g.beginPath()
             g.moveTo(cx, cy - 12)
@@ -273,11 +308,14 @@ export default function IsoGame({ room, tilesets, sprites, playerX, playerY, onM
           sprite.on('pointerdown', () => onEnemyClickRef.current(enemy))
 
           // Enemy name label
-          const label = this.add.text(
-            iso.x + offsetX, iso.y + offsetY - 28,
-            enemy.name + (enemy.isBoss ? ' ★' : ''),
-            { fontSize: '9px', color: enemy.isBoss ? '#ff4444' : '#ff8888', fontStyle: 'bold' }
-          ).setOrigin(0.5).setDepth(9999)
+          const label = this.add
+            .text(iso.x + offsetX, iso.y + offsetY - 28, enemy.name + (enemy.isBoss ? ' ★' : ''), {
+              fontSize: '9px',
+              color: enemy.isBoss ? '#ff4444' : '#ff8888',
+              fontStyle: 'bold',
+            })
+            .setOrigin(0.5)
+            .setDepth(9999)
 
           this.enemySprites.push({ sprite, enemy })
         }
@@ -287,11 +325,16 @@ export default function IsoGame({ room, tilesets, sprites, playerX, playerY, onM
         const playerHasSprite = sprites.some((s) => s.key === 'player')
 
         if (playerHasSprite) {
-          playerRef.current = this.add.sprite(playerIso.x + offsetX, playerIso.y + offsetY - 16, 'player')
+          playerRef.current = this.add.sprite(
+            playerIso.x + offsetX,
+            playerIso.y + offsetY - 16,
+            'player'
+          )
         } else {
           // Placeholder green diamond
           const g = this.add.graphics()
-          const cx = playerIso.x + offsetX, cy = playerIso.y + offsetY - 8
+          const cx = playerIso.x + offsetX,
+            cy = playerIso.y + offsetY - 8
           g.fillStyle(0x00ff00, 1)
           g.lineStyle(2, 0xffffff, 1)
           g.beginPath()
@@ -318,7 +361,15 @@ export default function IsoGame({ room, tilesets, sprites, playerX, playerY, onM
 
           if (grid.x < 0 || grid.x >= room.width || grid.y < 0 || grid.y >= room.height) return
 
-          const path = findPath(playerPosRef.current.x, playerPosRef.current.y, grid.x, grid.y, room.width, room.height, room.collisions)
+          const path = findPath(
+            playerPosRef.current.x,
+            playerPosRef.current.y,
+            grid.x,
+            grid.y,
+            room.width,
+            room.height,
+            room.collisions
+          )
           if (path.length <= 1) return
 
           this.moving = true
@@ -360,7 +411,12 @@ export default function IsoGame({ room, tilesets, sprites, playerX, playerY, onM
                 onMoveRef.current(p.x, p.y)
 
                 // Check exit
-                if (room.exitX !== null && room.exitY !== null && p.x === room.exitX && p.y === room.exitY) {
+                if (
+                  room.exitX !== null &&
+                  room.exitY !== null &&
+                  p.x === room.exitX &&
+                  p.y === room.exitY
+                ) {
                   onExitReachedRef.current()
                 }
               }
@@ -373,8 +429,12 @@ export default function IsoGame({ room, tilesets, sprites, playerX, playerY, onM
         this.cameras.main.centerOn(offsetX, offsetY + mapPixelH / 4)
 
         // Drag to scroll camera
-        let dragStartX = 0, dragStartY = 0
-        this.input.on('pointerdown', (p: Phaser.Input.Pointer) => { dragStartX = p.x; dragStartY = p.y })
+        let dragStartX = 0,
+          dragStartY = 0
+        this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
+          dragStartX = p.x
+          dragStartY = p.y
+        })
         this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
           if (!p.isDown) return
           const dx = dragStartX - p.x
