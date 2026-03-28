@@ -304,6 +304,3 @@ router
     ])
   })
   .use([middleware.auth(), middleware.role({ roles: ['admin', 'moderator'] })])
-
-// Redirect root
-router.get('/', ({ response }) => response.redirect('/play'))
