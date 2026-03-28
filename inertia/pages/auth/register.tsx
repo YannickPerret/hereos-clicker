@@ -1,5 +1,6 @@
 import { useForm, Link } from '@inertiajs/react'
 import { useTranslation } from 'react-i18next'
+import LanguageSwitcher from '~/components/language_switcher'
 
 export default function Register() {
   const { t } = useTranslation('auth')
@@ -16,6 +17,9 @@ export default function Register() {
 
   return (
     <div className="min-h-screen bg-cyber-black flex items-center justify-center relative">
+      <div className="absolute top-4 right-4 z-20">
+        <LanguageSwitcher />
+      </div>
       <div className="absolute inset-0 opacity-10"
         style={{
           backgroundImage: 'linear-gradient(rgba(255,0,255,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(255,0,255,0.3) 1px, transparent 1px)',
