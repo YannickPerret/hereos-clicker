@@ -82,6 +82,16 @@ interface Props {
   match: MatchState
   teams: TeamState[]
   skills: Skill[]
+  consumables: {
+    id: number
+    quantity: number
+    item: {
+      id: number
+      name: string
+      effectType: string
+      effectValue: number
+    }
+  }[]
   activeEffects: ActiveEffect[]
 }
 
@@ -226,6 +236,18 @@ function LogLine({ entry, myId }: { entry: LogEntry; myId: number; }) {
           <span className="ml-1 text-gray-400">{t('pvp:forfeitMatch')}</span>
         </div>
       )
+    case 'item_use':
+      return (
+        <div className="rounded border border-cyber-green/30 bg-cyber-green/10 p-2 text-xs">
+          <span className={actorClass}>{entry.attackerName}</span>
+          <span className="ml-1 font-bold text-cyber-green">{entry.itemName}</span>
+          {entry.healed ? (
+            <span className="ml-1 text-white">+{entry.healed} HP</span>
+          ) : entry.message ? (
+            <span className="ml-1 text-gray-300">{entry.message}</span>
+          ) : null}
+        </div>
+      )
     case 'player_attack':
     default:
       return (
@@ -365,12 +387,14 @@ export default function PvpMatch({
   match: initialMatch,
   teams: initialTeams,
   skills: initialSkills,
+  consumables: initialConsumables,
   activeEffects: initialEffects,
 }: Props) {
   const { t } = useTranslation(['pvp', 'common'])
   const [match, setMatch] = useState(initialMatch)
   const [teams, setTeams] = useState(initialTeams)
   const [skills, setSkills] = useState(initialSkills)
+  const [consumables, setConsumables] = useState(initialConsumables)
   const [activeEffects, setActiveEffects] = useState(initialEffects)
   const [selectedTargetId, setSelectedTargetId] = useState<number | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -418,6 +442,7 @@ export default function PvpMatch({
         setMatch(data.match)
         setTeams(data.teams || [])
         setSkills(data.skills || [])
+        setConsumables(data.consumables || [])
         setActiveEffects(data.activeEffects || [])
       } catch {}
     }
@@ -432,8 +457,9 @@ export default function PvpMatch({
     setMatch(initialMatch)
     setTeams(initialTeams)
     setSkills(initialSkills)
+    setConsumables(initialConsumables)
     setActiveEffects(initialEffects)
-  }, [initialMatch, initialTeams, initialSkills, initialEffects])
+  }, [initialMatch, initialTeams, initialSkills, initialConsumables, initialEffects])
 
   const handleAttack = () => {
     if (!isMyTurn || isSubmitting) return
@@ -470,6 +496,20 @@ export default function PvpMatch({
     if (confirm(t('pvp:forfeitConfirm'))) {
       router.post(`/pvp/match/${match.id}/forfeit`)
     }
+  }
+
+  const handleConsumable = (inventoryItemId: number) => {
+    if (!isMyTurn || isSubmitting) return
+    setIsSubmitting(true)
+    router.post(
+      `/pvp/match/${match.id}/use-item`,
+      { inventoryItemId },
+      {
+        preserveScroll: true,
+        preserveState: true,
+        onFinish: () => setIsSubmitting(false),
+      }
+    )
   }
 
   const turnOrder = useMemo(() => {
@@ -701,6 +741,36 @@ export default function PvpMatch({
                               </CombatSkillTooltip>
                             )
                           })}
+                        </div>
+                      )}
+
+                      {consumables.length > 0 && (
+                        <div className="space-y-1">
+                          <div className="text-center text-[9px] uppercase tracking-widest text-cyber-green">
+                            {t('pvp:consumables')}
+                          </div>
+                          {consumables.slice(0, 3).map((entry) => (
+                            <button
+                              key={entry.id}
+                              type="button"
+                              onClick={() => handleConsumable(entry.id)}
+                              disabled={!isMyTurn || isSubmitting}
+                              className={`w-full rounded border px-2 py-2 text-xs transition-all ${
+                                isMyTurn && !isSubmitting
+                                  ? 'border-cyber-green/30 bg-cyber-green/10 text-cyber-green hover:bg-cyber-green/20'
+                                  : 'cursor-not-allowed border-gray-800 bg-gray-900/50 text-gray-700'
+                              }`}
+                            >
+                              <span className="font-bold">
+                                {entry.item.name} (x{entry.quantity})
+                              </span>
+                              {entry.item.effectType === 'hp_restore' && (
+                                <span className="ml-1 text-[10px] text-gray-500">
+                                  +{entry.item.effectValue} HP
+                                </span>
+                              )}
+                            </button>
+                          ))}
                         </div>
                       )}
 

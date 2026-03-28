@@ -37,5 +37,8 @@
   "pinPost": "Epingler le post",
   "unpinPost": "Desepingler le post",
   "lockPost": "Fermer le post",
-  "unlockPost": "Reouvrir le post"
+  "unlockPost": "Reouvrir le post",
+  "imageButton": "Image",
+  "imageUploading": "Upload...",
+  "imageUploadError": "Echec de l'upload image."
 }

@@ -37,5 +37,8 @@
   "pinPost": "Pin post",
   "unpinPost": "Unpin post",
   "lockPost": "Lock post",
-  "unlockPost": "Unlock post"
+  "unlockPost": "Unlock post",
+  "imageButton": "Image",
+  "imageUploading": "Uploading...",
+  "imageUploadError": "Image upload failed."
 }

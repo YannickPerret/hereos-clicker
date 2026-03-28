@@ -29,6 +29,9 @@ export default class PvpMatchParticipant extends BaseModel {
   declare isEliminated: boolean
 
   @column()
+  declare readyAccepted: boolean
+
+  @column()
   declare createdAt: number
 
   @belongsTo(() => PvpMatch, { foreignKey: 'matchId' })

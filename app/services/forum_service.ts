@@ -21,6 +21,7 @@ export default class ForumService {
     'code',
     'pre',
     'a',
+    'img',
   ])
 
   static isStaff(user: User & { role?: { name: string } | null }) {
@@ -123,6 +124,7 @@ export default class ForumService {
 
   static stripHtml(content: string) {
     return content
+      .replace(/<img[^>]*>/gi, ' [image] ')
       .replace(/<br\s*\/?>/gi, '\n')
       .replace(/<\/p>/gi, '\n')
       .replace(/<li>/gi, '- ')
@@ -166,6 +168,20 @@ export default class ForumService {
         return `<a href="${safeHref.replace(/"/g, '&quot;')}" target="_blank" rel="noreferrer noopener">`
       }
 
+      if (tag === 'img') {
+        const srcMatch = rawAttrs.match(/\ssrc=(?:"([^"]*)"|'([^']*)')/i)
+        const altMatch = rawAttrs.match(/\salt=(?:"([^"]*)"|'([^']*)')/i)
+        const src = (srcMatch?.[1] || srcMatch?.[2] || '').trim()
+        const alt = (altMatch?.[1] || altMatch?.[2] || '').trim()
+
+        if (!src.startsWith('/uploads/forum/')) {
+          return ''
+        }
+
+        const safeAlt = alt.replace(/"/g, '&quot;')
+        return `<img src="${src.replace(/"/g, '&quot;')}" alt="${safeAlt}">`
+      }
+
       return `<${tag}>`
     })
   }
@@ -195,8 +211,9 @@ export default class ForumService {
   static async validatePosting(userId: number, threadId: number, body: string, locale: string) {
     const sanitizedBody = this.sanitizeHtml(body.trim())
     const plainBody = this.stripHtml(sanitizedBody)
+    const hasImage = /<img\b/i.test(sanitizedBody)
 
-    if (plainBody.length < 3 || plainBody.length > 4000) {
+    if ((plainBody.length < 3 && !hasImage) || plainBody.length > 4000) {
       return { ok: false as const, message: this.invalidPostMessage(locale) }
     }
 
@@ -225,6 +242,8 @@ export default class ForumService {
     }
 
     const normalizedBody = this.normalizeContent(plainBody)
+    const normalizedComparableBody =
+      normalizedBody.length > 0 ? normalizedBody : this.normalizeContent(sanitizedBody)
     const duplicate = await ForumPost.query()
       .where('userId', userId)
       .where('forumThreadId', threadId)
@@ -233,7 +252,16 @@ export default class ForumService {
       .limit(5)
 
     if (
-      duplicate.some((post) => this.normalizeContent(this.stripHtml(this.sanitizeHtml(post.body))) === normalizedBody)
+      duplicate.some((post) => {
+        const sanitizedExisting = this.sanitizeHtml(post.body)
+        const normalizedExistingPlain = this.normalizeContent(this.stripHtml(sanitizedExisting))
+        const normalizedExistingComparable =
+          normalizedExistingPlain.length > 0
+            ? normalizedExistingPlain
+            : this.normalizeContent(sanitizedExisting)
+
+        return normalizedExistingComparable === normalizedComparableBody
+      })
     ) {
       return { ok: false as const, message: this.duplicatePostMessage(locale) }
     }

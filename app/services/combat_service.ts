@@ -53,6 +53,19 @@ interface CombatLogEntry {
   itemName?: string
 }
 
+interface PendingRewardItem {
+  itemId: number
+  name: string
+  rarity: string
+  quantity: number
+}
+
+interface PendingRewardBucket {
+  credits: number
+  xp: number
+  items: PendingRewardItem[]
+}
+
 export default class CombatService {
   private static readonly DEFAULT_TURN_MS = 30000
   private static readonly AFK_TURN_MS = 5000
@@ -136,6 +149,7 @@ export default class CombatService {
       currentEnemyId: enemy.id,
       currentEnemyHp: enemy.hp,
       enemiesDefeated: 0,
+      pendingRewards: '{}',
     })
 
     return { run, enemy, floor }
@@ -224,6 +238,99 @@ export default class CombatService {
       creditsLost,
       revivedHp: character.hpCurrent,
     }
+  }
+
+  private static getPendingRewards(run: DungeonRun): Record<string, PendingRewardBucket> {
+    try {
+      const parsed = JSON.parse(run.pendingRewards || '{}') as Record<string, PendingRewardBucket>
+      return parsed && typeof parsed === 'object' ? parsed : {}
+    } catch {
+      return {}
+    }
+  }
+
+  private static setPendingRewards(
+    run: DungeonRun,
+    rewards: Record<string, PendingRewardBucket>
+  ) {
+    run.pendingRewards = JSON.stringify(rewards)
+  }
+
+  private static queuePendingRewards(
+    run: DungeonRun,
+    characterId: number,
+    reward: { creditsReward: number; xpReward: number; loot: { itemId: number; name: string; rarity: string }[] }
+  ) {
+    const rewards = this.getPendingRewards(run)
+    const key = String(characterId)
+    const bucket = rewards[key] || {
+      credits: 0,
+      xp: 0,
+      items: [],
+    }
+
+    bucket.credits += reward.creditsReward
+    bucket.xp += reward.xpReward
+
+    for (const loot of reward.loot) {
+      const existing = bucket.items.find((entry) => entry.itemId === loot.itemId)
+      if (existing) {
+        existing.quantity += 1
+      } else {
+        bucket.items.push({
+          itemId: loot.itemId,
+          name: loot.name,
+          rarity: loot.rarity,
+          quantity: 1,
+        })
+      }
+    }
+
+    rewards[key] = bucket
+    this.setPendingRewards(run, rewards)
+  }
+
+  private static async claimPendingRewards(run: DungeonRun) {
+    const rewards = this.getPendingRewards(run)
+
+    for (const [characterIdKey, bucket] of Object.entries(rewards)) {
+      const characterId = Number(characterIdKey)
+      if (!characterId) continue
+
+      const character = await Character.find(characterId)
+      if (!character) continue
+
+      character.credits += bucket.credits
+      character.xp += bucket.xp
+
+      while (character.xp >= character.level * 100) {
+        character.levelUp()
+        await CompanionService.refillHpAfterLevelUp(character)
+      }
+
+      await character.save()
+      DailyMissionService.trackProgress(character.id, 'earn_credits', bucket.credits).catch(() => {})
+
+      for (const item of bucket.items) {
+        const existing = await InventoryItem.query()
+          .where('characterId', character.id)
+          .where('itemId', item.itemId)
+          .first()
+
+        if (existing) {
+          existing.quantity += item.quantity
+          await existing.save()
+        } else {
+          await InventoryItem.create({
+            characterId: character.id,
+            itemId: item.itemId,
+            quantity: item.quantity,
+            isEquipped: false,
+          })
+        }
+      }
+    }
+
   }
 
   /** Auto-attack for timed out player — callable from controller */
@@ -382,6 +489,7 @@ export default class CombatService {
     run.endedAt = DateTime.now()
     run.currentTurnId = null
     run.turnDeadline = null
+    this.setPendingRewards(run, {})
 
     if (run.partyId) {
       const members = await PartyMember.query().where('partyId', run.partyId).preload('character')
@@ -492,6 +600,7 @@ export default class CombatService {
 
       run.status = 'defeat'
       run.endedAt = DateTime.now()
+      this.setPendingRewards(run, {})
       const penalty = this.applyDeathPenalty(target)
       log.push({
         action: 'defeat',
@@ -612,19 +721,14 @@ export default class CombatService {
       const creditsReward = Math.floor(
         Math.random() * (enemy.creditsRewardMax - enemy.creditsRewardMin) + enemy.creditsRewardMin
       )
-      character.credits += creditsReward
-      character.xp += enemy.xpReward
-
-      // Level up check
-      const xpForNextLevel = character.level * 100
-      if (character.xp >= xpForNextLevel) {
-        character.levelUp()
-        await CompanionService.refillHpAfterLevelUp(character)
-        log.push({ action: 'level_up', newLevel: character.level })
-      }
 
       // Loot roll
-      const loot = await this.rollLoot(enemy.id, character.id)
+      const loot = await this.rollLoot(enemy.id)
+      this.queuePendingRewards(run, character.id, {
+        creditsReward,
+        xpReward: enemy.xpReward,
+        loot,
+      })
 
       log.push({
         action: 'enemy_defeated',
@@ -635,7 +739,6 @@ export default class CombatService {
 
       // Track daily missions
       DailyMissionService.trackProgress(character.id, 'kill').catch(() => {})
-      DailyMissionService.trackProgress(character.id, 'earn_credits', creditsReward).catch(() => {})
 
       // Check if run complete (3 enemies per floor, or boss)
       const floor = await DungeonFloor.findOrFail(run.dungeonFloorId)
@@ -649,6 +752,7 @@ export default class CombatService {
             run.currentEnemyHp = boss.hp
             log.push({ action: 'boss_spawn', bossName: boss.name })
           } else {
+            await this.claimPendingRewards(run)
             run.status = 'victory'
             run.endedAt = DateTime.now()
             log.push({ action: 'victory' })
@@ -657,6 +761,7 @@ export default class CombatService {
           }
         } else {
           // Victory
+          await this.claimPendingRewards(run)
           run.status = 'victory'
           run.endedAt = DateTime.now()
           log.push({ action: 'victory' })
@@ -687,7 +792,6 @@ export default class CombatService {
         log.push({ action: 'new_enemy', enemyName: nextEnemy.name, enemyHp: nextEnemy.hp })
       }
 
-      await character.save()
     } else {
       // Enemy attacks back (unless stunned)
       if (enemyMods.isStunned) {
@@ -754,6 +858,7 @@ export default class CombatService {
 
     run.status = 'fled'
     run.endedAt = DateTime.now()
+    this.setPendingRewards(run, {})
     await run.save()
 
     // Reset party status if this was a party run
@@ -834,30 +939,13 @@ export default class CombatService {
     return { effect, log, character: character.serialize(), run: run.serialize() }
   }
 
-  private static async rollLoot(enemyId: number, characterId: number) {
+  private static async rollLoot(enemyId: number) {
     const lootTable = await EnemyLootTable.query().where('enemyId', enemyId).preload('item')
-    const drops: any[] = []
+    const drops: { itemId: number; name: string; rarity: string }[] = []
 
     for (const entry of lootTable) {
       if (Math.random() <= entry.dropChance) {
-        const existing = await InventoryItem.query()
-          .where('characterId', characterId)
-          .where('itemId', entry.itemId)
-          .first()
-
-        if (existing) {
-          existing.quantity += 1
-          await existing.save()
-        } else {
-          await InventoryItem.create({
-            characterId,
-            itemId: entry.itemId,
-            quantity: 1,
-            isEquipped: false,
-          })
-        }
-
-        drops.push({ name: entry.item.name, rarity: entry.item.rarity })
+        drops.push({ itemId: entry.itemId, name: entry.item.name, rarity: entry.item.rarity })
       }
     }
 
@@ -1474,17 +1562,13 @@ export default class CombatService {
     const creditsReward = Math.floor(
       Math.random() * (enemy.creditsRewardMax - enemy.creditsRewardMin) + enemy.creditsRewardMin
     )
-    character.credits += creditsReward
-    character.xp += enemy.xpReward
 
-    const xpForNextLevel = character.level * 100
-    if (character.xp >= xpForNextLevel) {
-      character.levelUp()
-      await CompanionService.refillHpAfterLevelUp(character)
-      log.push({ action: 'level_up', newLevel: character.level })
-    }
-
-    const loot = await this.rollLoot(enemy.id, character.id)
+    const loot = await this.rollLoot(enemy.id)
+    this.queuePendingRewards(run, character.id, {
+      creditsReward,
+      xpReward: enemy.xpReward,
+      loot,
+    })
     log.push({
       action: 'enemy_defeated',
       creditsReward,
@@ -1493,7 +1577,6 @@ export default class CombatService {
     })
 
     DailyMissionService.trackProgress(character.id, 'kill').catch(() => {})
-    DailyMissionService.trackProgress(character.id, 'earn_credits', creditsReward).catch(() => {})
 
     const floor = await DungeonFloor.findOrFail(run.dungeonFloorId)
 
@@ -1509,6 +1592,7 @@ export default class CombatService {
           run.currentEnemyHp = boss.hp
           log.push({ action: 'boss_spawn', bossName: boss.name })
         } else {
+          await this.claimPendingRewards(run)
           run.status = 'victory'
           run.endedAt = DateTime.now()
           log.push({ action: 'victory' })
@@ -1529,9 +1613,9 @@ export default class CombatService {
               await party.save()
             }
           }
-          await character.save()
         }
       } else {
+        await this.claimPendingRewards(run)
         run.status = 'victory'
         run.endedAt = DateTime.now()
         log.push({ action: 'victory' })
@@ -1559,8 +1643,6 @@ export default class CombatService {
       run.currentEnemyHp = nextEnemy.hp
       log.push({ action: 'new_enemy', enemyName: nextEnemy.name, enemyHp: nextEnemy.hp })
     }
-
-    await character.save()
 
     // Group run log
     if (run.partyId) {

@@ -58,24 +58,15 @@ export default function ForumCategoryPage({ category, threads, forumBan }: Props
               href={`/forum/thread/${thread.id}`}
               className="block rounded-xl border border-cyber-blue/15 bg-cyber-dark/40 p-4 transition-all hover:border-cyber-blue/35 hover:bg-cyber-blue/10"
             >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    {thread.isLocked && (
-                      <span className="rounded border border-cyber-red/30 px-1.5 py-0.5 text-[9px] uppercase text-cyber-red">
-                        {t('locked')}
-                      </span>
-                    )}
-                  </div>
-                  <div className="mt-2 text-lg font-bold text-white">{thread.title}</div>
-                  <div className="mt-2 text-[11px] text-gray-500">
-                    {t('byUser', { user: thread.author.username })} •{' '}
-                    {new Date(thread.lastPostedAt).toLocaleString()}
-                  </div>
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {thread.isLocked && (
+                    <span className="rounded border border-cyber-red/30 px-1.5 py-0.5 text-[9px] uppercase text-cyber-red">
+                      {t('locked')}
+                    </span>
+                  )}
                 </div>
-                <div className="rounded-full border border-cyber-blue/20 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-cyber-blue">
-                  {t('postCount', { count: thread.postCount })}
-                </div>
+                <div className="mt-2 text-lg font-bold text-white">{thread.title}</div>
               </div>
             </Link>
           ))}

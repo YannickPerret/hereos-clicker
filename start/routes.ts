@@ -116,6 +116,8 @@ router
         router.get('/pvp', [PvpController, 'index'])
         router.post('/pvp/queue', [PvpController, 'queue'])
         router.post('/pvp/leave-queue', [PvpController, 'leaveQueue'])
+        router.post('/pvp/match/:matchId/accept', [PvpController, 'acceptMatch'])
+        router.post('/pvp/match/:matchId/decline', [PvpController, 'declineMatch'])
         router.post('/pvp/seasons/:statId/claim', [PvpController, 'claimSeasonReward'])
       })
       .use(middleware.activityLock())
@@ -123,6 +125,7 @@ router
     router.get('/pvp/match/:matchId/state', [PvpController, 'state'])
     router.post('/pvp/match/:matchId/attack', [PvpController, 'attack'])
     router.post('/pvp/match/:matchId/skill', [PvpController, 'useSkill'])
+    router.post('/pvp/match/:matchId/use-item', [PvpController, 'useItem'])
     router.post('/pvp/match/:matchId/forfeit', [PvpController, 'forfeit'])
 
     // Missions quotidiennes
@@ -175,6 +178,7 @@ router
     router.get('/forum', [ForumController, 'index'])
     router.get('/forum/category/:slug', [ForumController, 'category'])
     router.get('/forum/thread/:id', [ForumController, 'thread'])
+    router.post('/forum/uploads/image', [ForumController, 'uploadImage'])
     router.post('/forum/thread/:id/posts', [ForumController, 'createPost'])
     router.post('/forum/posts/:id/reply', [ForumController, 'replyToPost'])
     router.post('/forum/posts/:id/delete', [ForumController, 'deletePost'])

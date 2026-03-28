@@ -1,9 +1,12 @@
 import type { HttpContext } from '@adonisjs/core/http'
+import app from '@adonisjs/core/services/app'
+import { cuid } from '@adonisjs/core/helpers'
 import ForumCategory from '#models/forum_category'
 import ForumThread from '#models/forum_thread'
 import ForumPost from '#models/forum_post'
 import ForumService from '#services/forum_service'
 import User from '#models/user'
+import fs from 'node:fs/promises'
 
 export default class ForumController {
   private ensureForumAccount(ctx: HttpContext) {
@@ -30,8 +33,8 @@ export default class ForumController {
       body: ForumService.sanitizeHtml(post.body),
       createdAt: post.createdAt.toISO(),
       editedAt: post.editedAt?.toISO() || null,
-      isPinned: post.isPinned,
-      isLocked: post.isLocked,
+      isPinned: Boolean(post.isPinned),
+      isLocked: Boolean(post.isLocked),
       canDelete: canModerate || post.userId === viewer.id,
       canModerate,
       author: {
@@ -71,7 +74,7 @@ export default class ForumController {
           id: thread.id,
           title: thread.title,
           postCount: thread.replyCount,
-          isLocked: thread.isLocked,
+          isLocked: Boolean(thread.isLocked),
           lastPostedAt: thread.lastPostedAt.toISO(),
           createdAt: thread.createdAt.toISO(),
           author: {
@@ -119,7 +122,7 @@ export default class ForumController {
         id: thread.id,
         title: thread.title,
         postCount: thread.replyCount,
-        isLocked: thread.isLocked,
+        isLocked: Boolean(thread.isLocked),
         createdAt: thread.createdAt.toISO(),
         lastPostedAt: thread.lastPostedAt.toISO(),
         author: {
@@ -167,7 +170,7 @@ export default class ForumController {
       thread: {
         id: thread.id,
         title: thread.title,
-        isLocked: thread.isLocked,
+        isLocked: Boolean(thread.isLocked),
         postCount: thread.replyCount,
         createdAt: thread.createdAt.toISO(),
         lastPostedAt: thread.lastPostedAt.toISO(),
@@ -245,6 +248,45 @@ export default class ForumController {
 
     ctx.session.flash('success', ctx.locale === 'en' ? 'Post published' : 'Post publie')
     return ctx.response.redirect(`/forum/thread/${thread.id}`)
+  }
+
+  async uploadImage(ctx: HttpContext) {
+    const denied = this.ensureForumAccount(ctx)
+    if (denied) return denied
+
+    const ban = await ForumService.getActiveBan(ctx.auth.user!.id)
+    if (ban) {
+      return ctx.response.status(403).json({
+        error: ForumService.forumBannedMessage(ctx.locale, ban.reason),
+      })
+    }
+
+    const image = ctx.request.file('image', {
+      size: '6mb',
+      extnames: ['png', 'jpg', 'jpeg', 'webp', 'gif'],
+    })
+
+    if (!image) {
+      return ctx.response.status(422).json({
+        error: ctx.locale === 'en' ? 'Image file required.' : 'Fichier image requis.',
+      })
+    }
+
+    const directory = app.publicPath('uploads/forum')
+    await fs.mkdir(directory, { recursive: true })
+
+    const fileName = `forum_${ctx.auth.user!.id}_${cuid()}.${image.extname}`
+    await image.move(directory, { name: fileName, overwrite: false })
+
+    if (!image.isValid) {
+      return ctx.response.status(422).json({
+        error: ctx.locale === 'en' ? 'Invalid image upload.' : 'Upload image invalide.',
+      })
+    }
+
+    return ctx.response.ok({
+      url: `/uploads/forum/${fileName}`,
+    })
   }
 
   async replyToPost(ctx: HttpContext) {

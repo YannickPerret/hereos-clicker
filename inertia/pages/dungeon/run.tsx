@@ -58,6 +58,11 @@ interface Props {
     quantity: number
     item: { name: string; effectType: string; effectValue: number }
   }[]
+  pendingRewards: {
+    credits: number
+    xp: number
+    items: { name: string; quantity: number }[]
+  }
   skills: {
     id: number
     name: string
@@ -122,32 +127,6 @@ function parseAfkPenalties(raw?: string) {
     return JSON.parse(raw) as Record<string, number>
   } catch {
     return {}
-  }
-}
-
-function summarizeRewards(log: CombatLogEntry[]) {
-  const lootCounts = new Map<string, number>()
-  let credits = 0
-  let xp = 0
-
-  for (const entry of log) {
-    if (entry.action !== 'enemy_defeated') continue
-
-    credits += entry.creditsReward || 0
-    xp += entry.xpReward || 0
-
-    for (const loot of entry.loot || []) {
-      lootCounts.set(loot.name, (lootCounts.get(loot.name) || 0) + 1)
-    }
-  }
-
-  return {
-    credits,
-    xp,
-    items: Array.from(lootCounts.entries()).map(([name, quantity]) => ({
-      name,
-      quantity,
-    })),
   }
 }
 
@@ -451,6 +430,7 @@ export default function DungeonRun({
   currentEnemy: initialEnemy,
   combatPreview,
   consumables,
+  pendingRewards: initialPendingRewards,
   skills = [],
   activeEffects: initialEffects = [],
 }: Props) {
@@ -460,6 +440,7 @@ export default function DungeonRun({
   const [run, setRun] = useState(initialRun)
   const [enemy, setEnemy] = useState(initialEnemy)
   const [preview, setPreview] = useState(combatPreview)
+  const [pendingRewards, setPendingRewards] = useState(initialPendingRewards)
   const [partyMembers, setPartyMembers] = useState<
     { id: number; name: string; level: number; hpCurrent: number; hpMax: number }[]
   >([])
@@ -490,15 +471,13 @@ export default function DungeonRun({
       'consumables',
       'skills',
       'activeEffects',
+      'pendingRewards',
       'combatLog',
       'errors',
       'success',
     ],
   } as const
-  const rewardSummary = useMemo(
-    () => summarizeRewards(isGroupRun ? groupLog : soloLog),
-    [groupLog, isGroupRun, soloLog]
-  )
+  const rewardSummary = pendingRewards
 
   // Sync from Inertia props
   useEffect(() => {
@@ -506,7 +485,8 @@ export default function DungeonRun({
     setRun(initialRun)
     setEnemy(initialEnemy)
     setPreview(combatPreview)
-  }, [character, initialRun, initialEnemy, combatPreview])
+    setPendingRewards(initialPendingRewards)
+  }, [character, initialRun, initialEnemy, combatPreview, initialPendingRewards])
 
   useEffect(() => {
     if (previousRunIdRef.current === initialRun.id) return
@@ -540,6 +520,7 @@ export default function DungeonRun({
         setRun(data.run)
         setEnemy(data.currentEnemy)
         setPreview(data.combatPreview)
+        if (data.pendingRewards) setPendingRewards(data.pendingRewards)
         setGroupLog(data.run.combatLog || [])
         if (data.partyMembers) setPartyMembers(data.partyMembers)
         // Calculate turn timer
@@ -1214,6 +1195,12 @@ export default function DungeonRun({
                     {entry.action === 'victory' && (
                       <span className="text-cyber-green font-bold tracking-widest">
                         {t('dungeon:victory')}!
+                        {(entry.creditsReward || entry.xpReward) && (
+                          <span className="ml-2 font-normal tracking-normal">
+                            {entry.creditsReward ? `+${entry.creditsReward}c` : ''}
+                            {entry.xpReward ? ` +${entry.xpReward} XP` : ''}
+                          </span>
+                        )}
                       </span>
                     )}
                     {entry.action === 'defeat' && (

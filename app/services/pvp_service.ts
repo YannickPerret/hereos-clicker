@@ -1,6 +1,7 @@
 import Character from '#models/character'
 import CharacterTalent from '#models/character_talent'
 import CombatSkill from '#models/combat_skill'
+import InventoryItem from '#models/inventory_item'
 import PartyMember from '#models/party_member'
 import PvpMatch from '#models/pvp_match'
 import PvpMatchParticipant from '#models/pvp_match_participant'
@@ -29,6 +30,8 @@ interface QueueTeam {
 }
 
 export default class PvpService {
+  private static readonly READY_CHECK_MS = 15_000
+
   private static modeSize(mode: QueueMode) {
     return mode === 'duo' ? 2 : mode === 'trio' ? 3 : 1
   }
@@ -299,12 +302,35 @@ export default class PvpService {
   private static async findActiveMatchForCharacters(characterIds: number[]) {
     const participant = await PvpMatchParticipant.query()
       .whereIn('characterId', characterIds)
-      .whereHas('match', (query) => query.whereIn('status', ['waiting', 'in_progress']))
+      .whereHas('match', (query) =>
+        query.whereIn('status', ['waiting', 'ready_check', 'in_progress'])
+      )
       .preload('match')
       .orderBy('id', 'desc')
       .first()
 
     return participant?.match || null
+  }
+
+  private static isReadyAccepted(participant: PvpMatchParticipant) {
+    return Boolean(participant.readyAccepted)
+  }
+
+  private static isReadyCheckExpired(match: PvpMatch) {
+    if (match.status !== 'ready_check') return false
+    if (!match.acceptDeadlineAt) return false
+    return Number(match.acceptDeadlineAt) <= Date.now()
+  }
+
+  private static getTeamPartyId(match: PvpMatch, team: number) {
+    return team === 1 ? match.challengerPartyId : match.defenderPartyId
+  }
+
+  private static getTeamMembers(participants: PvpMatchParticipant[], team: number) {
+    return participants
+      .filter((participant) => participant.team === team)
+      .sort((a, b) => a.slot - b.slot || a.id - b.id)
+      .map((participant) => participant.character)
   }
 
   private static async createParticipants(matchId: number, team: number, members: Character[]) {
@@ -322,6 +348,7 @@ export default class PvpService {
           currentHp: effectiveHpMax,
           hpMax: effectiveHpMax,
           isEliminated: false,
+          readyAccepted: false,
           createdAt,
         })
       )
@@ -362,6 +389,176 @@ export default class PvpService {
     }
 
     return null
+  }
+
+  private static async createWaitingMatchForTeam(queueTeam: QueueTeam) {
+    const match = await PvpMatch.create({
+      challengerId: queueTeam.leader.id,
+      defenderId: null,
+      challengerPartyId: queueTeam.partyId,
+      defenderPartyId: null,
+      winnerId: null,
+      winnerTeam: null,
+      status: 'waiting',
+      queueMode: queueTeam.mode,
+      teamSize: queueTeam.teamSize,
+      currentTurnId: null,
+      challengerHp: 0,
+      challengerHpMax: 0,
+      defenderHp: 0,
+      defenderHpMax: 0,
+      log: '[]',
+      skillCooldowns: '{}',
+      activeEffects: '[]',
+      ratingChange: 0,
+      acceptDeadlineAt: null,
+      createdAt: Date.now(),
+      updatedAt: null,
+    })
+
+    await this.createParticipants(match.id, 1, queueTeam.members)
+    const participants = await this.loadParticipants(match.id)
+    this.syncLegacyHpFields(match, participants)
+    await match.save()
+
+    return match
+  }
+
+  private static async startReadyCheck(waiting: PvpMatch, queueTeam: QueueTeam) {
+    await this.createParticipants(waiting.id, 2, queueTeam.members)
+
+    waiting.defenderId = queueTeam.leader.id
+    waiting.defenderPartyId = queueTeam.partyId
+    waiting.status = 'ready_check'
+    waiting.acceptDeadlineAt = Date.now() + this.READY_CHECK_MS
+    waiting.currentTurnId = null
+    waiting.log = '[]'
+    waiting.skillCooldowns = '{}'
+    waiting.activeEffects = '[]'
+
+    const participants = await this.loadParticipants(waiting.id)
+    for (const participant of participants) {
+      participant.readyAccepted = false
+      await participant.save()
+    }
+
+    this.syncLegacyHpFields(waiting, participants)
+    await waiting.save()
+
+    return waiting
+  }
+
+  private static async startMatchFromReadyCheck(
+    match: PvpMatch,
+    participants?: PvpMatchParticipant[]
+  ) {
+    const loadedParticipants = participants || (await this.loadParticipants(match.id))
+
+    match.status = 'in_progress'
+    match.acceptDeadlineAt = null
+    match.currentTurnId =
+      loadedParticipants
+        .filter((participant) => participant.team === 1)
+        .sort((a, b) => a.slot - b.slot)[0]?.characterId || match.challengerId
+    match.log = '[]'
+    match.skillCooldowns = '{}'
+    match.activeEffects = '[]'
+    this.syncLegacyHpFields(match, loadedParticipants)
+    await match.save()
+
+    const teamOneNames = loadedParticipants
+      .filter((participant) => participant.team === 1)
+      .map((participant) => participant.character.name)
+      .join(', ')
+    const teamTwoNames = loadedParticipants
+      .filter((participant) => participant.team === 2)
+      .map((participant) => participant.character.name)
+      .join(', ')
+
+    transmit.broadcast(`pvp/match/${match.id}`, {
+      type: 'match_start',
+      matchId: match.id,
+      queueMode: match.queueMode,
+      teamSize: match.teamSize,
+    })
+
+    transmit.broadcast('game/notifications', {
+      type: 'pvp',
+      message: `${teamOneNames} vs ${teamTwoNames} — Combat PvP ${this.modeLabel(match.queueMode)} en cours!`,
+    })
+
+    return match
+  }
+
+  private static async requeueAcceptedTeams(match: PvpMatch, participants: PvpMatchParticipant[]) {
+    for (const team of [1, 2]) {
+      const teamParticipants = participants.filter((participant) => participant.team === team)
+
+      if (teamParticipants.length !== match.teamSize) {
+        continue
+      }
+
+      if (!teamParticipants.every((participant) => this.isReadyAccepted(participant))) {
+        continue
+      }
+
+      const members = this.getTeamMembers(participants, team)
+      const active = await this.findActiveMatchForCharacters(members.map((member) => member.id))
+      if (active) {
+        continue
+      }
+
+      await this.createWaitingMatchForTeam({
+        leader: members[0],
+        members,
+        partyId: this.getTeamPartyId(match, team),
+        mode: match.queueMode,
+        teamSize: match.teamSize,
+      })
+    }
+  }
+
+  private static async cancelReadyCheck(
+    match: PvpMatch,
+    participants: PvpMatchParticipant[],
+    reason: 'declined' | 'timeout',
+    declinedCharacterId: number | null = null
+  ) {
+    match.status = 'cancelled'
+    match.currentTurnId = null
+    match.acceptDeadlineAt = null
+    await match.save()
+
+    await this.requeueAcceptedTeams(match, participants)
+
+    transmit.broadcast(`pvp/match/${match.id}`, {
+      type: 'ready_check_cancelled',
+      matchId: match.id,
+      reason,
+      declinedCharacterId,
+    })
+
+    return match
+  }
+
+  private static async resolveExpiredReadyCheck(match: PvpMatch) {
+    if (!this.isReadyCheckExpired(match)) {
+      return match
+    }
+
+    const participants = await this.loadParticipants(match.id)
+    await this.cancelReadyCheck(match, participants, 'timeout')
+    return match
+  }
+
+  static async getResolvedActiveMatch(characterIds: number[]) {
+    let active = await this.findActiveMatchForCharacters(characterIds)
+    if (active?.status === 'ready_check') {
+      await this.resolveExpiredReadyCheck(active)
+      active = await this.findActiveMatchForCharacters(characterIds)
+    }
+
+    return active
   }
 
   static async getQueueOverview(character: Character) {
@@ -420,85 +617,32 @@ export default class PvpService {
     if (activeSeason && !activeSeason.isRankedPvpEnabled) {
       throw new Error('Le PvP classe est desactive pour la saison active')
     }
-    const active = await this.findActiveMatchForCharacters(
-      queueTeam.members.map((member) => member.id)
-    )
+    const active = await this.getResolvedActiveMatch(queueTeam.members.map((member) => member.id))
 
     if (active) return active
 
     const waiting = await this.findCompatibleWaitingMatch(queueTeam)
 
     if (waiting) {
-      await this.createParticipants(waiting.id, 2, queueTeam.members)
+      const readyCheckMatch = await this.startReadyCheck(waiting, queueTeam)
 
-      waiting.defenderId = queueTeam.leader.id
-      waiting.defenderPartyId = queueTeam.partyId
-      waiting.status = 'in_progress'
-      waiting.currentTurnId =
-        waiting.participants
-          .filter((participant) => participant.team === 1)
-          .sort((a, b) => a.slot - b.slot)[0]?.characterId || waiting.challengerId
-      waiting.log = '[]'
-      waiting.skillCooldowns = '{}'
-      waiting.activeEffects = '[]'
-
-      const participants = await this.loadParticipants(waiting.id)
-      this.syncLegacyHpFields(waiting, participants)
-      await waiting.save()
-
-      const teamOneNames = participants
-        .filter((participant) => participant.team === 1)
-        .map((participant) => participant.character.name)
-        .join(', ')
-      const teamTwoNames = participants
-        .filter((participant) => participant.team === 2)
-        .map((participant) => participant.character.name)
-        .join(', ')
-
-      transmit.broadcast(`pvp/match/${waiting.id}`, {
-        type: 'match_start',
-        matchId: waiting.id,
-        queueMode: waiting.queueMode,
-        teamSize: waiting.teamSize,
+      transmit.broadcast(`pvp/match/${readyCheckMatch.id}`, {
+        type: 'ready_check_started',
+        matchId: readyCheckMatch.id,
+        queueMode: readyCheckMatch.queueMode,
+        teamSize: readyCheckMatch.teamSize,
+        acceptDeadlineAt: readyCheckMatch.acceptDeadlineAt,
       })
 
       transmit.broadcast('game/notifications', {
         type: 'pvp',
-        message: `${teamOneNames} vs ${teamTwoNames} — Combat PvP ${this.modeLabel(waiting.queueMode)} en cours!`,
+        message: `Match ${this.modeLabel(readyCheckMatch.queueMode)} trouve. Accepte le combat avant la fin du compte a rebours.`,
       })
 
-      return waiting
+      return readyCheckMatch
     }
 
-    const match = await PvpMatch.create({
-      challengerId: queueTeam.leader.id,
-      defenderId: null,
-      challengerPartyId: queueTeam.partyId,
-      defenderPartyId: null,
-      winnerId: null,
-      winnerTeam: null,
-      status: 'waiting',
-      queueMode: queueTeam.mode,
-      teamSize: queueTeam.teamSize,
-      currentTurnId: null,
-      challengerHp: 0,
-      challengerHpMax: 0,
-      defenderHp: 0,
-      defenderHpMax: 0,
-      log: '[]',
-      skillCooldowns: '{}',
-      activeEffects: '[]',
-      ratingChange: 0,
-      createdAt: Date.now(),
-      updatedAt: null,
-    })
-
-    await this.createParticipants(match.id, 1, queueTeam.members)
-    const participants = await this.loadParticipants(match.id)
-    this.syncLegacyHpFields(match, participants)
-    await match.save()
-
-    return match
+    return this.createWaitingMatchForTeam(queueTeam)
   }
 
   /** Cancel waiting in queue */
@@ -513,7 +657,96 @@ export default class PvpService {
 
     participant.match.status = 'cancelled'
     participant.match.currentTurnId = null
+    participant.match.acceptDeadlineAt = null
     await participant.match.save()
+  }
+
+  static async acceptReadyCheck(character: Character, matchId: number) {
+    const match = await PvpMatch.findOrFail(matchId)
+
+    if (match.status !== 'ready_check') {
+      return match
+    }
+
+    await this.resolveExpiredReadyCheck(match)
+    await match.refresh()
+
+    if (match.status !== 'ready_check') {
+      return match
+    }
+
+    const participants = await this.loadParticipants(match.id)
+    const participant = this.getParticipant(participants, character.id)
+
+    if (!participant) {
+      throw new Error('Match introuvable')
+    }
+
+    if (!this.isReadyAccepted(participant)) {
+      participant.readyAccepted = true
+      await participant.save()
+    }
+
+    const refreshedParticipants = await this.loadParticipants(match.id)
+    const acceptedCount = refreshedParticipants.filter((entry) => this.isReadyAccepted(entry)).length
+
+    transmit.broadcast(`pvp/match/${match.id}`, {
+      type: 'ready_check_update',
+      matchId: match.id,
+      acceptedCount,
+      totalParticipants: refreshedParticipants.length,
+      acceptedCharacterId: character.id,
+      acceptDeadlineAt: match.acceptDeadlineAt,
+    })
+
+    if (acceptedCount === refreshedParticipants.length && refreshedParticipants.length > 0) {
+      return this.startMatchFromReadyCheck(match, refreshedParticipants)
+    }
+
+    return match
+  }
+
+  static async declineReadyCheck(character: Character, matchId: number) {
+    const match = await PvpMatch.findOrFail(matchId)
+
+    if (match.status !== 'ready_check') {
+      return match
+    }
+
+    await this.resolveExpiredReadyCheck(match)
+    await match.refresh()
+
+    if (match.status !== 'ready_check') {
+      return match
+    }
+
+    const participants = await this.loadParticipants(match.id)
+    const participant = this.getParticipant(participants, character.id)
+
+    if (!participant) {
+      throw new Error('Match introuvable')
+    }
+
+    await this.cancelReadyCheck(match, participants, 'declined', character.id)
+    return match
+  }
+
+  static async getReadyCheckState(matchId: number, characterId: number) {
+    const match = await PvpMatch.findOrFail(matchId)
+    if (match.status === 'ready_check') {
+      await this.resolveExpiredReadyCheck(match)
+      await match.refresh()
+    }
+
+    const participants = await this.loadParticipants(match.id)
+    const participant = this.getParticipant(participants, characterId)
+
+    return {
+      acceptedCount: participants.filter((entry) => this.isReadyAccepted(entry)).length,
+      totalParticipants: participants.length,
+      myAccepted: participant ? this.isReadyAccepted(participant) : false,
+      acceptDeadlineAt: match.acceptDeadlineAt,
+    }
   }
 
   private static async validateSkill(
@@ -1175,6 +1408,81 @@ export default class PvpService {
     return { match, log: log[log.length - 1] }
   }
 
+  static async useConsumable(character: Character, matchId: number, inventoryItemId: number) {
+    const match = await PvpMatch.findOrFail(matchId)
+    const participants = await this.loadParticipants(match.id)
+    const actorParticipant = this.getParticipant(participants, character.id)
+
+    if (!actorParticipant || actorParticipant.isEliminated) {
+      throw new Error('Ton personnage ne peut plus agir')
+    }
+
+    if (match.status !== 'in_progress') {
+      throw new Error('Match non actif')
+    }
+
+    if (match.currentTurnId !== character.id) {
+      throw new Error("Ce n'est pas ton tour")
+    }
+
+    const invItem = await InventoryItem.query()
+      .where('id', inventoryItemId)
+      .where('characterId', character.id)
+      .preload('item')
+      .firstOrFail()
+
+    if (invItem.item.type !== 'consumable') {
+      throw new Error("Cet objet n'est pas consommable")
+    }
+
+    const log = this.getLog(match)
+
+    switch (invItem.item.effectType) {
+      case 'hp_restore': {
+        const healed = Math.min(
+          invItem.item.effectValue || 0,
+          actorParticipant.hpMax - actorParticipant.currentHp
+        )
+        actorParticipant.currentHp += healed
+        log.push({
+          action: 'item_use',
+          attackerId: character.id,
+          attackerName: character.name,
+          defenderId: character.id,
+          defenderName: character.name,
+          itemName: invItem.item.name,
+          healed,
+          message: `+${healed} HP`,
+        })
+        break
+      }
+      default:
+        log.push({
+          action: 'item_use',
+          attackerId: character.id,
+          attackerName: character.name,
+          defenderId: character.id,
+          defenderName: character.name,
+          itemName: invItem.item.name,
+          message: `Utilise ${invItem.item.name}`,
+        })
+    }
+
+    invItem.quantity -= 1
+    if (invItem.quantity <= 0) {
+      await invItem.delete()
+    } else {
+      await invItem.save()
+    }
+
+    this.setLog(match, log)
+    this.syncLegacyHpFields(match, participants)
+    await actorParticipant.save()
+    await this.advanceTurn(match, participants, character.id)
+
+    return { match, log: log[log.length - 1] }
+  }
+
   /** Forfeit */
   static async forfeit(character: Character, matchId: number) {
     const match = await PvpMatch.findOrFail(matchId)
@@ -1220,6 +1528,7 @@ export default class PvpService {
     const winnerLeader = winners.sort((a, b) => a.slot - b.slot)[0]
     match.status = 'completed'
     match.currentTurnId = null
+    match.acceptDeadlineAt = null
     match.winnerTeam = winnerTeam
     match.winnerId = winnerLeader?.characterId || null
     this.setLog(match, log)
@@ -1304,6 +1613,10 @@ export default class PvpService {
   /** Get match state for rendering */
   static async getMatchState(matchId: number) {
     const match = await PvpMatch.findOrFail(matchId)
+    if (match.status === 'ready_check') {
+      await this.resolveExpiredReadyCheck(match)
+      await match.refresh()
+    }
     const participants = await this.loadParticipants(match.id)
     const teams = await Promise.all(
       [1, 2].map(async (team) => {
@@ -1364,6 +1677,7 @@ export default class PvpService {
         winnerId: match.winnerId,
         winnerTeam: match.winnerTeam,
         ratingChange: match.ratingChange,
+        acceptDeadlineAt: match.acceptDeadlineAt,
         log: this.getLog(match),
         skillCooldowns: JSON.parse(match.skillCooldowns || '{}'),
         queueEstimateSeconds: this.estimateQueueSeconds(

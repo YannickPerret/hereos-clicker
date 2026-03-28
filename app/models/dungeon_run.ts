@@ -47,6 +47,9 @@ export default class DungeonRun extends BaseModel {
   @column()
   declare afkPenalties: string
 
+  @column()
+  declare pendingRewards: string
+
   @column.dateTime({ autoCreate: true })
   declare startedAt: DateTime
 

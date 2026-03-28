@@ -14,6 +14,29 @@ import { localize, localizeAll } from '#services/locale_service'
 export default class DungeonController {
   private leaderboardPageSize = 25
 
+  private getPendingRewardsForCharacter(run: DungeonRun, characterId: number) {
+    try {
+      const parsed = JSON.parse(run.pendingRewards || '{}') as Record<
+        string,
+        { credits: number; xp: number; items: { name: string; quantity: number }[] }
+      >
+
+      return (
+        parsed[String(characterId)] || {
+          credits: 0,
+          xp: 0,
+          items: [],
+        }
+      )
+    } catch {
+      return {
+        credits: 0,
+        xp: 0,
+        items: [],
+      }
+    }
+  }
+
   private isRunAccessError(error: unknown) {
     return error instanceof Error && error.message === 'Invalid run'
   }
@@ -228,6 +251,7 @@ export default class DungeonController {
         ...c.serialize(),
         item: localize(c.item.serialize(), locale, ['name', 'description']),
       })),
+      pendingRewards: this.getPendingRewardsForCharacter(run, character.id),
       skills: skills.map((s) => ({
         ...localize(s.serialize(), locale, ['name', 'description']),
         currentCooldown: charCooldowns[s.id] || 0,
@@ -363,6 +387,7 @@ export default class DungeonController {
         ...run.serialize(),
         combatLog: JSON.parse(run.combatLog || '[]'),
       },
+      pendingRewards: this.getPendingRewardsForCharacter(run, character.id),
       currentEnemy: currentEnemy
         ? localize(currentEnemy.serialize(), locale, ['name', 'description'])
         : null,

@@ -1,5 +1,6 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import Character from '#models/character'
+import InventoryItem from '#models/inventory_item'
 import PvpMatchParticipant from '#models/pvp_match_participant'
 import CombatService from '#services/combat_service'
 import ClickerService from '#services/clicker_service'
@@ -60,6 +61,10 @@ export default class PvpController {
     const state = await PvpService.getMatchState(matchId)
     const skills = await CombatService.getAvailableSkills(character)
     const cooldowns = state.match.skillCooldowns?.[character.id] || {}
+    const consumables = await InventoryItem.query()
+      .where('characterId', character.id)
+      .preload('item')
+      .whereHas('item', (query) => query.where('type', 'consumable'))
 
     return {
       myId: character.id,
@@ -67,6 +72,10 @@ export default class PvpController {
       skills: skills.map((skill) => ({
         ...localize(skill.serialize(), locale, ['name', 'description']),
         currentCooldown: cooldowns[skill.id] || 0,
+      })),
+      consumables: consumables.map((entry) => ({
+        ...entry.serialize(),
+        item: localize(entry.item.serialize(), locale, ['name', 'description']),
       })),
     }
   }
@@ -90,13 +99,19 @@ export default class PvpController {
       await character.save()
     }
 
-    const activeParticipant = await PvpMatchParticipant.query()
-      .where('characterId', character.id)
-      .whereHas('match', (q) => q.whereIn('status', ['waiting', 'in_progress']))
-      .preload('match')
-      .orderBy('id', 'desc')
-      .first()
-    const activeMatch = activeParticipant?.match || null
+    const activeMatch = await PvpService.getResolvedActiveMatch([character.id])
+    const readyCheckState =
+      activeMatch?.status === 'ready_check'
+        ? await PvpService.getReadyCheckState(activeMatch.id, character.id)
+        : null
+
+    const activeParticipant = activeMatch
+      ? await PvpMatchParticipant.query()
+          .where('matchId', activeMatch.id)
+          .where('characterId', character.id)
+          .orderBy('id', 'desc')
+          .first()
+      : null
 
     console.log('[pvp.index]', {
       userId: auth.user?.id,
@@ -143,6 +158,10 @@ export default class PvpController {
             status: activeMatch.status,
             queueMode: activeMatch.queueMode,
             teamSize: activeMatch.teamSize,
+            acceptDeadlineAt: activeMatch.acceptDeadlineAt,
+            acceptedCount: readyCheckState?.acceptedCount ?? 0,
+            totalParticipants: readyCheckState?.totalParticipants ?? 0,
+            myAccepted: readyCheckState?.myAccepted ?? false,
           }
         : null,
       recentMatches: matchData,
@@ -251,6 +270,33 @@ export default class PvpController {
     return response.redirect('/pvp')
   }
 
+  async acceptMatch({ params, auth, response, session, locale }: HttpContext) {
+    if (auth.user!.isGuest) {
+      session.flash('errors', { message: this.guestPvpMessage(locale) })
+      return response.redirect('/play')
+    }
+
+    const character = await Character.query().where('userId', auth.user!.id).firstOrFail()
+    const match = await PvpService.acceptReadyCheck(character, Number(params.matchId))
+
+    if (match.status === 'in_progress') {
+      return response.redirect(`/pvp/match/${match.id}`)
+    }
+
+    return response.redirect('/pvp')
+  }
+
+  async declineMatch({ params, auth, response, session, locale }: HttpContext) {
+    if (auth.user!.isGuest) {
+      session.flash('errors', { message: this.guestPvpMessage(locale) })
+      return response.redirect('/play')
+    }
+
+    const character = await Character.query().where('userId', auth.user!.id).firstOrFail()
+    await PvpService.declineReadyCheck(character, Number(params.matchId))
+    return response.redirect('/pvp')
+  }
+
   async show({ params, inertia, auth, locale, response, session }: HttpContext) {
     if (auth.user!.isGuest) {
       session.flash('errors', { message: this.guestPvpMessage(locale) })
@@ -335,6 +381,23 @@ export default class PvpController {
           await DailyMissionService.trackProgress(character.id, 'pvp_win')
         }
       }
+    } catch (e: any) {
+      session.flash('errors', { message: e.message })
+    }
+
+    return response.redirect(`/pvp/match/${params.matchId}`)
+  }
+
+  async useItem({ params, request, auth, response, session, locale }: HttpContext) {
+    if (auth.user!.isGuest) {
+      session.flash('errors', { message: this.guestPvpMessage(locale) })
+      return response.redirect('/play')
+    }
+
+    const character = await Character.query().where('userId', auth.user!.id).firstOrFail()
+
+    try {
+      await PvpService.useConsumable(character, Number(params.matchId), Number(request.input('inventoryItemId')))
     } catch (e: any) {
       session.flash('errors', { message: e.message })
     }

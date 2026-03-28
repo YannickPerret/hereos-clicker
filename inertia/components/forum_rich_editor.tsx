@@ -1,4 +1,6 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { getCsrfToken } from '~/lib/csrf'
 
 type Props = {
   value: string
@@ -26,7 +28,10 @@ export default function ForumRichEditor({
   minHeightClassName = 'min-h-32',
   disabled = false,
 }: Props) {
+  const { t } = useTranslation('forum')
   const editorRef = useRef<HTMLDivElement | null>(null)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const [uploadingImage, setUploadingImage] = useState(false)
 
   useEffect(() => {
     if (!editorRef.current || editorRef.current.innerHTML === value) {
@@ -59,6 +64,41 @@ export default function ForumRichEditor({
     exec('createLink', url)
   }
 
+  const uploadImage = async (file: File) => {
+    if (disabled || uploadingImage) {
+      return
+    }
+
+    const formData = new FormData()
+    formData.append('image', file)
+
+    setUploadingImage(true)
+
+    try {
+      const response = await fetch('/forum/uploads/image', {
+        method: 'POST',
+        headers: {
+          'X-XSRF-TOKEN': getCsrfToken(),
+        },
+        body: formData,
+      })
+
+      const data = await response.json()
+      if (!response.ok || !data?.url) {
+        throw new Error(data?.error || 'Upload failed')
+      }
+
+      exec('insertHTML', `<img src="${data.url}" alt="${file.name.replace(/"/g, '&quot;')}">`)
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : t('imageUploadError'))
+    } finally {
+      setUploadingImage(false)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+    }
+  }
+
   return (
     <div className="rounded-xl border border-gray-800 bg-cyber-black/70">
       <div className="flex flex-wrap gap-2 border-b border-gray-800 px-3 py-2">
@@ -83,6 +123,14 @@ export default function ForumRichEditor({
         </button>
         <button
           type="button"
+          disabled={disabled || uploadingImage}
+          onClick={() => fileInputRef.current?.click()}
+          className="rounded border border-cyber-purple/20 px-2 py-1 text-[10px] font-bold uppercase text-cyber-purple transition hover:bg-cyber-purple/10 disabled:opacity-40"
+        >
+          {uploadingImage ? t('imageUploading') : t('imageButton')}
+        </button>
+        <button
+          type="button"
           disabled={disabled}
           onClick={() => {
             if (disabled) return
@@ -95,6 +143,18 @@ export default function ForumRichEditor({
         >
           Clear
         </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/png,image/jpeg,image/webp,image/gif"
+          className="hidden"
+          onChange={(event) => {
+            const file = event.target.files?.[0]
+            if (file) {
+              void uploadImage(file)
+            }
+          }}
+        />
       </div>
 
       <div className="relative">
@@ -113,7 +173,7 @@ export default function ForumRichEditor({
             const text = event.clipboardData.getData('text/plain')
             document.execCommand('insertText', false, text)
           }}
-          className={`${minHeightClassName} px-4 py-3 text-sm leading-7 text-white focus:outline-none [&_blockquote]:border-l [&_blockquote]:border-cyber-orange/35 [&_blockquote]:pl-3 [&_blockquote]:italic [&_ol]:list-decimal [&_ol]:pl-5 [&_pre]:overflow-x-auto [&_pre]:rounded [&_pre]:bg-white/5 [&_pre]:p-3 [&_strong]:font-bold [&_ul]:list-disc [&_ul]:pl-5`}
+          className={`${minHeightClassName} px-4 py-3 text-sm leading-7 text-white focus:outline-none [&_blockquote]:border-l [&_blockquote]:border-cyber-orange/35 [&_blockquote]:pl-3 [&_blockquote]:italic [&_img]:mt-3 [&_img]:max-h-80 [&_img]:rounded-lg [&_img]:border [&_img]:border-cyber-blue/20 [&_img]:object-contain [&_ol]:list-decimal [&_ol]:pl-5 [&_pre]:overflow-x-auto [&_pre]:rounded [&_pre]:bg-white/5 [&_pre]:p-3 [&_strong]:font-bold [&_ul]:list-disc [&_ul]:pl-5`}
         />
       </div>
     </div>

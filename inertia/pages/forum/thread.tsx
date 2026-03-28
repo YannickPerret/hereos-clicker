@@ -251,7 +251,7 @@ export default function ForumThreadPage({ thread, posts, canPost, forumBan }: Pr
                 </div>
 
                 <div
-                  className="prose prose-invert mt-3 max-w-none text-sm leading-7 text-gray-200 prose-a:text-cyber-blue prose-blockquote:border-cyber-orange/35 prose-code:text-cyber-orange prose-pre:bg-white/5"
+                  className="prose prose-invert mt-3 max-w-none text-sm leading-7 text-gray-200 prose-a:text-cyber-blue prose-blockquote:border-cyber-orange/35 prose-code:text-cyber-orange prose-img:rounded-lg prose-img:border prose-img:border-cyber-blue/20 prose-img:shadow-[0_0_20px_rgba(0,240,255,0.08)] prose-pre:bg-white/5"
                   dangerouslySetInnerHTML={{ __html: post.body }}
                 />
 
@@ -279,7 +279,7 @@ export default function ForumThreadPage({ thread, posts, canPost, forumBan }: Pr
                           />
                         </div>
                         <div
-                          className="prose prose-invert mt-2 max-w-none text-sm leading-7 text-gray-300 prose-a:text-cyber-blue prose-blockquote:border-cyber-orange/35 prose-code:text-cyber-orange prose-pre:bg-white/5"
+                          className="prose prose-invert mt-2 max-w-none text-sm leading-7 text-gray-300 prose-a:text-cyber-blue prose-blockquote:border-cyber-orange/35 prose-code:text-cyber-orange prose-img:rounded-lg prose-img:border prose-img:border-cyber-blue/20 prose-img:shadow-[0_0_20px_rgba(0,240,255,0.08)] prose-pre:bg-white/5"
                           dangerouslySetInnerHTML={{ __html: reply.body }}
                         />
                       </div>

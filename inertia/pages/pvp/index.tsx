@@ -1,5 +1,5 @@
 import { router, usePage } from '@inertiajs/react'
-import { useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import GameLayout from '~/components/layout'
 
@@ -41,6 +41,10 @@ interface Props {
     status: string
     queueMode: 'solo' | 'duo' | 'trio'
     teamSize: number
+    acceptDeadlineAt: number | null
+    acceptedCount: number
+    totalParticipants: number
+    myAccepted: boolean
   } | null
   recentMatches: Match[]
   queueOverview: QueueCard[]
@@ -106,9 +110,15 @@ export default function PvpArena({
     }
   }>()
   const activeSeason = props.season?.active ?? null
+  const [now, setNow] = useState(() => Date.now())
+
+  const readyCheckSecondsLeft = useMemo(() => {
+    if (!activeMatch?.acceptDeadlineAt) return 0
+    return Math.max(0, Math.ceil((activeMatch.acceptDeadlineAt - now) / 1000))
+  }, [activeMatch?.acceptDeadlineAt, now])
 
   useEffect(() => {
-    if (!activeMatch || activeMatch.status !== 'waiting') return
+    if (!activeMatch || !['waiting', 'ready_check'].includes(activeMatch.status)) return
 
     const poll = window.setInterval(() => {
       router.reload({
@@ -120,6 +130,16 @@ export default function PvpArena({
 
     return () => window.clearInterval(poll)
   }, [activeMatch?.id, activeMatch?.status])
+
+  useEffect(() => {
+    if (activeMatch?.status !== 'ready_check') return
+
+    const timer = window.setInterval(() => {
+      setNow(Date.now())
+    }, 250)
+
+    return () => window.clearInterval(timer)
+  }, [activeMatch?.status, activeMatch?.id])
 
   useEffect(() => {
     if (activeMatch?.status === 'in_progress') {
@@ -204,6 +224,40 @@ export default function PvpArena({
                   {activeMatch.status === 'waiting' ? (
                     <div className="rounded border border-cyber-yellow/30 bg-cyber-yellow/10 px-4 py-3 text-sm font-bold uppercase tracking-widest text-cyber-yellow">
                       {t('pvp:searching')}
+                    </div>
+                  ) : activeMatch.status === 'ready_check' ? (
+                    <div className="space-y-3">
+                      <div className="rounded border border-cyber-blue/40 bg-cyber-blue/10 px-4 py-3">
+                        <div className="text-sm font-bold uppercase tracking-widest text-cyber-blue">
+                          {t('pvp:matchFound')}
+                        </div>
+                        <div className="mt-2 text-2xl font-black text-white">
+                          {readyCheckSecondsLeft}s
+                        </div>
+                        <div className="mt-1 text-[11px] uppercase tracking-widest text-gray-500">
+                          {t('pvp:acceptedPlayers', {
+                            accepted: activeMatch.acceptedCount,
+                            total: activeMatch.totalParticipants,
+                          })}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => router.post(`/pvp/match/${activeMatch.id}/accept`)}
+                        disabled={activeMatch.myAccepted}
+                        className={`w-full rounded border py-3 text-sm font-bold uppercase tracking-widest transition-all ${
+                          activeMatch.myAccepted
+                            ? 'cursor-not-allowed border-cyber-green/30 bg-cyber-green/10 text-cyber-green/60'
+                            : 'border-cyber-green/40 bg-cyber-green/10 text-cyber-green hover:bg-cyber-green/20'
+                        }`}
+                      >
+                        {activeMatch.myAccepted ? t('pvp:accepted') : t('pvp:acceptMatch')}
+                      </button>
+                      <button
+                        onClick={() => router.post(`/pvp/match/${activeMatch.id}/decline`)}
+                        className="w-full rounded border border-cyber-red/40 bg-cyber-red/10 py-3 text-xs font-bold uppercase tracking-widest text-cyber-red transition-all hover:bg-cyber-red/20"
+                      >
+                        {t('pvp:declineMatch')}
+                      </button>
                     </div>
                   ) : (
                     <button

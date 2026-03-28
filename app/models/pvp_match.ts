@@ -62,6 +62,9 @@ export default class PvpMatch extends BaseModel {
   declare ratingChange: number
 
   @column()
+  declare acceptDeadlineAt: number | null
+
+  @column()
   declare createdAt: number
 
   @column()
