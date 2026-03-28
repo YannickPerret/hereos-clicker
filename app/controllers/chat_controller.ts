@@ -6,6 +6,7 @@ import ChatChannel from '#models/chat_channel'
 import PartyMember from '#models/party_member'
 import transmit from '@adonisjs/transmit/services/main'
 import ChatPresenceService from '#services/chat_presence_service'
+import ChatModerationService from '#services/chat_moderation_service'
 
 export default class ChatController {
   private guestChatError(locale: string) {
@@ -17,6 +18,21 @@ export default class ChatController {
       upgradeRequired: true,
       upgradePath: '/account/upgrade',
     }
+  }
+
+  private localizedError(locale: string, key: 'invalidMessage' | 'chatRateLimited' | 'chatObscenityBlocked') {
+    if (locale === 'en') {
+      if (key === 'invalidMessage') return 'Invalid message'
+      if (key === 'chatRateLimited')
+        return 'You are sending messages too fast. Please wait a moment.'
+      return 'Message blocked by the chat filter.'
+    }
+
+    if (key === 'invalidMessage') return 'Message invalide'
+    if (key === 'chatRateLimited') {
+      return 'Tu envoies des messages trop vite. Attends un instant.'
+    }
+    return 'Message bloque par le filtre du chat.'
   }
 
   /** API: get channels list */
@@ -78,7 +94,19 @@ export default class ChatController {
     const channel = request.input('channel', 'global')
 
     if (!message || message.length > 500) {
-      return response.badRequest({ error: 'Message invalide' })
+      return response.badRequest({ error: this.localizedError(locale, 'invalidMessage') })
+    }
+
+    const rateLimit = ChatModerationService.checkRateLimit(auth.user!.id)
+    if (!rateLimit.allowed) {
+      return response.status(429).json({
+        error: this.localizedError(locale, 'chatRateLimited'),
+        retryAfterSeconds: rateLimit.retryAfterSeconds,
+      })
+    }
+
+    if (ChatModerationService.containsObscenity(message)) {
+      return response.badRequest({ error: this.localizedError(locale, 'chatObscenityBlocked') })
     }
 
     // Verify channel exists

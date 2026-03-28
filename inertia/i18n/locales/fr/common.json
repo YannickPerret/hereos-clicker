@@ -183,6 +183,8 @@
     "minimumPlayersRequired": "Minimum {{count}} joueurs requis",
     "levelRequiredForPartyMember": "{{name}} n'a pas le niveau requis ({{level}})",
     "invalidMessage": "Message invalide",
+    "chatRateLimited": "Tu envoies des messages trop vite. Attends un instant.",
+    "chatObscenityBlocked": "Message bloque par le filtre du chat.",
     "unknownChannel": "Salon inconnu",
     "notInThisParty": "Tu ne fais pas partie de ce groupe",
     "incorrectPassword": "Mot de passe incorrect",
