@@ -12,6 +12,12 @@ export default class Talent extends BaseModel {
   declare description: string
 
   @column()
+  declare nameEn: string | null
+
+  @column()
+  declare descriptionEn: string | null
+
+  @column()
   declare spec: 'hacker' | 'netrunner' | 'samurai' | 'chrome_dealer'
 
   @column()

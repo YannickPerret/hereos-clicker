@@ -6,6 +6,7 @@ import { DateTime } from 'luxon'
 import transmit from '@adonisjs/transmit/services/main'
 import QuestService from '#services/quest_service'
 import CompanionService from '#services/companion_service'
+import { localizeAll } from '#services/locale_service'
 
 export default class CompanionController {
   private static readonly MIN_LEVEL = 10
@@ -20,7 +21,7 @@ export default class CompanionController {
     }
   }
 
-  async index({ inertia, auth, response, session }: HttpContext) {
+  async index({ inertia, auth, response, session, locale }: HttpContext) {
     const character = await this.getCurrentCharacter(auth.user!.id)
     try {
       this.ensureUnlocked(character)
@@ -39,23 +40,27 @@ export default class CompanionController {
 
     return inertia.render('companions/index', {
       character: character.serialize(),
-      owned: owned.map((o) => ({
-        id: o.id,
-        companionId: o.companion.id,
-        name: o.companion.name,
-        description: o.companion.description,
-        rarity: o.companion.rarity,
-        bonusType: o.companion.bonusType,
-        bonusValue: CompanionService.getScaledBonusValue(o.companion.bonusValue, o.level),
-        baseValue: o.companion.bonusValue,
-        icon: o.companion.icon,
-        isActive: o.isActive,
-        level: o.level,
-        xp: o.xp,
-        nextBonusValue: CompanionService.getScaledBonusValue(o.companion.bonusValue, o.level + 1),
-        upgradePrice: CompanionService.getUpgradePrice(o.companion.basePrice, o.level),
-      })),
-      shop: allCompanions.filter((c) => !ownedIds.includes(c.id)).map((c) => c.serialize()),
+      owned: owned.map((o) => {
+        const name = locale === 'en' && o.companion.nameEn ? o.companion.nameEn : o.companion.name
+        const description = locale === 'en' && o.companion.descriptionEn ? o.companion.descriptionEn : o.companion.description
+        return {
+          id: o.id,
+          companionId: o.companion.id,
+          name,
+          description,
+          rarity: o.companion.rarity,
+          bonusType: o.companion.bonusType,
+          bonusValue: CompanionService.getScaledBonusValue(o.companion.bonusValue, o.level),
+          baseValue: o.companion.bonusValue,
+          icon: o.companion.icon,
+          isActive: o.isActive,
+          level: o.level,
+          xp: o.xp,
+          nextBonusValue: CompanionService.getScaledBonusValue(o.companion.bonusValue, o.level + 1),
+          upgradePrice: CompanionService.getUpgradePrice(o.companion.basePrice, o.level),
+        }
+      }),
+      shop: localizeAll(allCompanions.filter((c) => !ownedIds.includes(c.id)).map((c) => c.serialize()), locale, ['name', 'description']),
     })
   }
 

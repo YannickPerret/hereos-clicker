@@ -9,6 +9,7 @@ import CombatService from '#services/combat_service'
 import CharacterPvpSeasonStat from '#models/character_pvp_season_stat'
 import SeasonService from '#services/season_service'
 import CompanionService from '#services/companion_service'
+import { localize, localizeAll } from '#services/locale_service'
 
 export default class DungeonController {
   private leaderboardPageSize = 25
@@ -98,7 +99,7 @@ export default class DungeonController {
     return response.redirect(run ? `/dungeon/run/${run.id}` : '/dungeon')
   }
 
-  async index({ inertia, auth }: HttpContext) {
+  async index({ inertia, auth, locale }: HttpContext) {
     const character = await Character.query().where('userId', auth.user!.id).firstOrFail()
     const companionBonuses = await CompanionService.getActiveBonuses(character.id)
 
@@ -128,7 +129,7 @@ export default class DungeonController {
         ...character.serialize(),
         hpMax: character.hpMax + companionBonuses.hpBonus,
       },
-      floors: floors.map((f) => f.serialize()),
+      floors: localizeAll(floors.map((f) => f.serialize()), locale, ['name', 'description']),
       activeRun: activeRun?.serialize() || null,
     })
   }
@@ -174,7 +175,7 @@ export default class DungeonController {
     return run
   }
 
-  async show({ params, inertia, auth, response, session }: HttpContext) {
+  async show({ params, inertia, auth, response, session, locale }: HttpContext) {
     const character = await Character.query().where('userId', auth.user!.id).firstOrFail()
 
     const run = await this.findAccessibleRun(character, params.runId)
@@ -209,12 +210,12 @@ export default class DungeonController {
         critChance: Math.min(100, character.critChance + companionBonuses.critChanceBonus),
       },
       run: run.serialize(),
-      floor: run.dungeonFloor.serialize(),
-      currentEnemy: currentEnemy?.serialize() || null,
+      floor: localize(run.dungeonFloor.serialize(), locale, ['name', 'description']),
+      currentEnemy: currentEnemy ? localize(currentEnemy.serialize(), locale, ['name', 'description']) : null,
       combatPreview,
-      consumables: consumables.map((c) => ({ ...c.serialize(), item: c.item.serialize() })),
+      consumables: consumables.map((c) => ({ ...c.serialize(), item: localize(c.item.serialize(), locale, ['name', 'description']) })),
       skills: skills.map((s) => ({
-        ...s.serialize(),
+        ...localize(s.serialize(), locale, ['name', 'description']),
         currentCooldown: charCooldowns[s.id] || 0,
       })),
       activeEffects,
@@ -300,7 +301,7 @@ export default class DungeonController {
   }
 
   /** JSON API: poll run state for party members */
-  async runState({ params, auth, response }: HttpContext) {
+  async runState({ params, auth, response, locale }: HttpContext) {
     const character = await Character.query().where('userId', auth.user!.id).firstOrFail()
 
     const run = await this.findAccessibleRun(character, params.runId)
@@ -348,7 +349,7 @@ export default class DungeonController {
         ...run.serialize(),
         combatLog: JSON.parse(run.combatLog || '[]'),
       },
-      currentEnemy: currentEnemy?.serialize() || null,
+      currentEnemy: currentEnemy ? localize(currentEnemy.serialize(), locale, ['name', 'description']) : null,
       combatPreview,
       partyMembers,
     })

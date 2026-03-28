@@ -11,6 +11,12 @@ export default class Companion extends BaseModel {
   declare description: string
 
   @column()
+  declare nameEn: string | null
+
+  @column()
+  declare descriptionEn: string | null
+
+  @column()
   declare rarity: string
 
   @column()

@@ -9,6 +9,7 @@ export default defineConfig({
   rootView: 'inertia_layout',
 
   sharedData: {
+    locale: (ctx) => ctx.locale || 'fr',
     errors: (ctx) => ctx.session?.flashMessages.get('errors'),
     combatLog: (ctx) => ctx.session?.flashMessages.get('combatLog'),
     pvpResult: (ctx) => ctx.session?.flashMessages.get('pvpResult'),

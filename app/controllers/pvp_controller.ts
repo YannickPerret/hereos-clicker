@@ -7,6 +7,7 @@ import PvpService from '#services/pvp_service'
 import DailyMissionService from '#services/daily_mission_service'
 import SeasonService from '#services/season_service'
 import CharacterPvpSeasonStat from '#models/character_pvp_season_stat'
+import { localize } from '#services/locale_service'
 
 export default class PvpController {
   private async serializeArenaCharacter(character: Character) {
@@ -46,7 +47,7 @@ export default class PvpController {
     return Number(ahead[0]?.$extras.total || 0) + 1
   }
 
-  private async buildMatchPayload(character: Character, matchId: number) {
+  private async buildMatchPayload(character: Character, matchId: number, locale: string) {
     const state = await PvpService.getMatchState(matchId)
     const skills = await CombatService.getAvailableSkills(character)
     const cooldowns = state.match.skillCooldowns?.[character.id] || {}
@@ -55,7 +56,7 @@ export default class PvpController {
       myId: character.id,
       ...state,
       skills: skills.map((skill) => ({
-        ...skill.serialize(),
+        ...localize(skill.serialize(), locale, ['name', 'description']),
         currentCooldown: cooldowns[skill.id] || 0,
       })),
     }
@@ -226,21 +227,21 @@ export default class PvpController {
     return response.redirect('/pvp')
   }
 
-  async show({ params, inertia, auth }: HttpContext) {
+  async show({ params, inertia, auth, locale }: HttpContext) {
     const character = await Character.query()
       .where('userId', auth.user!.id)
       .firstOrFail()
 
-    return inertia.render('pvp/match', await this.buildMatchPayload(character, params.matchId))
+    return inertia.render('pvp/match', await this.buildMatchPayload(character, params.matchId, locale))
   }
 
   /** JSON API for polling match state */
-  async state({ params, auth, response }: HttpContext) {
+  async state({ params, auth, response, locale }: HttpContext) {
     const character = await Character.query()
       .where('userId', auth.user!.id)
       .firstOrFail()
 
-    return response.json(await this.buildMatchPayload(character, params.matchId))
+    return response.json(await this.buildMatchPayload(character, params.matchId, locale))
   }
 
   async attack({ params, request, auth, response, session }: HttpContext) {

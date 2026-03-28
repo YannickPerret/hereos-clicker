@@ -4,6 +4,7 @@ import ShopListing from '#models/shop_listing'
 import InventoryItem from '#models/inventory_item'
 import Item from '#models/item'
 import QuestService from '#services/quest_service'
+import { localize } from '#services/locale_service'
 
 export default class ShopController {
   private getNextUpgradeName(itemName: string) {
@@ -16,7 +17,7 @@ export default class ShopController {
     return nextByName[itemName] || null
   }
 
-  async index({ inertia, auth }: HttpContext) {
+  async index({ inertia, auth, locale }: HttpContext) {
     const character = await Character.query()
       .where('userId', auth.user!.id)
       .firstOrFail()
@@ -29,7 +30,7 @@ export default class ShopController {
       character: character.serialize(),
       listings: listings.map((l) => ({
         ...l.serialize(),
-        item: l.item.serialize(),
+        item: localize(l.item.serialize(), locale, ['name', 'description']),
         price: l.priceOverride ?? l.item.basePrice,
       })),
     })

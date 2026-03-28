@@ -9,7 +9,9 @@ export default class extends BaseSeeder {
       // ═══════════════════════════════════════════
       {
         name: 'Breach Protocol',
+        nameEn: 'Breach Protocol',
         description: 'Hack les defenses de l\'ennemi. Reduit sa DEF de 50% pendant 2 tours.',
+        descriptionEn: 'Hacks the enemy\'s defenses. Reduces their DEF by 50% for 2 turns.',
         spec: 'hacker',
         tierRequired: 3,
         effectType: 'debuff_def',
@@ -20,7 +22,9 @@ export default class extends BaseSeeder {
       },
       {
         name: 'Short Circuit',
+        nameEn: 'Short Circuit',
         description: 'Decharge electrique directe. Inflige des degats purs qui ignorent la DEF.',
+        descriptionEn: 'Direct electrical discharge. Deals pure damage that ignores DEF.',
         spec: 'hacker',
         tierRequired: 7,
         effectType: 'pure_damage',
@@ -31,7 +35,9 @@ export default class extends BaseSeeder {
       },
       {
         name: 'Backdoor',
+        nameEn: 'Backdoor',
         description: 'Infiltre le systeme ennemi. Vole des credits et inflige des degats.',
+        descriptionEn: 'Infiltrates the enemy system. Steals credits and deals damage.',
         spec: 'hacker',
         tierRequired: 12,
         effectType: 'steal_damage',
@@ -42,7 +48,9 @@ export default class extends BaseSeeder {
       },
       {
         name: 'Kernel Panic',
+        nameEn: 'Kernel Panic',
         description: 'Crash total du systeme. Degats massifs + stun 1 tour.',
+        descriptionEn: 'Total system crash. Massive damage + stun for 1 turn.',
         spec: 'hacker',
         tierRequired: 18,
         effectType: 'damage_stun',
@@ -57,7 +65,9 @@ export default class extends BaseSeeder {
       // ═══════════════════════════════════════════
       {
         name: 'Ping Scan',
+        nameEn: 'Ping Scan',
         description: 'Analyse la cible. Ta prochaine attaque sera un coup critique garanti.',
+        descriptionEn: 'Scans the target. Your next attack is a guaranteed critical hit.',
         spec: 'netrunner',
         tierRequired: 3,
         effectType: 'guaranteed_crit',
@@ -68,7 +78,9 @@ export default class extends BaseSeeder {
       },
       {
         name: 'ICE Breaker',
+        nameEn: 'ICE Breaker',
         description: 'Brise les protections. Retire tous les buffs ennemis + degats moderes.',
+        descriptionEn: 'Breaks defenses. Removes all enemy buffs + moderate damage.',
         spec: 'netrunner',
         tierRequired: 7,
         effectType: 'purge_damage',
@@ -79,7 +91,9 @@ export default class extends BaseSeeder {
       },
       {
         name: 'Neural Overload',
+        nameEn: 'Neural Overload',
         description: 'Surcharge le cortex de l\'ennemi. Stun 1 tour + degats.',
+        descriptionEn: 'Overloads the enemy\'s cortex. Stun for 1 turn + damage.',
         spec: 'netrunner',
         tierRequired: 12,
         effectType: 'damage_stun',
@@ -90,7 +104,9 @@ export default class extends BaseSeeder {
       },
       {
         name: 'System Restore',
+        nameEn: 'System Restore',
         description: 'Programme de soin avance. Restaure 40% des HP max.',
+        descriptionEn: 'Advanced healing program. Restores 40% of max HP.',
         spec: 'netrunner',
         tierRequired: 18,
         effectType: 'heal_percent',
@@ -105,7 +121,9 @@ export default class extends BaseSeeder {
       // ═══════════════════════════════════════════
       {
         name: 'Wired Reflexes',
+        nameEn: 'Wired Reflexes',
         description: 'Implants de reflexes actives. Frappe deux fois d\'affilee.',
+        descriptionEn: 'Activated reflex implants. Strike twice in a row.',
         spec: 'samurai',
         tierRequired: 3,
         effectType: 'double_hit',
@@ -116,7 +134,9 @@ export default class extends BaseSeeder {
       },
       {
         name: 'Mono-Edge Slash',
+        nameEn: 'Mono-Edge Slash',
         description: 'Lame monomoleculaire. Degats lourds + saignement pendant 3 tours.',
+        descriptionEn: 'Monomolecular blade. Heavy damage + bleed for 3 turns.',
         spec: 'samurai',
         tierRequired: 7,
         effectType: 'damage_dot',
@@ -127,7 +147,9 @@ export default class extends BaseSeeder {
       },
       {
         name: 'Subdermal Shield',
+        nameEn: 'Subdermal Shield',
         description: 'Active le blindage sous-cutane. Absorbe le prochain coup completement.',
+        descriptionEn: 'Activates subdermal plating. Fully absorbs the next hit.',
         spec: 'samurai',
         tierRequired: 12,
         effectType: 'shield',
@@ -138,7 +160,9 @@ export default class extends BaseSeeder {
       },
       {
         name: 'Adrenaline Surge',
+        nameEn: 'Adrenaline Surge',
         description: 'Injection d\'adrenaline. Critique garanti + triple degats.',
+        descriptionEn: 'Adrenaline injection. Guaranteed crit + triple damage.',
         spec: 'samurai',
         tierRequired: 18,
         effectType: 'mega_strike',
@@ -153,7 +177,9 @@ export default class extends BaseSeeder {
       // ═══════════════════════════════════════════
       {
         name: 'Deploy Turret',
+        nameEn: 'Deploy Turret',
         description: 'Deploie une tourelle automatique. Inflige des degats bonus pendant 3 tours.',
+        descriptionEn: 'Deploys an automatic turret. Deals bonus damage for 3 turns.',
         spec: 'chrome_dealer',
         tierRequired: 3,
         effectType: 'turret',
@@ -164,7 +190,9 @@ export default class extends BaseSeeder {
       },
       {
         name: 'Repair Nanobots',
+        nameEn: 'Repair Nanobots',
         description: 'Active les nanobots de reparation. Restaure 30% des HP max.',
+        descriptionEn: 'Activates repair nanobots. Restores 30% of max HP.',
         spec: 'chrome_dealer',
         tierRequired: 7,
         effectType: 'heal_percent',
@@ -175,7 +203,9 @@ export default class extends BaseSeeder {
       },
       {
         name: 'EMP Blast',
+        nameEn: 'EMP Blast',
         description: 'Impulsion electromagnetique. Reduit l\'ATK de l\'ennemi de 50% pendant 2 tours.',
+        descriptionEn: 'Electromagnetic pulse. Reduces enemy ATK by 50% for 2 turns.',
         spec: 'chrome_dealer',
         tierRequired: 12,
         effectType: 'debuff_atk',
@@ -186,7 +216,9 @@ export default class extends BaseSeeder {
       },
       {
         name: 'Chrome Overcharge',
+        nameEn: 'Chrome Overcharge',
         description: 'Suralimente tous tes implants. ATK et DEF +50% pendant 3 tours.',
+        descriptionEn: 'Supercharges all your implants. ATK and DEF +50% for 3 turns.',
         spec: 'chrome_dealer',
         tierRequired: 18,
         effectType: 'buff_all',

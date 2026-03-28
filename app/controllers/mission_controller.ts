@@ -2,9 +2,8 @@ import type { HttpContext } from '@adonisjs/core/http'
 import Character from '#models/character'
 import DailyMissionService from '#services/daily_mission_service'
 import DailyRewardService from '#services/daily_reward_service'
-
 export default class MissionController {
-  async index({ inertia, auth }: HttpContext) {
+  async index({ inertia, auth, locale }: HttpContext) {
     const character = await Character.query()
       .where('userId', auth.user!.id)
       .firstOrFail()
@@ -23,14 +22,16 @@ export default class MissionController {
     const loaded = []
     for (const cm of missions) {
       await cm.load('dailyMission')
+      const missionName = locale === 'en' && cm.dailyMission.nameEn ? cm.dailyMission.nameEn : cm.dailyMission.name
+      const missionDescription = locale === 'en' && cm.dailyMission.descriptionEn ? cm.dailyMission.descriptionEn : cm.dailyMission.description
       loaded.push({
         id: cm.id,
         progress: cm.progress,
         completed: cm.completed,
         claimed: cm.claimed,
         mission: {
-          name: cm.dailyMission.name,
-          description: cm.dailyMission.description,
+          name: missionName,
+          description: missionDescription,
           type: cm.dailyMission.type,
           targetValue: cm.dailyMission.targetValue,
           rewardType: cm.dailyMission.rewardType,

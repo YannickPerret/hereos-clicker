@@ -29,6 +29,18 @@ export default class Season extends BaseModel {
   declare storyOutro: string | null
 
   @column()
+  declare nameEn: string | null
+
+  @column()
+  declare campaignTitleEn: string | null
+
+  @column()
+  declare storyIntroEn: string | null
+
+  @column()
+  declare storyOutroEn: string | null
+
+  @column()
   declare bannerImage: string | null
 
   @column()

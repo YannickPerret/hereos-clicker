@@ -1,3 +1,5 @@
+import { router } from '@inertiajs/react'
+import axios from 'axios'
 import { useTranslation } from 'react-i18next'
 
 const LANGS = [
@@ -14,7 +16,11 @@ export default function LanguageSwitcher() {
         <button
           key={lang.code}
           type="button"
-          onClick={() => i18n.changeLanguage(lang.code)}
+          onClick={() => {
+            i18n.changeLanguage(lang.code)
+            axios.defaults.headers.common['Accept-Language'] = lang.code
+            router.reload()
+          }}
           className={`px-2 py-1 text-[10px] uppercase tracking-widest border rounded transition-all ${
             i18n.language === lang.code
               ? 'border-cyber-blue/50 bg-cyber-blue/10 text-cyber-blue'

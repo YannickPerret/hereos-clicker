@@ -1,6 +1,7 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import Character from '#models/character'
 import BlackMarketService from '#services/black_market_service'
+import { localize } from '#services/locale_service'
 
 export default class BlackMarketController {
   private async getUnlockedCharacter(userId: number) {
@@ -16,10 +17,21 @@ export default class BlackMarketController {
     return character
   }
 
-  async index({ inertia, auth, response, session }: HttpContext) {
+  async index({ inertia, auth, response, session, locale }: HttpContext) {
     try {
       const character = await this.getUnlockedCharacter(auth.user!.id)
-      return inertia.render('black_market/index', await BlackMarketService.getMarketState(character))
+      const marketState = await BlackMarketService.getMarketState(character)
+      const localizedState = {
+        ...marketState,
+        vendors: marketState.vendors.map((vendor: any) => ({
+          ...vendor,
+          deals: vendor.deals.map((deal: any) => ({
+            ...deal,
+            item: localize(deal.item, locale, ['name', 'description']),
+          })),
+        })),
+      }
+      return inertia.render('black_market/index', localizedState)
     } catch (error) {
       session.flash('errors', { message: error instanceof Error ? error.message : 'Erreur marche noir' })
       return response.redirect('/play')

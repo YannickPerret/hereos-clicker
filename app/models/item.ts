@@ -12,6 +12,12 @@ export default class Item extends BaseModel {
   declare description: string
 
   @column()
+  declare nameEn: string | null
+
+  @column()
+  declare descriptionEn: string | null
+
+  @column()
   declare type:
     | 'weapon'
     | 'armor'

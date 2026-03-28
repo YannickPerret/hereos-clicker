@@ -1,9 +1,10 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import Character from '#models/character'
 import QuestService from '#services/quest_service'
+import { localize } from '#services/locale_service'
 
 export default class QuestController {
-  async index({ inertia, auth }: HttpContext) {
+  async index({ inertia, auth, locale }: HttpContext) {
     const character = await Character.query()
       .where('userId', auth.user!.id)
       .firstOrFail()
@@ -24,9 +25,17 @@ export default class QuestController {
       }
     }
 
+    const localizedJournal = {
+      ...journal,
+      tracks: journal.tracks.map((track: any) => ({
+        ...track,
+        quests: track.quests.map((quest: any) => localize(quest, locale, ['title', 'summary', 'narrative'])),
+      })),
+    }
+
     return inertia.render('quests/index', {
       character: character.serialize(),
-      journal,
+      journal: localizedJournal,
       flowStates,
     })
   }

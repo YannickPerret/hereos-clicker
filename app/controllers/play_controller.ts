@@ -10,6 +10,7 @@ import CompanionService from '#services/companion_service'
 import PartyMember from '#models/party_member'
 import DungeonRun from '#models/dungeon_run'
 import Friendship from '#models/friendship'
+import { localize } from '#services/locale_service'
 
 export default class PlayController {
   private async getLeaderboardData() {
@@ -21,7 +22,7 @@ export default class PlayController {
     return leaderboard.map((character) => character.serialize())
   }
 
-  async index({ inertia, auth }: HttpContext) {
+  async index({ inertia, auth, locale }: HttpContext) {
     const characters = await Character.query().where('userId', auth.user!.id)
     const activeCharacter = characters[0] || null
 
@@ -138,7 +139,7 @@ export default class PlayController {
       offlineCredits,
       equippedItems: equippedItems.map((entry) => ({
         ...entry.serialize(),
-        item: entry.item.serialize(),
+        item: localize(entry.item.serialize(), locale, ['name', 'description']),
       })),
       party: partyData,
       questSummary,
@@ -226,7 +227,7 @@ export default class PlayController {
     return response.json(await this.getLeaderboardData())
   }
 
-  async profile({ params, inertia, response, auth }: HttpContext) {
+  async profile({ params, inertia, response, auth, locale }: HttpContext) {
     const characterName = decodeURIComponent(params.name)
 
     const character = await Character.query()
@@ -288,28 +289,35 @@ export default class PlayController {
       friendStatus,
       equippedItems: equippedItems.map((entry) => ({
         ...entry.serialize(),
-        item: entry.item.serialize(),
+        item: localize(entry.item.serialize(), locale, ['name', 'description']),
       })),
-      talents: unlockedTalents.map((entry) => ({
-        id: entry.talent.id,
-        name: entry.talent.name,
-        spec: entry.talent.spec,
-        tier: entry.talent.tier,
-        effectType: entry.talent.effectType,
-        effectValue: entry.talent.effectValue,
-      })),
-      companions: companions.map((entry) => ({
-        id: entry.id,
-        companionId: entry.companion.id,
-        name: entry.companion.name,
-        description: entry.companion.description,
-        rarity: entry.companion.rarity,
-        bonusType: entry.companion.bonusType,
-        bonusValue: CompanionService.getScaledBonusValue(entry.companion.bonusValue, entry.level),
-        icon: entry.companion.icon,
-        isActive: entry.isActive,
-        level: entry.level,
-      })),
+      talents: unlockedTalents.map((entry) => {
+        const talentName = locale === 'en' && entry.talent.nameEn ? entry.talent.nameEn : entry.talent.name
+        return {
+          id: entry.talent.id,
+          name: talentName,
+          spec: entry.talent.spec,
+          tier: entry.talent.tier,
+          effectType: entry.talent.effectType,
+          effectValue: entry.talent.effectValue,
+        }
+      }),
+      companions: companions.map((entry) => {
+        const companionName = locale === 'en' && entry.companion.nameEn ? entry.companion.nameEn : entry.companion.name
+        const companionDescription = locale === 'en' && entry.companion.descriptionEn ? entry.companion.descriptionEn : entry.companion.description
+        return {
+          id: entry.id,
+          companionId: entry.companion.id,
+          name: companionName,
+          description: companionDescription,
+          rarity: entry.companion.rarity,
+          bonusType: entry.companion.bonusType,
+          bonusValue: CompanionService.getScaledBonusValue(entry.companion.bonusValue, entry.level),
+          icon: entry.companion.icon,
+          isActive: entry.isActive,
+          level: entry.level,
+        }
+      }),
     })
   }
 }

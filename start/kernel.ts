@@ -15,6 +15,7 @@ router.use([
   () => import('@adonisjs/session/session_middleware'),
   () => import('@adonisjs/shield/shield_middleware'),
   () => import('@adonisjs/auth/initialize_auth_middleware'),
+  () => import('#middleware/locale_middleware'),
   () => import('@adonisjs/inertia/inertia_middleware'),
 ])
 

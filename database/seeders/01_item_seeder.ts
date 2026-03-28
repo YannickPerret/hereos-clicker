@@ -7,7 +7,9 @@ export default class extends BaseSeeder {
       // WEAPONS
       {
         name: 'Plasma Pistol MK-I',
+        nameEn: 'Plasma Pistol MK-I',
         description: 'Standard issue sidearm. Fires superheated plasma rounds.',
+        descriptionEn: 'Standard issue sidearm. Fires superheated plasma rounds.',
         type: 'weapon',
         rarity: 'common',
         icon: 'pistol',
@@ -17,7 +19,9 @@ export default class extends BaseSeeder {
       },
       {
         name: 'Vibro-Blade',
+        nameEn: 'Vibro-Blade',
         description: 'Monomolecular edge that cuts through steel like butter.',
+        descriptionEn: 'Monomolecular edge that cuts through steel like butter.',
         type: 'weapon',
         rarity: 'common',
         icon: 'blade',
@@ -27,7 +31,9 @@ export default class extends BaseSeeder {
       },
       {
         name: 'Budget Arms Unity+',
+        nameEn: 'Budget Arms Unity+',
         description: 'A tuned street pistol with smart recoil dampers and black market firmware.',
+        descriptionEn: 'A tuned street pistol with smart recoil dampers and black market firmware.',
         type: 'weapon',
         rarity: 'common',
         icon: 'unity',
@@ -37,7 +43,9 @@ export default class extends BaseSeeder {
       },
       {
         name: 'Neural Disruptor',
+        nameEn: 'Neural Disruptor',
         description: 'Fires concentrated EMP bursts that fry neural circuits.',
+        descriptionEn: 'Fires concentrated EMP bursts that fry neural circuits.',
         type: 'weapon',
         rarity: 'uncommon',
         icon: 'disruptor',
@@ -47,8 +55,10 @@ export default class extends BaseSeeder {
       },
       {
         name: 'Kang Tao Shock Carbine',
+        nameEn: 'Kang Tao Shock Carbine',
         description:
           'Compact corporate carbine that dumps a violent electric burst into soft targets.',
+        descriptionEn: 'Compact corporate carbine that dumps a violent electric burst into soft targets.',
         type: 'weapon',
         rarity: 'uncommon',
         icon: 'carbine',
@@ -58,7 +68,9 @@ export default class extends BaseSeeder {
       },
       {
         name: 'Railgun X-7',
+        nameEn: 'Railgun X-7',
         description: 'Magnetically accelerated tungsten slugs. Devastating.',
+        descriptionEn: 'Magnetically accelerated tungsten slugs. Devastating.',
         type: 'weapon',
         rarity: 'rare',
         icon: 'railgun',
@@ -68,7 +80,9 @@ export default class extends BaseSeeder {
       },
       {
         name: 'Militech Crusher Custom',
+        nameEn: 'Militech Crusher Custom',
         description: 'A brutal tactical shotgun refitted for close-quarters suppression.',
+        descriptionEn: 'A brutal tactical shotgun refitted for close-quarters suppression.',
         type: 'weapon',
         rarity: 'rare',
         icon: 'crusher',
@@ -78,7 +92,9 @@ export default class extends BaseSeeder {
       },
       {
         name: 'Void Cannon',
+        nameEn: 'Void Cannon',
         description: 'Fires miniature black holes. Illegal in 47 sectors.',
+        descriptionEn: 'Fires miniature black holes. Illegal in 47 sectors.',
         type: 'weapon',
         rarity: 'epic',
         icon: 'cannon',
@@ -88,8 +104,10 @@ export default class extends BaseSeeder {
       },
       {
         name: 'Arasaka Revenant Smartgun',
+        nameEn: 'Arasaka Revenant Smartgun',
         description:
           'Prototype smart weapon that stitches targeting lines directly into your optic feed.',
+        descriptionEn: 'Prototype smart weapon that stitches targeting lines directly into your optic feed.',
         type: 'weapon',
         rarity: 'epic',
         icon: 'smartgun',
@@ -99,7 +117,9 @@ export default class extends BaseSeeder {
       },
       {
         name: 'OMEGA Protocol',
+        nameEn: 'OMEGA Protocol',
         description: 'Military-grade AI-guided weapon system. One shot, one kill.',
+        descriptionEn: 'Military-grade AI-guided weapon system. One shot, one kill.',
         type: 'weapon',
         rarity: 'legendary',
         icon: 'omega',
@@ -109,8 +129,10 @@ export default class extends BaseSeeder {
       },
       {
         name: 'Blackwall Breacher',
+        nameEn: 'Blackwall Breacher',
         description:
           'A forbidden platform built to punch through daemons, steel, and people alike.',
+        descriptionEn: 'A forbidden platform built to punch through daemons, steel, and people alike.',
         type: 'weapon',
         rarity: 'legendary',
         icon: 'blackwall',
@@ -122,7 +144,9 @@ export default class extends BaseSeeder {
       // ARMOR
       {
         name: 'Kevlar Vest',
+        nameEn: 'Kevlar Vest',
         description: 'Basic ballistic protection. Better than nothing.',
+        descriptionEn: 'Basic ballistic protection. Better than nothing.',
         type: 'armor',
         rarity: 'common',
         icon: 'vest',
@@ -132,8 +156,10 @@ export default class extends BaseSeeder {
       },
       {
         name: 'Tyger Claws Reinforced Coat',
+        nameEn: 'Tyger Claws Reinforced Coat',
         description:
           'Street armor lined with ceramic weave and enough plating to survive bad odds.',
+        descriptionEn: 'Street armor lined with ceramic weave and enough plating to survive bad odds.',
         type: 'armor',
         rarity: 'common',
         icon: 'coat',
@@ -143,7 +169,9 @@ export default class extends BaseSeeder {
       },
       {
         name: 'Nanoweave Jacket',
+        nameEn: 'Nanoweave Jacket',
         description: 'Self-repairing carbon nanotube armor.',
+        descriptionEn: 'Self-repairing carbon nanotube armor.',
         type: 'armor',
         rarity: 'uncommon',
         icon: 'jacket',
@@ -153,8 +181,10 @@ export default class extends BaseSeeder {
       },
       {
         name: 'Trauma Team Ballistic Mesh',
+        nameEn: 'Trauma Team Ballistic Mesh',
         description:
           'Emergency response body mesh rated for urban firefights and patient extraction.',
+        descriptionEn: 'Emergency response body mesh rated for urban firefights and patient extraction.',
         type: 'armor',
         rarity: 'uncommon',
         icon: 'mesh',
@@ -164,7 +194,9 @@ export default class extends BaseSeeder {
       },
       {
         name: 'Titanium Exosuit',
+        nameEn: 'Titanium Exosuit',
         description: 'Full-body powered armor. Military surplus.',
+        descriptionEn: 'Full-body powered armor. Military surplus.',
         type: 'armor',
         rarity: 'rare',
         icon: 'exosuit',
@@ -174,7 +206,9 @@ export default class extends BaseSeeder {
       },
       {
         name: 'Militech Bastion Frame',
+        nameEn: 'Militech Bastion Frame',
         description: 'Heavy tactical plating with servo-assisted bracing for sustained fire.',
+        descriptionEn: 'Heavy tactical plating with servo-assisted bracing for sustained fire.',
         type: 'armor',
         rarity: 'rare',
         icon: 'bastion',
@@ -184,7 +218,9 @@ export default class extends BaseSeeder {
       },
       {
         name: 'Quantum Shield Matrix',
+        nameEn: 'Quantum Shield Matrix',
         description: 'Phase-shifts incoming projectiles to another dimension.',
+        descriptionEn: 'Phase-shifts incoming projectiles to another dimension.',
         type: 'armor',
         rarity: 'epic',
         icon: 'shield',
@@ -194,7 +230,9 @@ export default class extends BaseSeeder {
       },
       {
         name: 'Arasaka Specter Weave',
+        nameEn: 'Arasaka Specter Weave',
         description: 'Reactive corporate armor that stiffens milliseconds before impact.',
+        descriptionEn: 'Reactive corporate armor that stiffens milliseconds before impact.',
         type: 'armor',
         rarity: 'epic',
         icon: 'specter',
@@ -204,7 +242,9 @@ export default class extends BaseSeeder {
       },
       {
         name: 'Ghost Shell',
+        nameEn: 'Ghost Shell',
         description: 'Experimental cloaking armor. You become untouchable.',
+        descriptionEn: 'Experimental cloaking armor. You become untouchable.',
         type: 'armor',
         rarity: 'legendary',
         icon: 'ghost',
@@ -214,7 +254,9 @@ export default class extends BaseSeeder {
       },
       {
         name: 'Mikoshi Nullskin',
+        nameEn: 'Mikoshi Nullskin',
         description: 'A ghost-white combat shell threaded with forbidden engram shielding.',
+        descriptionEn: 'A ghost-white combat shell threaded with forbidden engram shielding.',
         type: 'armor',
         rarity: 'legendary',
         icon: 'nullskin',
@@ -226,7 +268,9 @@ export default class extends BaseSeeder {
       // IMPLANTS (boost clicks per second)
       {
         name: 'Reflex Booster v1',
+        nameEn: 'Reflex Booster v1',
         description: 'Spinal implant. Faster reflexes, faster clicks.',
+        descriptionEn: 'Spinal implant. Faster reflexes, faster clicks.',
         type: 'implant',
         rarity: 'common',
         icon: 'chip',
@@ -236,7 +280,9 @@ export default class extends BaseSeeder {
       },
       {
         name: 'Kiroshi Pulse Sync',
+        nameEn: 'Kiroshi Pulse Sync',
         description: 'A cheap optic-rhythm mod that smooths your hand timing and micro-inputs.',
+        descriptionEn: 'A cheap optic-rhythm mod that smooths your hand timing and micro-inputs.',
         type: 'implant',
         rarity: 'common',
         icon: 'pulse',
@@ -246,7 +292,9 @@ export default class extends BaseSeeder {
       },
       {
         name: 'Neural Accelerator',
+        nameEn: 'Neural Accelerator',
         description: 'Overclocks your brain. Time feels slower.',
+        descriptionEn: 'Overclocks your brain. Time feels slower.',
         type: 'implant',
         rarity: 'uncommon',
         icon: 'brain',
@@ -256,7 +304,9 @@ export default class extends BaseSeeder {
       },
       {
         name: 'Sandevistan Lite',
+        nameEn: 'Sandevistan Lite',
         description: 'A stripped-down time dilation implant with enough kick to feel unfair.',
+        descriptionEn: 'A stripped-down time dilation implant with enough kick to feel unfair.',
         type: 'implant',
         rarity: 'uncommon',
         icon: 'sandevistan',
@@ -266,7 +316,9 @@ export default class extends BaseSeeder {
       },
       {
         name: 'Synaptic Overdrive',
+        nameEn: 'Synaptic Overdrive',
         description: 'Military-grade neural enhancement. Warning: may cause nosebleeds.',
+        descriptionEn: 'Military-grade neural enhancement. Warning: may cause nosebleeds.',
         type: 'implant',
         rarity: 'rare',
         icon: 'synapse',
@@ -276,8 +328,10 @@ export default class extends BaseSeeder {
       },
       {
         name: 'QianT Synapse Rail',
+        nameEn: 'QianT Synapse Rail',
         description:
           'Corporate-grade neural threading for relentless output and cleaner burst execution.',
+        descriptionEn: 'Corporate-grade neural threading for relentless output and cleaner burst execution.',
         type: 'implant',
         rarity: 'rare',
         icon: 'qiant',
@@ -287,7 +341,9 @@ export default class extends BaseSeeder {
       },
       {
         name: 'Quantum Consciousness',
+        nameEn: 'Quantum Consciousness',
         description: 'Process information in parallel dimensions.',
+        descriptionEn: 'Process information in parallel dimensions.',
         type: 'implant',
         rarity: 'epic',
         icon: 'quantum',
@@ -297,8 +353,10 @@ export default class extends BaseSeeder {
       },
       {
         name: 'Mantis Driver Suite',
+        nameEn: 'Mantis Driver Suite',
         description:
           'A combat cognition stack that keeps your nervous system running past safe limits.',
+        descriptionEn: 'A combat cognition stack that keeps your nervous system running past safe limits.',
         type: 'implant',
         rarity: 'epic',
         icon: 'mantis',
@@ -308,7 +366,9 @@ export default class extends BaseSeeder {
       },
       {
         name: 'Singularity Core',
+        nameEn: 'Singularity Core',
         description: 'Your mind becomes a black hole of productivity.',
+        descriptionEn: 'Your mind becomes a black hole of productivity.',
         type: 'implant',
         rarity: 'legendary',
         icon: 'singularity',
@@ -318,8 +378,10 @@ export default class extends BaseSeeder {
       },
       {
         name: 'Militech Apogee Sandevistan',
+        nameEn: 'Militech Apogee Sandevistan',
         description:
           'A top-tier time dilation system that turns combat into a slow-motion execution reel.',
+        descriptionEn: 'A top-tier time dilation system that turns combat into a slow-motion execution reel.',
         type: 'implant',
         rarity: 'legendary',
         icon: 'apogee',
@@ -329,8 +391,10 @@ export default class extends BaseSeeder {
       },
       {
         name: 'Relic Overclock Kernel',
+        nameEn: 'Relic Overclock Kernel',
         description:
           'A relic-derived shard that lets your brain chew through impossible action density.',
+        descriptionEn: 'A relic-derived shard that lets your brain chew through impossible action density.',
         type: 'implant',
         rarity: 'legendary',
         icon: 'relic',
@@ -342,7 +406,9 @@ export default class extends BaseSeeder {
       // CLOTHES / COSMETICS
       {
         name: 'Static Mohawk',
+        nameEn: 'Static Mohawk',
         description: 'Neon mohawk cut for alley racers and blackout club runs.',
+        descriptionEn: 'Neon mohawk cut for alley racers and blackout club runs.',
         type: 'clothes_hair',
         rarity: 'common',
         icon: 'mohawk',
@@ -352,7 +418,9 @@ export default class extends BaseSeeder {
       },
       {
         name: 'Acid Bob',
+        nameEn: 'Acid Bob',
         description: 'Sharp bob with toxic dye lines and chrome roots.',
+        descriptionEn: 'Sharp bob with toxic dye lines and chrome roots.',
         type: 'clothes_hair',
         rarity: 'uncommon',
         icon: 'bob',
@@ -362,7 +430,9 @@ export default class extends BaseSeeder {
       },
       {
         name: 'Ghost Braids',
+        nameEn: 'Ghost Braids',
         description: 'Fiber braids threaded with faint lumens that pulse in the rain.',
+        descriptionEn: 'Fiber braids threaded with faint lumens that pulse in the rain.',
         type: 'clothes_hair',
         rarity: 'rare',
         icon: 'braids',
@@ -372,7 +442,9 @@ export default class extends BaseSeeder {
       },
       {
         name: 'Chromehawk Crown',
+        nameEn: 'Chromehawk Crown',
         description: 'Mirror-finish chromehawk reserved for people who want every eye on them.',
+        descriptionEn: 'Mirror-finish chromehawk reserved for people who want every eye on them.',
         type: 'clothes_hair',
         rarity: 'epic',
         icon: 'chromehawk',
@@ -383,7 +455,9 @@ export default class extends BaseSeeder {
 
       {
         name: 'Kiroshi Night Visor',
+        nameEn: 'Kiroshi Night Visor',
         description: 'Slim luminous visor that turns every stare into a threat assessment.',
+        descriptionEn: 'Slim luminous visor that turns every stare into a threat assessment.',
         type: 'clothes_face',
         rarity: 'common',
         icon: 'visor',
@@ -393,7 +467,9 @@ export default class extends BaseSeeder {
       },
       {
         name: 'Carbon Half Mask',
+        nameEn: 'Carbon Half Mask',
         description: 'Street respirator plated in black carbon with a filtered jawline silhouette.',
+        descriptionEn: 'Street respirator plated in black carbon with a filtered jawline silhouette.',
         type: 'clothes_face',
         rarity: 'uncommon',
         icon: 'halfmask',
@@ -403,7 +479,9 @@ export default class extends BaseSeeder {
       },
       {
         name: 'Oni Signal Mask',
+        nameEn: 'Oni Signal Mask',
         description: 'Reactive oni mask with wicked red telemetry seams.',
+        descriptionEn: 'Reactive oni mask with wicked red telemetry seams.',
         type: 'clothes_face',
         rarity: 'rare',
         icon: 'oni',
@@ -413,7 +491,9 @@ export default class extends BaseSeeder {
       },
       {
         name: 'Blackwall Respirator',
+        nameEn: 'Blackwall Respirator',
         description: 'Illegal full-face respirator humming with ghosted blue diagnostics.',
+        descriptionEn: 'Illegal full-face respirator humming with ghosted blue diagnostics.',
         type: 'clothes_face',
         rarity: 'epic',
         icon: 'respirator',
@@ -424,7 +504,9 @@ export default class extends BaseSeeder {
 
       {
         name: 'Hexline Jacket',
+        nameEn: 'Hexline Jacket',
         description: 'Short cyber jacket cut with bright data seams and a combat collar.',
+        descriptionEn: 'Short cyber jacket cut with bright data seams and a combat collar.',
         type: 'clothes_outer',
         rarity: 'common',
         icon: 'jacket',
@@ -434,7 +516,9 @@ export default class extends BaseSeeder {
       },
       {
         name: 'Nightglass Trench',
+        nameEn: 'Nightglass Trench',
         description: 'Long translucent trench that catches neon and hides intent.',
+        descriptionEn: 'Long translucent trench that catches neon and hides intent.',
         type: 'clothes_outer',
         rarity: 'rare',
         icon: 'trench',
@@ -444,7 +528,9 @@ export default class extends BaseSeeder {
       },
       {
         name: 'Chrome Bolero',
+        nameEn: 'Chrome Bolero',
         description: 'Armored bolero with polished shoulder chrome and no patience.',
+        descriptionEn: 'Armored bolero with polished shoulder chrome and no patience.',
         type: 'clothes_outer',
         rarity: 'epic',
         icon: 'bolero',
@@ -454,7 +540,9 @@ export default class extends BaseSeeder {
       },
       {
         name: 'Holo Weave Shell',
+        nameEn: 'Holo Weave Shell',
         description: 'Semi-reactive holo fabric that shifts tone as the city lights move.',
+        descriptionEn: 'Semi-reactive holo fabric that shifts tone as the city lights move.',
         type: 'clothes_outer',
         rarity: 'legendary',
         icon: 'holo',
@@ -465,7 +553,9 @@ export default class extends BaseSeeder {
 
       {
         name: 'Backalley Cargos',
+        nameEn: 'Backalley Cargos',
         description: 'Bulky cargos packed with mag-lock straps and contraband pockets.',
+        descriptionEn: 'Bulky cargos packed with mag-lock straps and contraband pockets.',
         type: 'clothes_legs',
         rarity: 'common',
         icon: 'cargos',
@@ -475,7 +565,9 @@ export default class extends BaseSeeder {
       },
       {
         name: 'Techwear Striders',
+        nameEn: 'Techwear Striders',
         description: 'Urban runner pants with segmented knees and tactical stitch lines.',
+        descriptionEn: 'Urban runner pants with segmented knees and tactical stitch lines.',
         type: 'clothes_legs',
         rarity: 'uncommon',
         icon: 'techwear',
@@ -485,7 +577,9 @@ export default class extends BaseSeeder {
       },
       {
         name: 'Zero-G Runners',
+        nameEn: 'Zero-G Runners',
         description: 'Slim kinetic greaves made for roof jumps and rail glides.',
+        descriptionEn: 'Slim kinetic greaves made for roof jumps and rail glides.',
         type: 'clothes_legs',
         rarity: 'rare',
         icon: 'runner',
@@ -495,7 +589,9 @@ export default class extends BaseSeeder {
       },
       {
         name: 'Exo-Leg Rails',
+        nameEn: 'Exo-Leg Rails',
         description: 'Visible external rails that make every step look expensive and dangerous.',
+        descriptionEn: 'Visible external rails that make every step look expensive and dangerous.',
         type: 'clothes_legs',
         rarity: 'epic',
         icon: 'exolegs',
@@ -507,7 +603,9 @@ export default class extends BaseSeeder {
       // CONSUMABLES
       {
         name: 'Stim Pack',
+        nameEn: 'Stim Pack',
         description: 'Quick heal. Tastes like burning.',
+        descriptionEn: 'Quick heal. Tastes like burning.',
         type: 'consumable',
         rarity: 'common',
         icon: 'syringe',
@@ -517,7 +615,9 @@ export default class extends BaseSeeder {
       },
       {
         name: 'MedGel Capsule',
+        nameEn: 'MedGel Capsule',
         description: 'Advanced nanite healing compound.',
+        descriptionEn: 'Advanced nanite healing compound.',
         type: 'consumable',
         rarity: 'uncommon',
         icon: 'capsule',
@@ -527,7 +627,9 @@ export default class extends BaseSeeder {
       },
       {
         name: 'Phoenix Serum',
+        nameEn: 'Phoenix Serum',
         description: 'Full cellular regeneration. Back from the dead.',
+        descriptionEn: 'Full cellular regeneration. Back from the dead.',
         type: 'consumable',
         rarity: 'rare',
         icon: 'phoenix',
@@ -537,7 +639,9 @@ export default class extends BaseSeeder {
       },
       {
         name: 'CyberBoost Energy',
+        nameEn: 'CyberBoost Energy',
         description: 'Doubles your click power for the next 100 clicks.',
+        descriptionEn: 'Doubles your click power for the next 100 clicks.',
         type: 'consumable',
         rarity: 'uncommon',
         icon: 'drink',
@@ -547,7 +651,9 @@ export default class extends BaseSeeder {
       },
       {
         name: 'XP Chip',
+        nameEn: 'XP Chip',
         description: 'Downloadable experience. Instant knowledge.',
+        descriptionEn: 'Downloadable experience. Instant knowledge.',
         type: 'consumable',
         rarity: 'rare',
         icon: 'xpchip',
@@ -559,7 +665,9 @@ export default class extends BaseSeeder {
       // UPGRADES (permanent click power)
       {
         name: 'Finger Servos',
+        nameEn: 'Finger Servos',
         description: 'Mechanical finger enhancement. Grants a modest permanent CPC boost.',
+        descriptionEn: 'Mechanical finger enhancement. Grants a modest permanent CPC boost.',
         type: 'upgrade',
         rarity: 'common',
         icon: 'servo',
@@ -569,8 +677,10 @@ export default class extends BaseSeeder {
       },
       {
         name: 'Haptic Amplifier',
+        nameEn: 'Haptic Amplifier',
         description:
           'Feedback loops amplify every contact. Limited stock, bigger permanent CPC gain.',
+        descriptionEn: 'Feedback loops amplify every contact. Limited stock, bigger permanent CPC gain.',
         type: 'upgrade',
         rarity: 'uncommon',
         icon: 'amp',
@@ -580,7 +690,9 @@ export default class extends BaseSeeder {
       },
       {
         name: 'Neural Click Matrix',
+        nameEn: 'Neural Click Matrix',
         description: 'A high-end matrix that permanently lifts click throughput once unlocked.',
+        descriptionEn: 'A high-end matrix that permanently lifts click throughput once unlocked.',
         type: 'upgrade',
         rarity: 'rare',
         icon: 'matrix',
@@ -590,7 +702,9 @@ export default class extends BaseSeeder {
       },
       {
         name: 'Quantum Tap Interface',
+        nameEn: 'Quantum Tap Interface',
         description: 'Late-game tap resonance hardware. Expensive, scarce, and permanent.',
+        descriptionEn: 'Late-game tap resonance hardware. Expensive, scarce, and permanent.',
         type: 'upgrade',
         rarity: 'epic',
         icon: 'qtap',
@@ -602,8 +716,10 @@ export default class extends BaseSeeder {
       // RESPEC ITEM
       {
         name: 'Neural Respec Chip',
+        nameEn: 'Neural Respec Chip',
         description:
           'Efface tes talents et libere tes points. Procedure douloureuse. Irreversible.',
+        descriptionEn: 'Wipes your talents and frees your points. Painful procedure. Irreversible.',
         type: 'consumable',
         rarity: 'legendary',
         icon: 'respec',

@@ -4,9 +4,10 @@ import InventoryItem from '#models/inventory_item'
 import TalentService from '#services/talent_service'
 import ClickerService from '#services/clicker_service'
 import CompanionService from '#services/companion_service'
+import { localize } from '#services/locale_service'
 
 export default class InventoryController {
-  async index({ inertia, auth }: HttpContext) {
+  async index({ inertia, auth, locale }: HttpContext) {
     const character = await Character.query().where('userId', auth.user!.id).firstOrFail()
 
     const inventory = await InventoryItem.query()
@@ -24,7 +25,7 @@ export default class InventoryController {
       },
       inventory: inventory.map((i) => ({
         ...i.serialize(),
-        item: i.item.serialize(),
+        item: localize(i.item.serialize(), locale, ['name', 'description']),
       })),
       equipBonuses,
       talentBonuses: {

@@ -4,9 +4,10 @@ import Talent from '#models/talent'
 import CharacterTalent from '#models/character_talent'
 import InventoryItem from '#models/inventory_item'
 import TalentService from '#services/talent_service'
+import { localize } from '#services/locale_service'
 
 export default class TalentController {
-  async index({ inertia, auth }: HttpContext) {
+  async index({ inertia, auth, locale }: HttpContext) {
     const character = await Character.query()
       .where('userId', auth.user!.id)
       .firstOrFail()
@@ -66,7 +67,7 @@ export default class TalentController {
             hasPrevTier
 
           return {
-            ...t.serialize(),
+            ...localize(t.serialize(), locale, ['name', 'description']),
             choiceGroup: t.choiceGroup,
             unlocked: isUnlocked,
             canUnlock,

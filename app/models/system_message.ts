@@ -9,6 +9,9 @@ export default class SystemMessage extends BaseModel {
   declare message: string
 
   @column()
+  declare messageEn: string | null
+
+  @column()
   declare intervalMinutes: number
 
   @column()

@@ -47,6 +47,15 @@ export default class Quest extends BaseModel {
   declare narrative: string | null
 
   @column()
+  declare titleEn: string | null
+
+  @column()
+  declare summaryEn: string | null
+
+  @column()
+  declare narrativeEn: string | null
+
+  @column()
   declare objectiveType: string
 
   @column()
