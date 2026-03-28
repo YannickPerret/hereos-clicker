@@ -5,14 +5,15 @@ export default class extends BaseSchema {
   protected tableName = 'forum_posts'
 
   async up() {
-    const hasTable = await this.schema.hasTable(this.tableName)
+    const schema = (db as any).schema
+    const hasTable = await schema.hasTable(this.tableName)
     if (!hasTable) {
       return
     }
 
-    const hasParentPostId = await this.schema.hasColumn(this.tableName, 'parent_post_id')
+    const hasParentPostId = await schema.hasColumn(this.tableName, 'parent_post_id')
     if (!hasParentPostId) {
-      this.schema.alterTable(this.tableName, (table) => {
+      await schema.alterTable(this.tableName, (table: any) => {
         table.integer('parent_post_id').unsigned().nullable().references('id').inTable('forum_posts').onDelete('CASCADE')
       })
     }
@@ -48,14 +49,15 @@ export default class extends BaseSchema {
   }
 
   async down() {
-    const hasTable = await this.schema.hasTable(this.tableName)
+    const schema = (db as any).schema
+    const hasTable = await schema.hasTable(this.tableName)
     if (!hasTable) {
       return
     }
 
-    const hasParentPostId = await this.schema.hasColumn(this.tableName, 'parent_post_id')
+    const hasParentPostId = await schema.hasColumn(this.tableName, 'parent_post_id')
     if (hasParentPostId) {
-      this.schema.alterTable(this.tableName, (table) => {
+      await schema.alterTable(this.tableName, (table: any) => {
         table.dropColumn('parent_post_id')
       })
     }
