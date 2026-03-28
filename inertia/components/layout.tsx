@@ -20,6 +20,14 @@ const REWARD_ICONS: Record<string, string> = {
   item: '📦',
 }
 
+const ACTIVITY_LOCKED_NAVS = new Set([
+  '/inventory',
+  '/companions',
+  '/shop',
+  '/black-market',
+  '/pvp',
+])
+
 function rewardLabel(
   rewardType: string,
   rewardValue: number,
@@ -215,6 +223,24 @@ export default function GameLayout({ children }: { children: ReactNode }) {
     )
   }
 
+  const handleLockedNavigation = (event: React.MouseEvent, href: string) => {
+    if (!activeActivity || !ACTIVITY_LOCKED_NAVS.has(href)) return
+
+    event.preventDefault()
+
+    const message =
+      activeActivity.type === 'pvp'
+        ? t('activityBanner.pvpMessage')
+        : t('activityBanner.dungeonMessage')
+
+    if (!isOnActiveActivity) {
+      router.visit(activeActivity.returnPath)
+      return
+    }
+
+    setToast({ type: 'error', message })
+  }
+
   return (
     <div className="min-h-screen bg-cyber-black">
       {toast && (
@@ -324,15 +350,28 @@ export default function GameLayout({ children }: { children: ReactNode }) {
       <div className="flex">
         <aside className="sticky top-14 hidden h-[calc(100vh-3.5rem)] w-72 shrink-0 border-r border-cyber-blue/20 bg-cyber-dark/40 px-4 py-5 md:block">
           <nav className="flex flex-col gap-2">
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="rounded border border-cyber-blue/15 px-3 py-2.5 text-xs uppercase tracking-[0.22em] text-gray-300 transition-all hover:border-cyber-blue/35 hover:bg-cyber-blue/10 hover:text-cyber-blue"
-              >
-                {link.label}
-              </Link>
-            ))}
+            {navLinks.map((link) =>
+              (() => {
+                const isLockedByActivity = Boolean(
+                  activeActivity && ACTIVITY_LOCKED_NAVS.has(link.href)
+                )
+
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    onClick={(event) => handleLockedNavigation(event, link.href)}
+                    className={`rounded border px-3 py-2.5 text-xs uppercase tracking-[0.22em] transition-all ${
+                      isLockedByActivity
+                        ? 'border-cyber-blue/10 text-gray-500 hover:border-cyber-blue/20 hover:bg-cyber-blue/5 hover:text-gray-300'
+                        : 'border-cyber-blue/15 text-gray-300 hover:border-cyber-blue/35 hover:bg-cyber-blue/10 hover:text-cyber-blue'
+                    }`}
+                  >
+                    {link.label}
+                  </Link>
+                )
+              })()
+            )}
             {isStaff && (
               <Link
                 href="/admin"
