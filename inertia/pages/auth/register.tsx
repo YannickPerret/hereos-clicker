@@ -8,10 +8,14 @@ export default function Register() {
     username: '',
     email: '',
     password: '',
+    passwordConfirmation: '',
   })
+
+  const passwordMismatch = data.passwordConfirmation.length > 0 && data.password !== data.passwordConfirmation
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (passwordMismatch) return
     post('/register')
   }
 
@@ -75,9 +79,27 @@ export default function Register() {
               {errors.password && <p className="text-cyber-red text-xs mt-1">{errors.password}</p>}
             </div>
 
+            <div>
+              <label className="block text-xs uppercase tracking-wider text-cyber-pink mb-2">{t('register.passwordConfirmation')}</label>
+              <input
+                type="password"
+                value={data.passwordConfirmation}
+                onChange={(e) => setData('passwordConfirmation', e.target.value)}
+                className={`w-full bg-cyber-black border rounded px-4 py-2.5 text-white focus:outline-none transition-all ${
+                  passwordMismatch
+                    ? 'border-cyber-red/50 focus:border-cyber-red'
+                    : 'border-cyber-pink/30 focus:border-cyber-pink'
+                }`}
+                placeholder={t('register.placeholderPasswordConfirmation')}
+              />
+              {passwordMismatch && (
+                <p className="text-cyber-red text-xs mt-1">{t('register.passwordMismatch')}</p>
+              )}
+            </div>
+
             <button
               type="submit"
-              disabled={processing}
+              disabled={processing || passwordMismatch || !data.passwordConfirmation}
               className="w-full py-3 bg-cyber-pink/20 border border-cyber-pink text-cyber-pink font-bold uppercase tracking-widest rounded hover:bg-cyber-pink/30 transition-all disabled:opacity-50 neon-border-pink"
             >
               {processing ? t('register.submitting') : t('register.submit')}
