@@ -208,16 +208,17 @@ function useAutoFollowLog(entryCount: number) {
 
 function CombatLog({ log, className = '' }: { log: CombatLogEntry[]; className?: string }) {
   const { t } = useTranslation(['dungeon', 'common'])
+  const { containerRef, hasUnseenEntries, handleScroll, scrollToLatest } = useAutoFollowLog(
+    log?.length || 0
+  )
 
   if (!log || log.length === 0) return null
 
-  const { containerRef, hasUnseenEntries, handleScroll, scrollToLatest } = useAutoFollowLog(
-    log.length
-  )
-
   return (
     <div className={`relative bg-cyber-dark border border-gray-800 rounded-lg p-4 ${className}`}>
-      <h3 className="text-[10px] text-gray-600 uppercase tracking-widest mb-2">{t('dungeon:combatLog')}</h3>
+      <h3 className="text-[10px] text-gray-600 uppercase tracking-widest mb-2">
+        {t('dungeon:combatLog')}
+      </h3>
       <div
         ref={containerRef}
         onScroll={handleScroll}
@@ -261,10 +262,14 @@ function CombatLog({ log, className = '' }: { log: CombatLogEntry[]; className?:
                   className={`text-xs p-2 rounded ${entry.blocked ? 'bg-cyber-blue/10 border border-cyber-blue/30' : entry.isCrit ? 'bg-cyber-red/20 border border-cyber-red/50' : 'bg-cyber-red/5'}`}
                 >
                   <span className="text-cyber-red">
-                    {entry.defenderName ? t('dungeon:enemyAttacksTarget', { name: entry.defenderName }) : t('dungeon:enemyAttacks')}
+                    {entry.defenderName
+                      ? t('dungeon:enemyAttacksTarget', { name: entry.defenderName })
+                      : t('dungeon:enemyAttacks')}
                   </span>
                   {entry.blocked ? (
-                    <span className="text-cyber-blue font-bold ml-1">{t('dungeon:blockedByShield')}</span>
+                    <span className="text-cyber-blue font-bold ml-1">
+                      {t('dungeon:blockedByShield')}
+                    </span>
                   ) : (
                     <>
                       <span className="text-white font-bold ml-1">-{entry.damage} HP</span>
@@ -311,7 +316,9 @@ function CombatLog({ log, className = '' }: { log: CombatLogEntry[]; className?:
                   className="text-xs p-2 rounded bg-cyber-purple/10 border border-cyber-purple/30"
                 >
                   <span className="text-cyber-purple font-bold">{t('dungeon:levelUp')}</span>
-                  <span className="text-white ml-2">{t('dungeon:newLevel', { n: entry.newLevel })}</span>
+                  <span className="text-white ml-2">
+                    {t('dungeon:newLevel', { n: entry.newLevel })}
+                  </span>
                 </div>
               )
             case 'boss_spawn':
@@ -320,7 +327,9 @@ function CombatLog({ log, className = '' }: { log: CombatLogEntry[]; className?:
                   key={i}
                   className="text-xs p-2 rounded bg-cyber-yellow/10 border border-cyber-yellow/50"
                 >
-                  <span className="text-cyber-yellow font-bold">{t('dungeon:bossSpawn', { name: entry.bossName })}</span>
+                  <span className="text-cyber-yellow font-bold">
+                    {t('dungeon:bossSpawn', { name: entry.bossName })}
+                  </span>
                 </div>
               )
             case 'new_enemy':
@@ -346,7 +355,9 @@ function CombatLog({ log, className = '' }: { log: CombatLogEntry[]; className?:
                     <span className="text-cyber-green font-bold ml-1">+{entry.healed} HP</span>
                   )}
                   {entry.stolen && (
-                    <span className="text-cyber-yellow ml-1">{t('dungeon:stolenCredits', { amount: entry.stolen })}</span>
+                    <span className="text-cyber-yellow ml-1">
+                      {t('dungeon:stolenCredits', { amount: entry.stolen })}
+                    </span>
                   )}
                   {entry.message && !entry.damage && !entry.healed && (
                     <span className="text-gray-400 ml-1">{entry.message}</span>
@@ -391,7 +402,9 @@ function CombatLog({ log, className = '' }: { log: CombatLogEntry[]; className?:
                   key={i}
                   className="text-xs p-2 rounded bg-cyber-green/20 border border-cyber-green/50 text-center"
                 >
-                  <span className="text-cyber-green font-bold tracking-widest">{t('dungeon:victory')}</span>
+                  <span className="text-cyber-green font-bold tracking-widest">
+                    {t('dungeon:victory')}
+                  </span>
                 </div>
               )
             case 'defeat':
@@ -400,12 +413,15 @@ function CombatLog({ log, className = '' }: { log: CombatLogEntry[]; className?:
                   key={i}
                   className="text-xs p-2 rounded bg-cyber-red/20 border border-cyber-red/50 text-center"
                 >
-                  <span className="text-cyber-red font-bold tracking-widest">{t('dungeon:defeat')}</span>
+                  <span className="text-cyber-red font-bold tracking-widest">
+                    {t('dungeon:defeat')}
+                  </span>
                   {(entry.creditsLost !== undefined || entry.revivedHp !== undefined) && (
                     <span className="ml-2 text-gray-300">
                       {entry.creditsLost !== undefined && `-${entry.creditsLost}c`}
                       {entry.creditsLost !== undefined && entry.revivedHp !== undefined && ' • '}
-                      {entry.revivedHp !== undefined && t('dungeon:returnedToHp', { hp: entry.revivedHp })}
+                      {entry.revivedHp !== undefined &&
+                        t('dungeon:returnedToHp', { hp: entry.revivedHp })}
                     </span>
                   )}
                 </div>
@@ -550,7 +566,9 @@ export default function DungeonRun({
         <div className="text-xs text-gray-600 uppercase tracking-widest">
           F{floor.floorNumber} - {floor.name}
         </div>
-        <div className="text-xs text-gray-700">{t('dungeon:enemiesDefeatedCount', { current: run.enemiesDefeated, total: 3 })}</div>
+        <div className="text-xs text-gray-700">
+          {t('dungeon:enemiesDefeatedCount', { current: run.enemiesDefeated, total: 3 })}
+        </div>
       </div>
 
       {/* Turn indicator for group */}
@@ -565,7 +583,9 @@ export default function DungeonRun({
           >
             {isMyTurn
               ? t('dungeon:yourTurnAttack')
-              : t('dungeon:turnOf', { name: partyMembers.find((m) => m.id === run.currentTurnId)?.name || '...' })}
+              : t('dungeon:turnOf', {
+                  name: partyMembers.find((m) => m.id === run.currentTurnId)?.name || '...',
+                })}
             {currentTurnIsAfk && (
               <span className="ml-2 rounded-full border border-cyber-orange/40 bg-cyber-orange/10 px-2 py-0.5 text-[10px] font-bold text-cyber-orange">
                 AFK 5S
@@ -634,7 +654,11 @@ export default function DungeonRun({
                   : 'text-gray-400'
             }`}
           >
-            {run.status === 'victory' ? t('dungeon:victory') : run.status === 'defeat' ? t('dungeon:defeat') : t('dungeon:fled')}
+            {run.status === 'victory'
+              ? t('dungeon:victory')
+              : run.status === 'defeat'
+                ? t('dungeon:defeat')
+                : t('dungeon:fled')}
           </h2>
           <p className="text-gray-500 text-sm mb-6">
             {run.status === 'victory'
@@ -650,18 +674,24 @@ export default function DungeonRun({
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded border border-cyber-yellow/20 bg-cyber-yellow/5 px-3 py-2">
-                  <div className="text-[10px] uppercase tracking-widest text-gray-600">{t('dungeon:credits')}</div>
+                  <div className="text-[10px] uppercase tracking-widest text-gray-600">
+                    {t('dungeon:credits')}
+                  </div>
                   <div className="mt-1 text-lg font-bold text-cyber-yellow">
                     +{rewardSummary.credits}
                   </div>
                 </div>
                 <div className="rounded border border-cyber-blue/20 bg-cyber-blue/5 px-3 py-2">
-                  <div className="text-[10px] uppercase tracking-widest text-gray-600">{t('dungeon:xp')}</div>
+                  <div className="text-[10px] uppercase tracking-widest text-gray-600">
+                    {t('dungeon:xp')}
+                  </div>
                   <div className="mt-1 text-lg font-bold text-cyber-blue">+{rewardSummary.xp}</div>
                 </div>
               </div>
               <div className="mt-3 rounded border border-cyber-pink/20 bg-cyber-pink/5 px-3 py-3">
-                <div className="text-[10px] uppercase tracking-widest text-gray-600">{t('dungeon:items')}</div>
+                <div className="text-[10px] uppercase tracking-widest text-gray-600">
+                  {t('dungeon:items')}
+                </div>
                 {rewardSummary.items.length > 0 ? (
                   <div className="mt-2 flex flex-wrap gap-2">
                     {rewardSummary.items.map((item) => (
@@ -757,7 +787,9 @@ export default function DungeonRun({
 
               <div className="space-y-2 w-full">
                 <button
-                  onClick={() => router.post(`/dungeon/run/${run.id}/attack`, {}, combatActionOptions)}
+                  onClick={() =>
+                    router.post(`/dungeon/run/${run.id}/attack`, {}, combatActionOptions)
+                  }
                   disabled={(isGroupRun && !isMyTurn) || isCharacterKo}
                   className={`w-full py-3 border font-bold uppercase tracking-widest rounded transition-all text-sm ${
                     (isGroupRun && !isMyTurn) || isCharacterKo
@@ -875,7 +907,9 @@ export default function DungeonRun({
                 )}
 
                 <button
-                  onClick={() => router.post(`/dungeon/run/${run.id}/flee`, {}, combatActionOptions)}
+                  onClick={() =>
+                    router.post(`/dungeon/run/${run.id}/flee`, {}, combatActionOptions)
+                  }
                   className="w-full py-2 bg-gray-900 border border-gray-700 text-gray-500 uppercase tracking-widest rounded hover:bg-gray-800 hover:text-gray-400 transition-all text-xs"
                 >
                   {t('dungeon:flee')}
@@ -900,7 +934,14 @@ export default function DungeonRun({
                   alt={enemy.name}
                   className="w-24 h-24 object-contain"
                   onError={(e) => {
-                    ;(e.target as HTMLImageElement).style.display = 'none'
+                    const target = e.target as HTMLImageElement
+                    if (target.dataset.fallbackApplied === '1') {
+                      target.style.display = 'none'
+                      return
+                    }
+
+                    target.dataset.fallbackApplied = '1'
+                    target.src = '/images/enemies/default.svg'
                   }}
                 />
               </div>
@@ -1020,7 +1061,9 @@ export default function DungeonRun({
 
           {/* Combat log */}
           <div className="relative md:col-span-2 bg-cyber-dark border border-gray-800 rounded-lg p-4">
-            <h3 className="text-[10px] text-gray-600 uppercase tracking-widest mb-2">{t('dungeon:combatLog')}</h3>
+            <h3 className="text-[10px] text-gray-600 uppercase tracking-widest mb-2">
+              {t('dungeon:combatLog')}
+            </h3>
             <div
               ref={groupLogScroll.containerRef}
               onScroll={groupLogScroll.handleScroll}
@@ -1062,7 +1105,9 @@ export default function DungeonRun({
                         <span className="text-gray-500 ml-1">{t('dungeon:strikes')}</span>
                         <span className="text-white font-bold ml-1">-{entry.damage}</span>
                         {entry.isCrit && (
-                          <span className="text-cyber-yellow font-bold ml-1">{t('dungeon:critical')}</span>
+                          <span className="text-cyber-yellow font-bold ml-1">
+                            {t('dungeon:critical')}
+                          </span>
                         )}
                         {entry.auto && <span className="text-gray-600 ml-1">(auto)</span>}
                         <span className="text-gray-700 ml-2">
@@ -1087,7 +1132,9 @@ export default function DungeonRun({
                           {entry.characterName}
                         </span>
                         <span className="text-gray-500 ml-1">{t('dungeon:uses')}</span>
-                        <span className="text-cyber-green ml-1">{entry.itemName || 'un objet'}</span>
+                        <span className="text-cyber-green ml-1">
+                          {entry.itemName || 'un objet'}
+                        </span>
                         {entry.healed !== undefined && (
                           <span className="text-white font-bold ml-1">+{entry.healed} HP</span>
                         )}
@@ -1098,11 +1145,15 @@ export default function DungeonRun({
                     )}
                     {entry.action === 'enemy_attack' && (
                       <>
-                        <span className="text-cyber-red font-bold">{enemy?.name || t('dungeon:enemy')}</span>
+                        <span className="text-cyber-red font-bold">
+                          {enemy?.name || t('dungeon:enemy')}
+                        </span>
                         <span className="text-gray-500 ml-1">{t('dungeon:strikes')}</span>
                         <span className="text-white font-bold ml-1">-{entry.damage}</span>
                         {entry.isCrit && (
-                          <span className="text-cyber-red font-bold ml-1">{t('dungeon:critical')}</span>
+                          <span className="text-cyber-red font-bold ml-1">
+                            {t('dungeon:critical')}
+                          </span>
                         )}
                       </>
                     )}
@@ -1113,12 +1164,14 @@ export default function DungeonRun({
                     )}
                     {entry.action === 'new_enemy' && (
                       <span className="text-gray-400">
-                        {t('dungeon:newEnemy')}<span className="text-white">{entry.enemyName}</span> (
-                        {entry.enemyHp} HP)
+                        {t('dungeon:newEnemy')}
+                        <span className="text-white">{entry.enemyName}</span> ({entry.enemyHp} HP)
                       </span>
                     )}
                     {entry.action === 'boss_spawn' && (
-                      <span className="text-cyber-yellow font-bold">{t('dungeon:bossSpawn', { name: entry.bossName })}</span>
+                      <span className="text-cyber-yellow font-bold">
+                        {t('dungeon:bossSpawn', { name: entry.bossName })}
+                      </span>
                     )}
                     {entry.action === 'skill_use' && (
                       <>
@@ -1133,7 +1186,9 @@ export default function DungeonRun({
                         {entry.damage && (
                           <span className="text-white font-bold ml-1">-{entry.damage}</span>
                         )}
-                        {entry.isCrit && <span className="text-cyber-yellow ml-1">{t('dungeon:critical')}</span>}
+                        {entry.isCrit && (
+                          <span className="text-cyber-yellow ml-1">{t('dungeon:critical')}</span>
+                        )}
                         {entry.healed && (
                           <span className="text-cyber-green ml-1">+{entry.healed} HP</span>
                         )}
@@ -1157,13 +1212,16 @@ export default function DungeonRun({
                       </span>
                     )}
                     {entry.action === 'victory' && (
-                      <span className="text-cyber-green font-bold tracking-widest">{t('dungeon:victory')}!</span>
+                      <span className="text-cyber-green font-bold tracking-widest">
+                        {t('dungeon:victory')}!
+                      </span>
                     )}
                     {entry.action === 'defeat' && (
                       <span className="text-cyber-red font-bold tracking-widest">
                         {t('dungeon:defeat')}
                         {entry.creditsLost !== undefined && ` -${entry.creditsLost}c`}
-                        {entry.revivedHp !== undefined && ` ${t('dungeon:returnedToHp', { hp: entry.revivedHp })}`}
+                        {entry.revivedHp !== undefined &&
+                          ` ${t('dungeon:returnedToHp', { hp: entry.revivedHp })}`}
                       </span>
                     )}
                   </div>

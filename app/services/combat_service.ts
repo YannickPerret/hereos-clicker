@@ -59,6 +59,56 @@ export default class CombatService {
   private static readonly DEATH_REVIVE_HP = 10
   private static readonly DEATH_CREDITS_LOSS_PERCENT = 10
 
+  private static parseFloorEnemyIds(floor: DungeonFloor) {
+    try {
+      const parsed = JSON.parse(floor.enemyIds)
+      if (!Array.isArray(parsed)) return []
+
+      return parsed.filter((entry): entry is number => Number.isInteger(entry) && entry > 0)
+    } catch {
+      return []
+    }
+  }
+
+  private static async getRandomFloorEnemy(floor: DungeonFloor) {
+    const enemyIds = this.parseFloorEnemyIds(floor)
+    if (enemyIds.length === 0) {
+      throw new Error('No dungeon enemies configured')
+    }
+
+    const enemies = await Enemy.query().whereIn('id', enemyIds)
+    if (enemies.length === 0) {
+      throw new Error('No valid dungeon enemies found')
+    }
+
+    return enemies[Math.floor(Math.random() * enemies.length)]
+  }
+
+  private static async resolveRunEnemy(run: DungeonRun) {
+    if (run.currentEnemyId) {
+      const currentEnemy = await Enemy.find(run.currentEnemyId)
+      if (currentEnemy) {
+        return currentEnemy
+      }
+    }
+
+    const floor = await DungeonFloor.findOrFail(run.dungeonFloorId)
+
+    if (floor.bossEnemyId && run.enemiesDefeated >= 3) {
+      const boss = await Enemy.find(floor.bossEnemyId)
+      if (boss) {
+        run.currentEnemyId = boss.id
+        run.currentEnemyHp = run.currentEnemyHp > 0 ? run.currentEnemyHp : boss.hp
+        return boss
+      }
+    }
+
+    const fallbackEnemy = await this.getRandomFloorEnemy(floor)
+    run.currentEnemyId = fallbackEnemy.id
+    run.currentEnemyHp = run.currentEnemyHp > 0 ? run.currentEnemyHp : fallbackEnemy.hp
+    return fallbackEnemy
+  }
+
   static async startRun(character: Character, floorId: number) {
     const floor = await DungeonFloor.findOrFail(floorId)
 
@@ -77,9 +127,7 @@ export default class CombatService {
     }
 
     // Spawn first enemy
-    const enemyIds: number[] = JSON.parse(floor.enemyIds)
-    const randomEnemyId = enemyIds[Math.floor(Math.random() * enemyIds.length)]
-    const enemy = await Enemy.findOrFail(randomEnemyId)
+    const enemy = await this.getRandomFloorEnemy(floor)
 
     const run = await DungeonRun.create({
       characterId: character.id,
@@ -208,7 +256,7 @@ export default class CombatService {
       return
     }
 
-    const enemy = await Enemy.findOrFail(run.currentEnemyId!)
+    const enemy = await this.resolveRunEnemy(run)
     const bonuses = await ClickerService.calculateEquipBonuses(character)
     const rawDmg = Math.max(1, character.attack + bonuses.attackBonus - enemy.defense)
     run.currentEnemyHp = Math.max(0, run.currentEnemyHp - rawDmg)
@@ -468,8 +516,15 @@ export default class CombatService {
       // Check for timeout — auto-attack if deadline passed
       if (run.turnDeadline && Date.now() > run.turnDeadline && run.currentTurnId !== character.id) {
         // Force the timed-out player's basic attack first
-        const timedOutChar = await Character.findOrFail(run.currentTurnId)
-        await this.performAutoAttack(timedOutChar, run)
+        const timedOutChar = await Character.find(run.currentTurnId)
+        if (timedOutChar) {
+          await this.performAutoAttack(timedOutChar, run)
+        } else {
+          const nextTurnId = await this.getNextTurnId(run, run.currentTurnId)
+          run.currentTurnId = nextTurnId
+          this.setTurnDeadline(run, nextTurnId)
+          await run.save()
+        }
         // Now it might be this character's turn, or the run might be over
         if (run.status !== 'in_progress') {
           await run.save()
@@ -484,7 +539,7 @@ export default class CombatService {
 
     this.clearCharacterAfk(run, character.id)
 
-    const enemy = await Enemy.findOrFail(run.currentEnemyId!)
+    const enemy = await this.resolveRunEnemy(run)
     const bonuses = await ClickerService.calculateEquipBonuses(character)
     const talentBonuses = await TalentService.getCharacterBonuses(character.id)
     const effectiveCritChance = Math.min(100, character.critChance + bonuses.critChanceBonus)
@@ -588,10 +643,18 @@ export default class CombatService {
       if (run.enemiesDefeated >= 3) {
         if (floor.bossEnemyId && run.enemiesDefeated === 3) {
           // Spawn boss
-          const boss = await Enemy.findOrFail(floor.bossEnemyId)
-          run.currentEnemyId = boss.id
-          run.currentEnemyHp = boss.hp
-          log.push({ action: 'boss_spawn', bossName: boss.name })
+          const boss = await Enemy.find(floor.bossEnemyId)
+          if (boss) {
+            run.currentEnemyId = boss.id
+            run.currentEnemyHp = boss.hp
+            log.push({ action: 'boss_spawn', bossName: boss.name })
+          } else {
+            run.status = 'victory'
+            run.endedAt = DateTime.now()
+            log.push({ action: 'victory' })
+            DailyMissionService.trackProgress(character.id, 'dungeon_clear').catch(() => {})
+            await this.trackDungeonFloorClearQuest(run, character)
+          }
         } else {
           // Victory
           run.status = 'victory'
@@ -618,9 +681,7 @@ export default class CombatService {
         }
       } else {
         // Spawn next enemy
-        const enemyIds: number[] = JSON.parse(floor.enemyIds)
-        const nextEnemyId = enemyIds[Math.floor(Math.random() * enemyIds.length)]
-        const nextEnemy = await Enemy.findOrFail(nextEnemyId)
+        const nextEnemy = await this.getRandomFloorEnemy(floor)
         run.currentEnemyId = nextEnemy.id
         run.currentEnemyHp = nextEnemy.hp
         log.push({ action: 'new_enemy', enemyName: nextEnemy.name, enemyHp: nextEnemy.hp })
@@ -1036,8 +1097,15 @@ export default class CombatService {
     // Enforce turns in group mode
     if (run.partyId && run.currentTurnId) {
       if (run.turnDeadline && Date.now() > run.turnDeadline && run.currentTurnId !== character.id) {
-        const timedOutChar = await Character.findOrFail(run.currentTurnId)
-        await this.performAutoAttack(timedOutChar, run)
+        const timedOutChar = await Character.find(run.currentTurnId)
+        if (timedOutChar) {
+          await this.performAutoAttack(timedOutChar, run)
+        } else {
+          const nextTurnId = await this.getNextTurnId(run, run.currentTurnId)
+          run.currentTurnId = nextTurnId
+          this.setTurnDeadline(run, nextTurnId)
+          await run.save()
+        }
         if (run.status !== 'in_progress') {
           await run.save()
           return { log: JSON.parse(run.combatLog), run: run.serialize(), currentEnemy: null }
@@ -1071,7 +1139,7 @@ export default class CombatService {
       throw new Error(`Skill en cooldown (${cooldowns[skillId]} tours)`)
     }
 
-    const enemy = await Enemy.findOrFail(run.currentEnemyId!)
+    const enemy = await this.resolveRunEnemy(run)
     const bonuses = await ClickerService.calculateEquipBonuses(character)
     const talentBonuses = await TalentService.getCharacterBonuses(character.id)
     const effectiveCritChance = Math.min(100, character.critChance + bonuses.critChanceBonus)
@@ -1435,10 +1503,34 @@ export default class CombatService {
 
     if (run.enemiesDefeated >= 3) {
       if (floor.bossEnemyId && run.enemiesDefeated === 3) {
-        const boss = await Enemy.findOrFail(floor.bossEnemyId)
-        run.currentEnemyId = boss.id
-        run.currentEnemyHp = boss.hp
-        log.push({ action: 'boss_spawn', bossName: boss.name })
+        const boss = await Enemy.find(floor.bossEnemyId)
+        if (boss) {
+          run.currentEnemyId = boss.id
+          run.currentEnemyHp = boss.hp
+          log.push({ action: 'boss_spawn', bossName: boss.name })
+        } else {
+          run.status = 'victory'
+          run.endedAt = DateTime.now()
+          log.push({ action: 'victory' })
+          DailyMissionService.trackProgress(character.id, 'dungeon_clear').catch(() => {})
+          await this.trackDungeonFloorClearQuest(run, character)
+          transmit.broadcast('game/notifications', {
+            type: 'dungeon',
+            message: `${character.name} a termine un donjon!`,
+          })
+          if (run.partyId) {
+            const { default: Party } = await import('#models/party')
+            const party = await Party.find(run.partyId)
+            if (party) {
+              party.status = 'waiting'
+              party.dungeonRunId = null
+              party.dungeonFloorId = null
+              party.countdownStart = null
+              await party.save()
+            }
+          }
+          await character.save()
+        }
       } else {
         run.status = 'victory'
         run.endedAt = DateTime.now()
@@ -1462,9 +1554,7 @@ export default class CombatService {
         }
       }
     } else {
-      const enemyIds: number[] = JSON.parse(floor.enemyIds)
-      const nextEnemyId = enemyIds[Math.floor(Math.random() * enemyIds.length)]
-      const nextEnemy = await Enemy.findOrFail(nextEnemyId)
+      const nextEnemy = await this.getRandomFloorEnemy(floor)
       run.currentEnemyId = nextEnemy.id
       run.currentEnemyHp = nextEnemy.hp
       log.push({ action: 'new_enemy', enemyName: nextEnemy.name, enemyHp: nextEnemy.hp })
