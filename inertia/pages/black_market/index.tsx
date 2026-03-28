@@ -197,9 +197,9 @@ export default function BlackMarket({ character, profile, vendors, cleaners, nig
         <div className="rounded-2xl border border-cyber-blue/20 bg-cyber-dark/70 p-5">
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-bold uppercase tracking-[0.18em] text-cyber-blue">{t(‘shop:blackMarket.cleaners’)}</h2>
+              <h2 className="text-lg font-bold uppercase tracking-[0.18em] text-cyber-blue">{t('shop:blackMarket.cleaners')}</h2>
               <p className="mt-1 text-xs text-gray-500">
-                {t(‘shop:blackMarket.cleanersDesc’)}
+                {t('shop:blackMarket.cleanersDesc')}
               </p>
             </div>
             <div className="text-right text-xs text-gray-500">
