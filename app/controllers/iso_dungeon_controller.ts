@@ -5,10 +5,11 @@ import IsoDungeonRoom from '#models/iso_dungeon_room'
 import IsoDungeonRun from '#models/iso_dungeon_run'
 import IsoTileset from '#models/iso_tileset'
 import IsoSprite from '#models/iso_sprite'
+import { localize } from '#services/locale_service'
 
 export default class IsoDungeonController {
   /** List available iso dungeons */
-  async index({ inertia, auth }: HttpContext) {
+  async index({ inertia, auth, locale }: HttpContext) {
     const character = await Character.query().where('userId', auth.user!.id).firstOrFail()
     const dungeons = await IsoDungeon.query()
       .where('isActive', true)
@@ -25,11 +26,15 @@ export default class IsoDungeonController {
     return inertia.render('iso-dungeon/index', {
       character: character.serialize(),
       dungeons: dungeons.map((d) => ({
-        ...d.serialize(),
+        ...localize(d.serialize(), locale, ['name', 'description']),
         roomCount: d.rooms.length,
       })),
       activeRun: activeRun
-        ? { id: activeRun.id, dungeonId: activeRun.dungeonId, dungeonName: activeRun.dungeon.name }
+        ? {
+            id: activeRun.id,
+            dungeonId: activeRun.dungeonId,
+            dungeonName: localize(activeRun.dungeon.serialize(), locale, ['name']).name,
+          }
         : null,
     })
   }
@@ -73,7 +78,7 @@ export default class IsoDungeonController {
   }
 
   /** Main game view — Phaser loads here */
-  async show({ params, inertia, auth }: HttpContext) {
+  async show({ params, inertia, auth, locale }: HttpContext) {
     const character = await Character.query().where('userId', auth.user!.id).firstOrFail()
     const run = await IsoDungeonRun.query()
       .where('id', params.runId)
@@ -100,7 +105,7 @@ export default class IsoDungeonController {
       },
       dungeon: {
         id: run.dungeon.id,
-        name: run.dungeon.name,
+        name: localize(run.dungeon.serialize(), locale, ['name']).name,
         totalRooms: run.dungeon.rooms.length,
       },
       room: {

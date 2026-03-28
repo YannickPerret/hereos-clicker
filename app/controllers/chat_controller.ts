@@ -8,6 +8,17 @@ import transmit from '@adonisjs/transmit/services/main'
 import ChatPresenceService from '#services/chat_presence_service'
 
 export default class ChatController {
+  private guestChatError(locale: string) {
+    return {
+      error:
+        locale === 'en'
+          ? 'Guests cannot send chat messages. Create an account first.'
+          : 'Les invites ne peuvent pas parler dans le chat. Cree un compte d abord.',
+      upgradeRequired: true,
+      upgradePath: '/account/upgrade',
+    }
+  }
+
   /** API: get channels list */
   async channels({ response }: HttpContext) {
     const channels = await ChatChannel.query().where('isPublic', true).orderBy('createdAt', 'asc')
@@ -56,7 +67,11 @@ export default class ChatController {
   }
 
   /** API: send a message */
-  async send({ request, auth, response }: HttpContext) {
+  async send({ request, auth, response, locale }: HttpContext) {
+    if (auth.user!.isGuest) {
+      return response.forbidden(this.guestChatError(locale))
+    }
+
     const character = await Character.query().where('userId', auth.user!.id).first()
 
     const message = request.input('message', '').trim()
@@ -120,7 +135,11 @@ export default class ChatController {
   }
 
   /** API: create a channel */
-  async createChannel({ request, auth, response }: HttpContext) {
+  async createChannel({ request, auth, response, locale }: HttpContext) {
+    if (auth.user!.isGuest) {
+      return response.forbidden(this.guestChatError(locale))
+    }
+
     const name = request
       .input('name', '')
       .trim()

@@ -10,6 +10,12 @@ import CharacterPvpSeasonStat from '#models/character_pvp_season_stat'
 import { localize } from '#services/locale_service'
 
 export default class PvpController {
+  private guestPvpMessage(locale: string) {
+    return locale === 'en'
+      ? 'Guest accounts cannot join PvP. Create an account first.'
+      : 'Les comptes invites ne peuvent pas faire de PvP. Cree un compte d abord.'
+  }
+
   private async serializeArenaCharacter(character: Character) {
     const equipBonuses = await ClickerService.calculateEquipBonuses(character)
 
@@ -32,7 +38,10 @@ export default class PvpController {
             subquery.where('rating', stat.rating).where('peakRating', '>', stat.peakRating)
           })
           .orWhere((subquery) => {
-            subquery.where('rating', stat.rating).where('peakRating', stat.peakRating).where('wins', '>', stat.wins)
+            subquery
+              .where('rating', stat.rating)
+              .where('peakRating', stat.peakRating)
+              .where('wins', '>', stat.wins)
           })
           .orWhere((subquery) => {
             subquery
@@ -62,10 +71,13 @@ export default class PvpController {
     }
   }
 
-  async index({ inertia, auth }: HttpContext) {
-    const character = await Character.query()
-      .where('userId', auth.user!.id)
-      .firstOrFail()
+  async index({ inertia, auth, response, session, locale }: HttpContext) {
+    if (auth.user!.isGuest) {
+      session.flash('errors', { message: this.guestPvpMessage(locale) })
+      return response.redirect('/play')
+    }
+
+    const character = await Character.query().where('userId', auth.user!.id).firstOrFail()
 
     const activeSeason = await SeasonService.getCurrentRankedSeason()
     const currentSeasonStat = activeSeason
@@ -135,19 +147,20 @@ export default class PvpController {
         : null,
       recentMatches: matchData,
       queueOverview,
-      currentSeason: currentSeasonStat && activeSeason
-        ? {
-            id: currentSeasonStat.id,
-            seasonId: activeSeason.id,
-            seasonName: activeSeason.name,
-            rating: currentSeasonStat.rating,
-            peakRating: currentSeasonStat.peakRating,
-            wins: currentSeasonStat.wins,
-            losses: currentSeasonStat.losses,
-            gamesPlayed: currentSeasonStat.gamesPlayed,
-            rank: currentSeasonRank,
-          }
-        : null,
+      currentSeason:
+        currentSeasonStat && activeSeason
+          ? {
+              id: currentSeasonStat.id,
+              seasonId: activeSeason.id,
+              seasonName: activeSeason.name,
+              rating: currentSeasonStat.rating,
+              peakRating: currentSeasonStat.peakRating,
+              wins: currentSeasonStat.wins,
+              losses: currentSeasonStat.losses,
+              gamesPlayed: currentSeasonStat.gamesPlayed,
+              rank: currentSeasonRank,
+            }
+          : null,
       seasonHistory: seasonHistory.map((entry) => ({
         id: entry.id,
         seasonId: entry.seasonId,
@@ -166,10 +179,13 @@ export default class PvpController {
     })
   }
 
-  async queue({ request, auth, response, session }: HttpContext) {
-    const character = await Character.query()
-      .where('userId', auth.user!.id)
-      .firstOrFail()
+  async queue({ request, auth, response, session, locale }: HttpContext) {
+    if (auth.user!.isGuest) {
+      session.flash('errors', { message: this.guestPvpMessage(locale) })
+      return response.redirect('/play')
+    }
+
+    const character = await Character.query().where('userId', auth.user!.id).firstOrFail()
 
     try {
       const mode = request.input('mode', 'solo')
@@ -196,15 +212,20 @@ export default class PvpController {
         characterId: character.id,
         error: error instanceof Error ? error.message : error,
       })
-      session.flash('errors', { message: error instanceof Error ? error.message : 'Impossible de rejoindre la file PvP' })
+      session.flash('errors', {
+        message: error instanceof Error ? error.message : 'Impossible de rejoindre la file PvP',
+      })
       return response.redirect('/pvp')
     }
   }
 
-  async claimSeasonReward({ params, auth, response, session }: HttpContext) {
-    const character = await Character.query()
-      .where('userId', auth.user!.id)
-      .firstOrFail()
+  async claimSeasonReward({ params, auth, response, session, locale }: HttpContext) {
+    if (auth.user!.isGuest) {
+      session.flash('errors', { message: this.guestPvpMessage(locale) })
+      return response.redirect('/play')
+    }
+
+    const character = await Character.query().where('userId', auth.user!.id).firstOrFail()
 
     try {
       const stat = await SeasonService.claimSeasonReward(character, Number(params.statId))
@@ -218,36 +239,54 @@ export default class PvpController {
     return response.redirect('/pvp')
   }
 
-  async leaveQueue({ auth, response }: HttpContext) {
-    const character = await Character.query()
-      .where('userId', auth.user!.id)
-      .firstOrFail()
+  async leaveQueue({ auth, response, session, locale }: HttpContext) {
+    if (auth.user!.isGuest) {
+      session.flash('errors', { message: this.guestPvpMessage(locale) })
+      return response.redirect('/play')
+    }
+
+    const character = await Character.query().where('userId', auth.user!.id).firstOrFail()
 
     await PvpService.leaveQueue(character)
     return response.redirect('/pvp')
   }
 
-  async show({ params, inertia, auth, locale }: HttpContext) {
-    const character = await Character.query()
-      .where('userId', auth.user!.id)
-      .firstOrFail()
+  async show({ params, inertia, auth, locale, response, session }: HttpContext) {
+    if (auth.user!.isGuest) {
+      session.flash('errors', { message: this.guestPvpMessage(locale) })
+      return response.redirect('/play')
+    }
 
-    return inertia.render('pvp/match', await this.buildMatchPayload(character, params.matchId, locale))
+    const character = await Character.query().where('userId', auth.user!.id).firstOrFail()
+
+    return inertia.render(
+      'pvp/match',
+      await this.buildMatchPayload(character, params.matchId, locale)
+    )
   }
 
   /** JSON API for polling match state */
   async state({ params, auth, response, locale }: HttpContext) {
-    const character = await Character.query()
-      .where('userId', auth.user!.id)
-      .firstOrFail()
+    if (auth.user!.isGuest) {
+      return response.forbidden({
+        error: this.guestPvpMessage(locale),
+        upgradeRequired: true,
+        upgradePath: '/account/upgrade',
+      })
+    }
+
+    const character = await Character.query().where('userId', auth.user!.id).firstOrFail()
 
     return response.json(await this.buildMatchPayload(character, params.matchId, locale))
   }
 
-  async attack({ params, request, auth, response, session }: HttpContext) {
-    const character = await Character.query()
-      .where('userId', auth.user!.id)
-      .firstOrFail()
+  async attack({ params, request, auth, response, session, locale }: HttpContext) {
+    if (auth.user!.isGuest) {
+      session.flash('errors', { message: this.guestPvpMessage(locale) })
+      return response.redirect('/play')
+    }
+
+    const character = await Character.query().where('userId', auth.user!.id).firstOrFail()
 
     try {
       const result = await PvpService.attack(character, params.matchId, request.input('targetId'))
@@ -269,14 +308,22 @@ export default class PvpController {
     return response.redirect(`/pvp/match/${params.matchId}`)
   }
 
-  async useSkill({ params, request, auth, response, session }: HttpContext) {
-    const character = await Character.query()
-      .where('userId', auth.user!.id)
-      .firstOrFail()
+  async useSkill({ params, request, auth, response, session, locale }: HttpContext) {
+    if (auth.user!.isGuest) {
+      session.flash('errors', { message: this.guestPvpMessage(locale) })
+      return response.redirect('/play')
+    }
+
+    const character = await Character.query().where('userId', auth.user!.id).firstOrFail()
 
     try {
       const skillId = Number(request.input('skillId'))
-      const result = await PvpService.useSkill(character, params.matchId, skillId, request.input('targetId'))
+      const result = await PvpService.useSkill(
+        character,
+        params.matchId,
+        skillId,
+        request.input('targetId')
+      )
 
       if (result.match.status === 'completed' && result.match.winnerTeam) {
         const participant = await PvpMatchParticipant.query()
@@ -295,10 +342,13 @@ export default class PvpController {
     return response.redirect(`/pvp/match/${params.matchId}`)
   }
 
-  async forfeit({ params, auth, response }: HttpContext) {
-    const character = await Character.query()
-      .where('userId', auth.user!.id)
-      .firstOrFail()
+  async forfeit({ params, auth, response, session, locale }: HttpContext) {
+    if (auth.user!.isGuest) {
+      session.flash('errors', { message: this.guestPvpMessage(locale) })
+      return response.redirect('/play')
+    }
+
+    const character = await Character.query().where('userId', auth.user!.id).firstOrFail()
 
     await PvpService.forfeit(character, params.matchId)
     return response.redirect('/pvp')

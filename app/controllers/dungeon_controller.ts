@@ -24,6 +24,7 @@ export default class DungeonController {
 
   private async getGlobalLeaderboardPage(offset: number, limit: number) {
     const rows = await Character.query()
+      .whereHas('user', (query) => query.where('isGuest', false))
       .orderBy('credits', 'desc')
       .orderBy('id', 'asc')
       .offset(offset)
@@ -45,6 +46,7 @@ export default class DungeonController {
 
     if (!activeSeason) {
       const rows = await Character.query()
+        .whereHas('user', (query) => query.where('isGuest', false))
         .orderBy('pvpRating', 'desc')
         .orderBy('id', 'asc')
         .offset(offset)
@@ -63,6 +65,9 @@ export default class DungeonController {
 
     const rows = await CharacterPvpSeasonStat.query()
       .where('seasonId', activeSeason.id)
+      .whereHas('character', (query) =>
+        query.whereHas('user', (userQuery) => userQuery.where('isGuest', false))
+      )
       .preload('character')
       .orderBy('rating', 'desc')
       .orderBy('peakRating', 'desc')
@@ -129,7 +134,11 @@ export default class DungeonController {
         ...character.serialize(),
         hpMax: character.hpMax + companionBonuses.hpBonus,
       },
-      floors: localizeAll(floors.map((f) => f.serialize()), locale, ['name', 'description']),
+      floors: localizeAll(
+        floors.map((f) => f.serialize()),
+        locale,
+        ['name', 'description']
+      ),
       activeRun: activeRun?.serialize() || null,
     })
   }
@@ -211,9 +220,14 @@ export default class DungeonController {
       },
       run: run.serialize(),
       floor: localize(run.dungeonFloor.serialize(), locale, ['name', 'description']),
-      currentEnemy: currentEnemy ? localize(currentEnemy.serialize(), locale, ['name', 'description']) : null,
+      currentEnemy: currentEnemy
+        ? localize(currentEnemy.serialize(), locale, ['name', 'description'])
+        : null,
       combatPreview,
-      consumables: consumables.map((c) => ({ ...c.serialize(), item: localize(c.item.serialize(), locale, ['name', 'description']) })),
+      consumables: consumables.map((c) => ({
+        ...c.serialize(),
+        item: localize(c.item.serialize(), locale, ['name', 'description']),
+      })),
       skills: skills.map((s) => ({
         ...localize(s.serialize(), locale, ['name', 'description']),
         currentCooldown: charCooldowns[s.id] || 0,
@@ -349,7 +363,9 @@ export default class DungeonController {
         ...run.serialize(),
         combatLog: JSON.parse(run.combatLog || '[]'),
       },
-      currentEnemy: currentEnemy ? localize(currentEnemy.serialize(), locale, ['name', 'description']) : null,
+      currentEnemy: currentEnemy
+        ? localize(currentEnemy.serialize(), locale, ['name', 'description'])
+        : null,
       combatPreview,
       partyMembers,
     })

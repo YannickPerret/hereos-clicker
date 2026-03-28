@@ -19,6 +19,7 @@ interface UserEntry {
   id: number
   username: string
   email: string
+  isGuest: boolean
   role: string
   roleLabel: string
   createdAt: string
@@ -44,24 +45,67 @@ const ROLE_LABEL_MAP: Record<string, string> = {
 export default function AdminUsers({ users }: Props) {
   const [expandedUser, setExpandedUser] = useState<number | null>(null)
   const [search, setSearch] = useState('')
+  const [activeTab, setActiveTab] = useState<'players' | 'guests'>('players')
 
-  const filtered = users.filter(
+  const regularUsers = users.filter((user) => !user.isGuest)
+  const guestUsers = users.filter((user) => user.isGuest)
+  const visibleUsers = activeTab === 'players' ? regularUsers : guestUsers
+
+  const filtered = visibleUsers.filter(
     (u) =>
       u.username.toLowerCase().includes(search.toLowerCase()) ||
       u.email.toLowerCase().includes(search.toLowerCase())
   )
+
+  const guestDaysRemaining = (createdAt: string) => {
+    const expiresAt = new Date(createdAt).getTime() + 3 * 24 * 60 * 60 * 1000
+    const remaining = expiresAt - Date.now()
+    if (remaining <= 0) return 'expiration imminente'
+    return `J-${Math.ceil(remaining / (24 * 60 * 60 * 1000))}`
+  }
 
   return (
     <GameLayout>
       <div className="max-w-5xl mx-auto">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <Link href="/admin" className="text-xs text-gray-600 hover:text-cyber-blue transition-colors">
+            <Link
+              href="/admin"
+              className="text-xs text-gray-600 hover:text-cyber-blue transition-colors"
+            >
               &larr; DASHBOARD
             </Link>
             <h1 className="text-2xl font-bold text-cyber-red tracking-widest">GESTION USERS</h1>
           </div>
-          <span className="text-xs text-gray-600">{filtered.length} / {users.length} utilisateurs</span>
+          <span className="text-xs text-gray-600">
+            {filtered.length} / {visibleUsers.length}{' '}
+            {activeTab === 'players' ? 'joueurs' : 'guests'}
+          </span>
+        </div>
+
+        <div className="mb-4 flex gap-2">
+          <button
+            type="button"
+            onClick={() => setActiveTab('players')}
+            className={`rounded border px-3 py-1.5 text-[10px] uppercase tracking-widest transition-all ${
+              activeTab === 'players'
+                ? 'border-cyber-blue/30 bg-cyber-blue/10 text-cyber-blue'
+                : 'border-gray-800 text-gray-500 hover:border-cyber-blue/30 hover:text-cyber-blue'
+            }`}
+          >
+            Joueurs ({regularUsers.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('guests')}
+            className={`rounded border px-3 py-1.5 text-[10px] uppercase tracking-widest transition-all ${
+              activeTab === 'guests'
+                ? 'border-cyber-yellow/30 bg-cyber-yellow/10 text-cyber-yellow'
+                : 'border-gray-800 text-gray-500 hover:border-cyber-yellow/30 hover:text-cyber-yellow'
+            }`}
+          >
+            Guests ({guestUsers.length})
+          </button>
         </div>
 
         {/* Search */}
@@ -77,7 +121,10 @@ export default function AdminUsers({ users }: Props) {
 
         <div className="space-y-2">
           {filtered.map((user) => (
-            <div key={user.id} className="bg-cyber-dark border border-gray-800 rounded-lg overflow-hidden">
+            <div
+              key={user.id}
+              className="bg-cyber-dark border border-gray-800 rounded-lg overflow-hidden"
+            >
               {/* User row */}
               <div
                 className="flex items-center justify-between p-4 cursor-pointer hover:bg-cyber-blue/5 transition-all"
@@ -93,19 +140,33 @@ export default function AdminUsers({ users }: Props) {
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
+                  {user.isGuest && (
+                    <span className="text-[10px] px-2 py-0.5 rounded border border-cyber-yellow/30 bg-cyber-yellow/10 text-cyber-yellow">
+                      GUEST {guestDaysRemaining(user.createdAt)}
+                    </span>
+                  )}
                   <span className="text-[10px] text-gray-700">
                     {user.characters.length} perso(s)
                   </span>
-                  <span className={`text-[10px] px-2 py-0.5 rounded border ${ROLE_COLORS[user.role]}`}>
+                  <span
+                    className={`text-[10px] px-2 py-0.5 rounded border ${ROLE_COLORS[user.role]}`}
+                  >
                     {user.roleLabel}
                   </span>
-                  <span className="text-gray-700 text-xs">{expandedUser === user.id ? '▲' : '▼'}</span>
+                  <span className="text-gray-700 text-xs">
+                    {expandedUser === user.id ? '▲' : '▼'}
+                  </span>
                 </div>
               </div>
 
               {/* Expanded details */}
               {expandedUser === user.id && (
                 <div className="border-t border-gray-800 p-4 bg-cyber-black/30 space-y-4">
+                  {user.isGuest && (
+                    <div className="rounded border border-cyber-yellow/20 bg-cyber-yellow/5 px-3 py-2 text-xs text-cyber-yellow">
+                      Compte invite. Suppression automatique 3 jours apres creation.
+                    </div>
+                  )}
                   {/* Role change */}
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-gray-500">Role:</span>
@@ -161,10 +222,16 @@ export default function AdminUsers({ users }: Props) {
                               )}
                             </div>
                             <div className="flex items-center gap-4 text-[10px]">
-                              <span className="text-gray-600">ATK {char.attack} / DEF {char.defense}</span>
+                              <span className="text-gray-600">
+                                ATK {char.attack} / DEF {char.defense}
+                              </span>
                               <span className="text-gray-600">HP {char.hpMax}</span>
-                              <span className="text-cyber-yellow font-bold">{char.credits.toLocaleString()}c</span>
-                              <span className="text-gray-700 group-hover:text-cyber-blue transition-colors">EDITER &rarr;</span>
+                              <span className="text-cyber-yellow font-bold">
+                                {char.credits.toLocaleString()}c
+                              </span>
+                              <span className="text-gray-700 group-hover:text-cyber-blue transition-colors">
+                                EDITER &rarr;
+                              </span>
                             </div>
                           </Link>
                         ))}

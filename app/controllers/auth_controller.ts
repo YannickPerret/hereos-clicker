@@ -4,6 +4,7 @@ import Role from '#models/role'
 import Character from '#models/character'
 import vine from '@vinejs/vine'
 import { randomBytes } from 'node:crypto'
+import GuestAccountService from '#services/guest_account_service'
 
 export default class AuthController {
   private registerValidator = vine.compile(
@@ -23,6 +24,7 @@ export default class AuthController {
   }
 
   async showLanding({ inertia }: HttpContext) {
+    await GuestAccountService.purgeExpiredGuests()
     return inertia.render('landing')
   }
 
@@ -44,6 +46,8 @@ export default class AuthController {
   }
 
   async loginGuest({ auth, response }: HttpContext) {
+    await GuestAccountService.purgeExpiredGuests()
+
     const defaultRole = await Role.findByOrFail('name', 'user')
     const identity = await this.generateGuestIdentity()
 

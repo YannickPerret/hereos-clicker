@@ -52,33 +52,50 @@ export default class AdminController {
   }
 
   private normalizeQuestInput(request: HttpContext['request'], fallback: Partial<Quest> = {}) {
-    const key = String(request.input('key', fallback.key || '')).trim().toLowerCase().replace(/\s+/g, '_')
-    const questType = request.input('questType', fallback.questType || 'main') === 'seasonal'
-      ? 'seasonal'
-      : 'main'
+    const key = String(request.input('key', fallback.key || ''))
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, '_')
+    const questType =
+      request.input('questType', fallback.questType || 'main') === 'seasonal' ? 'seasonal' : 'main'
     const rawSeasonId = request.input('seasonId', fallback.seasonId ?? '')
-    const seasonId = rawSeasonId === '' || rawSeasonId === null || rawSeasonId === undefined
-      ? null
-      : Number(rawSeasonId)
+    const seasonId =
+      rawSeasonId === '' || rawSeasonId === null || rawSeasonId === undefined
+        ? null
+        : Number(rawSeasonId)
     const rawParentQuestId = request.input('parentQuestId', fallback.parentQuestId ?? '')
-    const parentQuestId = rawParentQuestId === '' || rawParentQuestId === null || rawParentQuestId === undefined
-      ? null
-      : Number(rawParentQuestId)
-    const arcKey = String(request.input('arcKey', fallback.arcKey || '')).trim().toLowerCase().replace(/\s+/g, '_')
+    const parentQuestId =
+      rawParentQuestId === '' || rawParentQuestId === null || rawParentQuestId === undefined
+        ? null
+        : Number(rawParentQuestId)
+    const arcKey = String(request.input('arcKey', fallback.arcKey || ''))
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, '_')
     const arcTitle = String(request.input('arcTitle', fallback.arcTitle || '')).trim()
     const rawQuestArcId = request.input('questArcId', fallback.questArcId ?? '')
-    const questArcId = rawQuestArcId === '' || rawQuestArcId === null || rawQuestArcId === undefined
-      ? null
-      : Number(rawQuestArcId)
+    const questArcId =
+      rawQuestArcId === '' || rawQuestArcId === null || rawQuestArcId === undefined
+        ? null
+        : Number(rawQuestArcId)
     const giverName = String(request.input('giverName', fallback.giverName || '')).trim()
     const title = String(request.input('title', fallback.title || '')).trim()
     const summary = String(request.input('summary', fallback.summary || '')).trim()
     const narrative = String(request.input('narrative', fallback.narrative || '')).trim()
-    const objectiveType = String(request.input('objectiveType', fallback.objectiveType || 'hack_clicks')).trim()
-    const targetValue = Math.max(1, Number(request.input('targetValue', fallback.targetValue || 1)) || 1)
+    const titleEn = String(request.input('titleEn', fallback.titleEn || '')).trim()
+    const summaryEn = String(request.input('summaryEn', fallback.summaryEn || '')).trim()
+    const narrativeEn = String(request.input('narrativeEn', fallback.narrativeEn || '')).trim()
+    const objectiveType = String(
+      request.input('objectiveType', fallback.objectiveType || 'hack_clicks')
+    ).trim()
+    const targetValue = Math.max(
+      1,
+      Number(request.input('targetValue', fallback.targetValue || 1)) || 1
+    )
     const icon = String(request.input('icon', fallback.icon || 'terminal')).trim()
     const sortOrder = Math.max(1, Number(request.input('sortOrder', fallback.sortOrder || 1)) || 1)
-    const mode = request.input('mode', fallback.mode || 'simple') === 'advanced' ? 'advanced' : 'simple'
+    const mode =
+      request.input('mode', fallback.mode || 'simple') === 'advanced' ? 'advanced' : 'simple'
 
     return {
       key,
@@ -93,6 +110,9 @@ export default class AdminController {
       title,
       summary,
       narrative: narrative || null,
+      titleEn: titleEn || null,
+      summaryEn: summaryEn || null,
+      narrativeEn: narrativeEn || null,
       objectiveType,
       targetValue,
       icon,
@@ -117,12 +137,14 @@ export default class AdminController {
     }
 
     if ((quest.rewardValue || 0) > 0) {
-      return [{
-        type: quest.rewardType as AdminQuestReward['type'],
-        value: quest.rewardValue,
-        itemId: null,
-        itemName: null,
-      }]
+      return [
+        {
+          type: quest.rewardType as AdminQuestReward['type'],
+          value: quest.rewardValue,
+          itemId: null,
+          itemName: null,
+        },
+      ]
     }
 
     return []
@@ -304,6 +326,9 @@ export default class AdminController {
   }
 
   async users({ inertia }: HttpContext) {
+    const { default: GuestAccountService } = await import('#services/guest_account_service')
+    await GuestAccountService.purgeExpiredGuests()
+
     const users = await User.query()
       .preload('role')
       .preload('characters')
@@ -312,6 +337,7 @@ export default class AdminController {
     return inertia.render('admin/users', {
       users: users.map((u) => ({
         ...u.serialize(),
+        isGuest: u.isGuest,
         role: u.role.name,
         roleLabel: u.role.label,
         characters: u.characters.map((c) => ({
@@ -472,14 +498,23 @@ export default class AdminController {
     character.level = Math.max(1, Number(fields.level) || character.level)
     character.xp = Math.max(0, Number(fields.xp) || 0)
     character.credits = Math.max(0, Number(fields.credits) || 0)
-    character.creditsPerClick = Math.max(1, Number(fields.creditsPerClick) || character.creditsPerClick)
+    character.creditsPerClick = Math.max(
+      1,
+      Number(fields.creditsPerClick) || character.creditsPerClick
+    )
     character.creditsPerSecond = Math.max(0, Number(fields.creditsPerSecond) || 0)
     character.hpMax = Math.max(1, Number(fields.hpMax) || character.hpMax)
-    character.hpCurrent = Math.min(character.hpMax, Math.max(0, Number(fields.hpCurrent) || character.hpCurrent))
+    character.hpCurrent = Math.min(
+      character.hpMax,
+      Math.max(0, Number(fields.hpCurrent) || character.hpCurrent)
+    )
     character.attack = Math.max(0, Number(fields.attack) || character.attack)
     character.defense = Math.max(0, Number(fields.defense) || character.defense)
     character.talentPoints = Math.max(0, Number(fields.talentPoints) || 0)
-    character.critChance = Math.max(0, Math.min(100, Number(fields.critChance) || character.critChance))
+    character.critChance = Math.max(
+      0,
+      Math.min(100, Number(fields.critChance) || character.critChance)
+    )
     character.critDamage = Math.max(100, Number(fields.critDamage) || character.critDamage)
     character.pvpRating = Math.max(0, Number(fields.pvpRating) || 0)
     character.pvpWins = Math.max(0, Number(fields.pvpWins) || 0)
@@ -603,9 +638,10 @@ export default class AdminController {
     }
 
     const progressInput = Number(request.input('progress', 0)) || 0
-    const progress = status === 'completed'
-      ? quest.targetValue
-      : Math.max(0, Math.min(quest.targetValue, progressInput))
+    const progress =
+      status === 'completed'
+        ? quest.targetValue
+        : Math.max(0, Math.min(quest.targetValue, progressInput))
 
     await CharacterQuest.create({
       characterId: character.id,
@@ -626,9 +662,10 @@ export default class AdminController {
     const progressInput = Number(request.input('progress', state.progress)) || 0
 
     state.status = status
-    state.progress = status === 'completed'
-      ? state.quest.targetValue
-      : Math.max(0, Math.min(state.quest.targetValue, progressInput))
+    state.progress =
+      status === 'completed'
+        ? state.quest.targetValue
+        : Math.max(0, Math.min(state.quest.targetValue, progressInput))
     state.completedAt = status === 'completed' ? DateTime.now() : null
     await state.save()
 
@@ -648,17 +685,29 @@ export default class AdminController {
   }
 
   async updateDungeonRun({ params, request, response, session }: HttpContext) {
-    const run = await DungeonRun.query().where('id', params.id).preload('dungeonFloor').firstOrFail()
-    const nextStatus = ['in_progress', 'victory', 'defeat', 'fled'].includes(request.input('status'))
+    const run = await DungeonRun.query()
+      .where('id', params.id)
+      .preload('dungeonFloor')
+      .firstOrFail()
+    const nextStatus = ['in_progress', 'victory', 'defeat', 'fled'].includes(
+      request.input('status')
+    )
       ? request.input('status')
       : run.status
 
     run.status = nextStatus
-    run.enemiesDefeated = Math.max(0, Number(request.input('enemiesDefeated', run.enemiesDefeated)) || 0)
-    run.currentEnemyHp = Math.max(0, Number(request.input('currentEnemyHp', run.currentEnemyHp)) || 0)
-    run.currentEnemyId = request.input('currentEnemyId', run.currentEnemyId) === ''
-      ? null
-      : Number(request.input('currentEnemyId', run.currentEnemyId))
+    run.enemiesDefeated = Math.max(
+      0,
+      Number(request.input('enemiesDefeated', run.enemiesDefeated)) || 0
+    )
+    run.currentEnemyHp = Math.max(
+      0,
+      Number(request.input('currentEnemyHp', run.currentEnemyHp)) || 0
+    )
+    run.currentEnemyId =
+      request.input('currentEnemyId', run.currentEnemyId) === ''
+        ? null
+        : Number(request.input('currentEnemyId', run.currentEnemyId))
 
     if (run.status === 'in_progress') {
       run.endedAt = null
@@ -674,7 +723,10 @@ export default class AdminController {
   }
 
   async deleteDungeonRun({ params, response, session }: HttpContext) {
-    const run = await DungeonRun.query().where('id', params.id).preload('dungeonFloor').firstOrFail()
+    const run = await DungeonRun.query()
+      .where('id', params.id)
+      .preload('dungeonFloor')
+      .firstOrFail()
     const characterId = run.characterId
     const floorName = run.dungeonFloor.name
 
@@ -757,7 +809,7 @@ export default class AdminController {
       session.flash('success', `Saison "${season.name}" activee et ladder reinitialise`)
     } catch (error) {
       session.flash('errors', {
-        message: error instanceof Error ? error.message : 'Impossible d\'activer la saison',
+        message: error instanceof Error ? error.message : "Impossible d'activer la saison",
       })
     }
 
@@ -808,13 +860,19 @@ export default class AdminController {
       return response.redirect('/admin/seasons')
     }
 
-    const keyExists = await Season.query().where('key', payload.key).whereNot('id', season.id).first()
+    const keyExists = await Season.query()
+      .where('key', payload.key)
+      .whereNot('id', season.id)
+      .first()
     if (keyExists) {
       session.flash('errors', { message: 'Une autre saison utilise deja cette key' })
       return response.redirect('/admin/seasons')
     }
 
-    const slugExists = await Season.query().where('slug', payload.slug).whereNot('id', season.id).first()
+    const slugExists = await Season.query()
+      .where('slug', payload.slug)
+      .whereNot('id', season.id)
+      .first()
     if (slugExists) {
       session.flash('errors', { message: 'Une autre saison utilise deja ce slug' })
       return response.redirect('/admin/seasons')
@@ -842,9 +900,17 @@ export default class AdminController {
     const items = await Item.query().orderBy('type').orderBy('rarity').orderBy('name')
     const shopListings = await ShopListing.query().preload('item')
 
-    const shopMap: Record<number, { id: number; priceOverride: number | null; stock: number | null; isActive: boolean }> = {}
+    const shopMap: Record<
+      number,
+      { id: number; priceOverride: number | null; stock: number | null; isActive: boolean }
+    > = {}
     for (const sl of shopListings) {
-      shopMap[sl.itemId] = { id: sl.id, priceOverride: sl.priceOverride, stock: sl.stock, isActive: sl.isActive }
+      shopMap[sl.itemId] = {
+        id: sl.id,
+        priceOverride: sl.priceOverride,
+        stock: sl.stock,
+        isActive: sl.isActive,
+      }
     }
 
     return inertia.render('admin/items', {
@@ -856,11 +922,24 @@ export default class AdminController {
   }
 
   async createItem({ request, response, session }: HttpContext) {
-    const data = request.only(['name', 'description', 'type', 'rarity', 'icon', 'effectType', 'effectValue', 'basePrice'])
+    const data = request.only([
+      'name',
+      'description',
+      'nameEn',
+      'descriptionEn',
+      'type',
+      'rarity',
+      'icon',
+      'effectType',
+      'effectValue',
+      'basePrice',
+    ])
 
     await Item.create({
       name: data.name,
       description: data.description || '',
+      nameEn: data.nameEn?.trim() || null,
+      descriptionEn: data.descriptionEn?.trim() || null,
       type: data.type,
       rarity: data.rarity || 'common',
       icon: data.icon || 'default',
@@ -875,15 +954,30 @@ export default class AdminController {
 
   async updateItem({ params, request, response, session }: HttpContext) {
     const item = await Item.findOrFail(params.id)
-    const data = request.only(['name', 'description', 'type', 'rarity', 'icon', 'effectType', 'effectValue', 'basePrice'])
+    const data = request.only([
+      'name',
+      'description',
+      'nameEn',
+      'descriptionEn',
+      'type',
+      'rarity',
+      'icon',
+      'effectType',
+      'effectValue',
+      'basePrice',
+    ])
 
     item.name = data.name || item.name
     item.description = data.description ?? item.description
+    item.nameEn = data.nameEn !== undefined ? data.nameEn?.trim() || null : item.nameEn
+    item.descriptionEn =
+      data.descriptionEn !== undefined ? data.descriptionEn?.trim() || null : item.descriptionEn
     item.type = data.type || item.type
     item.rarity = data.rarity || item.rarity
     item.icon = data.icon || item.icon
     item.effectType = data.effectType || null
-    item.effectValue = data.effectValue !== undefined && data.effectValue !== '' ? Number(data.effectValue) : null
+    item.effectValue =
+      data.effectValue !== undefined && data.effectValue !== '' ? Number(data.effectValue) : null
     item.basePrice = Number(data.basePrice) || item.basePrice
     await item.save()
 
@@ -934,7 +1028,8 @@ export default class AdminController {
     const stock = request.input('stock')
     const isActive = request.input('isActive')
 
-    listing.priceOverride = priceOverride !== undefined && priceOverride !== '' ? Number(priceOverride) : null
+    listing.priceOverride =
+      priceOverride !== undefined && priceOverride !== '' ? Number(priceOverride) : null
     listing.stock = stock !== undefined && stock !== '' ? Number(stock) : null
     listing.isActive = isActive === 'true' || isActive === true
     await listing.save()
@@ -958,7 +1053,10 @@ export default class AdminController {
     const lootEntries = await EnemyLootTable.query().preload('item')
     const items = await Item.query().orderBy('name')
 
-    const lootMap: Record<number, { id: number; itemId: number; itemName: string; dropChance: number }[]> = {}
+    const lootMap: Record<
+      number,
+      { id: number; itemId: number; itemName: string; dropChance: number }[]
+    > = {}
     for (const entry of lootEntries) {
       if (!lootMap[entry.enemyId]) lootMap[entry.enemyId] = []
       lootMap[entry.enemyId].push({
@@ -979,7 +1077,20 @@ export default class AdminController {
   }
 
   async createEnemy({ request, response, session }: HttpContext) {
-    const data = request.only(['name', 'description', 'hp', 'attack', 'defense', 'xpReward', 'creditsRewardMin', 'creditsRewardMax', 'tier', 'critChance', 'critDamage', 'icon'])
+    const data = request.only([
+      'name',
+      'description',
+      'hp',
+      'attack',
+      'defense',
+      'xpReward',
+      'creditsRewardMin',
+      'creditsRewardMax',
+      'tier',
+      'critChance',
+      'critDamage',
+      'icon',
+    ])
 
     await Enemy.create({
       name: data.name,
@@ -1002,7 +1113,19 @@ export default class AdminController {
 
   async updateEnemy({ params, request, response, session }: HttpContext) {
     const enemy = await Enemy.findOrFail(params.id)
-    const data = request.only(['name', 'description', 'hp', 'attack', 'defense', 'xpReward', 'creditsRewardMin', 'creditsRewardMax', 'tier', 'critChance', 'critDamage'])
+    const data = request.only([
+      'name',
+      'description',
+      'hp',
+      'attack',
+      'defense',
+      'xpReward',
+      'creditsRewardMin',
+      'creditsRewardMax',
+      'tier',
+      'critChance',
+      'critDamage',
+    ])
 
     enemy.name = data.name || enemy.name
     enemy.description = data.description ?? enemy.description
@@ -1044,7 +1167,10 @@ export default class AdminController {
 
   async updateLootEntry({ params, request, response, session }: HttpContext) {
     const entry = await EnemyLootTable.findOrFail(params.id)
-    entry.dropChance = Math.min(1, Math.max(0, Number(request.input('dropChance', entry.dropChance))))
+    entry.dropChance = Math.min(
+      1,
+      Math.max(0, Number(request.input('dropChance', entry.dropChance)))
+    )
     await entry.save()
 
     session.flash('success', 'Drop chance mis a jour')
@@ -1280,6 +1406,7 @@ export default class AdminController {
           stepType: step.stepType,
           sortOrder: step.sortOrder,
           contentJson: step.contentJson,
+          contentJsonEn: step.contentJsonEn || '',
           nextStepId: step.nextStepId,
         })),
       })),
@@ -1358,12 +1485,25 @@ export default class AdminController {
       for (let i = 0; i < rawSteps.length; i++) {
         const s = rawSteps[i]
         const contentJson = String(s?.contentJson || '{}').trim()
-        try { JSON.parse(contentJson) } catch { continue }
+        const contentJsonEn = String(s?.contentJsonEn || '').trim()
+        try {
+          JSON.parse(contentJson)
+        } catch {
+          continue
+        }
+        if (contentJsonEn) {
+          try {
+            JSON.parse(contentJsonEn)
+          } catch {
+            continue
+          }
+        }
         await QuestFlowStep.create({
           questId: created.id,
           stepType: s?.stepType || 'narration',
           sortOrder: i + 1,
           contentJson,
+          contentJsonEn: contentJsonEn || null,
           nextStepId: null,
         })
       }
@@ -1403,12 +1543,25 @@ export default class AdminController {
       for (let i = 0; i < rawSteps.length; i++) {
         const s = rawSteps[i]
         const contentJson = String(s?.contentJson || '{}').trim()
-        try { JSON.parse(contentJson) } catch { continue }
+        const contentJsonEn = String(s?.contentJsonEn || '').trim()
+        try {
+          JSON.parse(contentJson)
+        } catch {
+          continue
+        }
+        if (contentJsonEn) {
+          try {
+            JSON.parse(contentJsonEn)
+          } catch {
+            continue
+          }
+        }
         await QuestFlowStep.create({
           questId: quest.id,
           stepType: s?.stepType || 'narration',
           sortOrder: i + 1,
           contentJson,
+          contentJsonEn: contentJsonEn || null,
           nextStepId: null,
         })
       }
@@ -1433,7 +1586,8 @@ export default class AdminController {
     const key = String(request.input('key', '')).trim().toLowerCase().replace(/\s+/g, '_')
     const title = String(request.input('title', '')).trim()
     const rawParentArcId = request.input('parentArcId', '')
-    const parentArcId = rawParentArcId === '' || rawParentArcId === null ? null : Number(rawParentArcId)
+    const parentArcId =
+      rawParentArcId === '' || rawParentArcId === null ? null : Number(rawParentArcId)
     const isActive = request.input('isActive') === 'true' || request.input('isActive') === true
     const sortOrder = Math.max(1, Number(request.input('sortOrder', 1)) || 1)
 
@@ -1467,7 +1621,8 @@ export default class AdminController {
     const key = String(request.input('key', arc.key)).trim().toLowerCase().replace(/\s+/g, '_')
     const title = String(request.input('title', arc.title)).trim()
     const rawParentArcId = request.input('parentArcId', '')
-    const parentArcId = rawParentArcId === '' || rawParentArcId === null ? null : Number(rawParentArcId)
+    const parentArcId =
+      rawParentArcId === '' || rawParentArcId === null ? null : Number(rawParentArcId)
     const isActive = request.input('isActive') === 'true' || request.input('isActive') === true
     const sortOrder = Math.max(1, Number(request.input('sortOrder', arc.sortOrder)) || 1)
 
@@ -1531,14 +1686,23 @@ export default class AdminController {
     }
 
     const contentJson = String(request.input('contentJson', '{}')).trim()
-    try { JSON.parse(contentJson) } catch {
+    try {
+      JSON.parse(contentJson)
+    } catch {
       session.flash('errors', { message: 'JSON invalide pour le contenu' })
       return response.redirect('/admin/quests')
     }
+    const contentJsonEn = String(request.input('contentJsonEn', '')).trim()
+    if (contentJsonEn) {
+      try {
+        JSON.parse(contentJsonEn)
+      } catch {
+        session.flash('errors', { message: 'JSON EN invalide pour le contenu' })
+        return response.redirect('/admin/quests')
+      }
+    }
 
-    const maxSort = await QuestFlowStep.query()
-      .where('questId', questId)
-      .max('sort_order as max')
+    const maxSort = await QuestFlowStep.query().where('questId', questId).max('sort_order as max')
     const nextSort = (Number(maxSort[0]?.$extras?.max) || 0) + 1
 
     const rawNextStepId = request.input('nextStepId', '')
@@ -1549,6 +1713,7 @@ export default class AdminController {
       stepType: stepType as any,
       sortOrder: nextSort,
       contentJson,
+      contentJsonEn: contentJsonEn || null,
       nextStepId,
     })
 
@@ -1567,9 +1732,20 @@ export default class AdminController {
     }
 
     const contentJson = String(request.input('contentJson', step.contentJson)).trim()
-    try { JSON.parse(contentJson) } catch {
+    try {
+      JSON.parse(contentJson)
+    } catch {
       session.flash('errors', { message: 'JSON invalide pour le contenu' })
       return response.redirect('/admin/quests')
+    }
+    const contentJsonEn = String(request.input('contentJsonEn', step.contentJsonEn || '')).trim()
+    if (contentJsonEn) {
+      try {
+        JSON.parse(contentJsonEn)
+      } catch {
+        session.flash('errors', { message: 'JSON EN invalide pour le contenu' })
+        return response.redirect('/admin/quests')
+      }
     }
 
     const rawNextStepId = request.input('nextStepId', '')
@@ -1578,6 +1754,7 @@ export default class AdminController {
     step.merge({
       stepType: stepType as any,
       contentJson,
+      contentJsonEn: contentJsonEn || null,
       nextStepId,
     })
     await step.save()
@@ -1598,9 +1775,7 @@ export default class AdminController {
     const order = request.input('order', []) as { id: number; sortOrder: number }[]
 
     for (const entry of order) {
-      await QuestFlowStep.query()
-        .where('id', entry.id)
-        .update({ sortOrder: entry.sortOrder })
+      await QuestFlowStep.query().where('id', entry.id).update({ sortOrder: entry.sortOrder })
     }
 
     session.flash('success', 'Ordre mis a jour')
@@ -1612,7 +1787,11 @@ export default class AdminController {
   async blackMarket({ inertia }: HttpContext) {
     const [settings, catalog, cleaners, items] = await Promise.all([
       BlackMarketSetting.query().orderBy('key', 'asc'),
-      BlackMarketCatalogEntry.query().preload('item').orderBy('vendorKey', 'asc').orderBy('sortOrder', 'asc').orderBy('id', 'asc'),
+      BlackMarketCatalogEntry.query()
+        .preload('item')
+        .orderBy('vendorKey', 'asc')
+        .orderBy('sortOrder', 'asc')
+        .orderBy('id', 'asc'),
       BlackMarketCleaner.query().orderBy('sortOrder', 'asc').orderBy('id', 'asc'),
       Item.query().orderBy('type', 'asc').orderBy('rarity', 'asc').orderBy('name', 'asc'),
     ])
@@ -1621,8 +1800,10 @@ export default class AdminController {
 
     return inertia.render('admin/black_market', {
       settings: {
-        minLevel: Number(settingsMap.get('min_level') || await BlackMarketService.getMinLevel()),
-        rotationHours: Number(settingsMap.get('rotation_hours') || await BlackMarketService.getRotationHours()),
+        minLevel: Number(settingsMap.get('min_level') || (await BlackMarketService.getMinLevel())),
+        rotationHours: Number(
+          settingsMap.get('rotation_hours') || (await BlackMarketService.getRotationHours())
+        ),
       },
       vendors: Object.entries(BlackMarketService.getVendorDefinitions()).map(([key, value]) => ({
         key,
@@ -1642,7 +1823,10 @@ export default class AdminController {
     const rotationHours = Math.max(1, Number(request.input('rotationHours', 12)) || 12)
 
     await BlackMarketSetting.updateOrCreate({ key: 'min_level' }, { value: String(minLevel) })
-    await BlackMarketSetting.updateOrCreate({ key: 'rotation_hours' }, { value: String(rotationHours) })
+    await BlackMarketSetting.updateOrCreate(
+      { key: 'rotation_hours' },
+      { value: String(rotationHours) }
+    )
 
     session.flash('success', 'Configuration globale du marche noir mise a jour')
     return response.redirect('/admin/black-market')
@@ -1674,14 +1858,28 @@ export default class AdminController {
 
     entry.vendorKey = String(request.input('vendorKey', entry.vendorKey))
     entry.itemId = Number(request.input('itemId', entry.itemId)) || entry.itemId
-    entry.basePrice = Math.max(1000, Number(request.input('basePrice', entry.basePrice)) || entry.basePrice)
+    entry.basePrice = Math.max(
+      1000,
+      Number(request.input('basePrice', entry.basePrice)) || entry.basePrice
+    )
     entry.stock = Math.max(1, Number(request.input('stock', entry.stock)) || entry.stock)
-    entry.heatValue = Math.max(0, Number(request.input('heatValue', entry.heatValue)) || entry.heatValue)
-    entry.reputationRequired = Math.max(0, Number(request.input('reputationRequired', entry.reputationRequired)) || entry.reputationRequired)
+    entry.heatValue = Math.max(
+      0,
+      Number(request.input('heatValue', entry.heatValue)) || entry.heatValue
+    )
+    entry.reputationRequired = Math.max(
+      0,
+      Number(request.input('reputationRequired', entry.reputationRequired)) ||
+        entry.reputationRequired
+    )
     entry.requiredSpec = request.input('requiredSpec') || null
-    entry.isFeatured = request.input('isFeatured') === 'true' || request.input('isFeatured') === true
+    entry.isFeatured =
+      request.input('isFeatured') === 'true' || request.input('isFeatured') === true
     entry.isActive = request.input('isActive') === 'true' || request.input('isActive') === true
-    entry.sortOrder = Math.max(0, Number(request.input('sortOrder', entry.sortOrder)) || entry.sortOrder)
+    entry.sortOrder = Math.max(
+      0,
+      Number(request.input('sortOrder', entry.sortOrder)) || entry.sortOrder
+    )
 
     await entry.save()
 
@@ -1718,10 +1916,19 @@ export default class AdminController {
     cleaner.key = String(request.input('key', cleaner.key)).trim()
     cleaner.name = String(request.input('name', cleaner.name)).trim()
     cleaner.description = String(request.input('description', cleaner.description)).trim()
-    cleaner.basePrice = Math.max(1000, Number(request.input('basePrice', cleaner.basePrice)) || cleaner.basePrice)
-    cleaner.heatReduction = Math.max(1, Number(request.input('heatReduction', cleaner.heatReduction)) || cleaner.heatReduction)
+    cleaner.basePrice = Math.max(
+      1000,
+      Number(request.input('basePrice', cleaner.basePrice)) || cleaner.basePrice
+    )
+    cleaner.heatReduction = Math.max(
+      1,
+      Number(request.input('heatReduction', cleaner.heatReduction)) || cleaner.heatReduction
+    )
     cleaner.isActive = request.input('isActive') === 'true' || request.input('isActive') === true
-    cleaner.sortOrder = Math.max(0, Number(request.input('sortOrder', cleaner.sortOrder)) || cleaner.sortOrder)
+    cleaner.sortOrder = Math.max(
+      0,
+      Number(request.input('sortOrder', cleaner.sortOrder)) || cleaner.sortOrder
+    )
 
     await cleaner.save()
 

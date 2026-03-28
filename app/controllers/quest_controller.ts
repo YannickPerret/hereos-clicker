@@ -14,7 +14,11 @@ export default class QuestController {
     for (const track of journal.tracks) {
       for (const quest of track.quests) {
         if (quest.mode === 'advanced' && quest.status === 'active') {
-          const flowState = await QuestService.getFlowState(character.id, quest.id)
+          const flowState = await QuestService.getFlowState(
+            character.id,
+            quest.id,
+            locale === 'en' ? 'en' : 'fr'
+          )
           if (flowState) {
             flowStates[quest.id] = flowState
           }
@@ -75,11 +79,15 @@ export default class QuestController {
     return response.json(result)
   }
 
-  async flowState({ request, response, auth }: HttpContext) {
+  async flowState({ request, response, auth, locale }: HttpContext) {
     const character = await Character.query().where('userId', auth.user!.id).firstOrFail()
 
     const questId = Number(request.param('questId'))
-    const flowState = await QuestService.getFlowState(character.id, questId)
+    const flowState = await QuestService.getFlowState(
+      character.id,
+      questId,
+      locale === 'en' ? 'en' : 'fr'
+    )
 
     return response.json({ flowState })
   }

@@ -782,7 +782,11 @@ export default class QuestService {
 
   // ── Flow Step Logic (Advanced Quests) ──
 
-  static async getFlowState(characterId: number, questId: number) {
+  static async getFlowState(
+    characterId: number,
+    questId: number,
+    locale: SupportedLocale = 'fr'
+  ) {
     const state = await CharacterQuest.query()
       .where('characterId', characterId)
       .where('questId', questId)
@@ -813,7 +817,7 @@ export default class QuestService {
             id: currentStep.id,
             stepType: currentStep.stepType,
             sortOrder: currentStep.sortOrder,
-            content: currentStep.content,
+            content: currentStep.getContent(locale),
             nextStepId: currentStep.nextStepId,
           }
         : null,
@@ -822,7 +826,7 @@ export default class QuestService {
         id: s.id,
         stepType: s.stepType,
         sortOrder: s.sortOrder,
-        content: s.content,
+        content: s.getContent(locale),
         nextStepId: s.nextStepId,
       })),
     }
@@ -856,7 +860,7 @@ export default class QuestService {
 
     // For conversation: track which line the player is on
     if (currentStep.stepType === 'conversation') {
-      const content = currentStep.content
+      const content = currentStep.getContent(locale)
       const lines = content.lines || []
       const stepState = state.stepState || {}
       const currentLine = stepState.currentLine || 0
@@ -865,7 +869,7 @@ export default class QuestService {
         // Advance to next line in conversation
         state.stepStateJson = JSON.stringify({ ...stepState, currentLine: currentLine + 1 })
         await state.save()
-        return { success: true, flowState: await this.getFlowState(character.id, questId) }
+        return { success: true, flowState: await this.getFlowState(character.id, questId, locale) }
       }
       // All lines read, fall through to advance to next step
     }
@@ -897,7 +901,7 @@ export default class QuestService {
       return { success: false }
     }
 
-    const content = currentStep.content
+    const content = currentStep.getContent(locale)
     const options = content.options || []
     if (optionIndex < 0 || optionIndex >= options.length) {
       return { success: false }
@@ -912,7 +916,7 @@ export default class QuestService {
         state.currentStepId = nextStep.id
         state.stepStateJson = JSON.stringify({ choiceMade: chosen.label })
         await state.save()
-        return { success: true, flowState: await this.getFlowState(character.id, questId) }
+        return { success: true, flowState: await this.getFlowState(character.id, questId, locale) }
       }
     }
 
@@ -922,7 +926,8 @@ export default class QuestService {
 
   static async checkFlowObjectiveProgress(
     character: Character,
-    questId: number
+    questId: number,
+    locale: SupportedLocale = 'fr'
   ): Promise<{ success: boolean; event?: QuestEvent; flowState?: any }> {
     const state = await CharacterQuest.query()
       .where('characterId', character.id)
@@ -942,20 +947,21 @@ export default class QuestService {
       return { success: false }
     }
 
-    const content = currentStep.content
+    const content = currentStep.getContent(locale)
     const stepState = state.stepState || {}
     const progress = stepState.progress || 0
 
     if (progress >= (content.targetValue || 1)) {
-      return this.moveToNextStep(character, state, currentStep, steps, 'fr')
+      return this.moveToNextStep(character, state, currentStep, steps, locale)
     }
 
-    return { success: false, flowState: await this.getFlowState(character.id, questId) }
+    return { success: false, flowState: await this.getFlowState(character.id, questId, locale) }
   }
 
   static async checkFlowWaitProgress(
     character: Character,
-    questId: number
+    questId: number,
+    locale: SupportedLocale = 'fr'
   ): Promise<{ success: boolean; event?: QuestEvent; flowState?: any }> {
     const state = await CharacterQuest.query()
       .where('characterId', character.id)
@@ -975,14 +981,14 @@ export default class QuestService {
       return { success: false }
     }
 
-    const content = currentStep.content
+    const content = currentStep.getContent(locale)
     const stepState = state.stepState || {}
 
     // Initialize wait start time
     if (!stepState.waitStartedAt) {
       state.stepStateJson = JSON.stringify({ ...stepState, waitStartedAt: DateTime.now().toISO() })
       await state.save()
-      return { success: false, flowState: await this.getFlowState(character.id, questId) }
+      return { success: false, flowState: await this.getFlowState(character.id, questId, locale) }
     }
 
     const waitStart = DateTime.fromISO(stepState.waitStartedAt)
@@ -991,10 +997,10 @@ export default class QuestService {
     const endTime = waitStart.plus({ [unit]: duration })
 
     if (DateTime.now() >= endTime) {
-      return this.moveToNextStep(character, state, currentStep, steps, 'fr')
+      return this.moveToNextStep(character, state, currentStep, steps, locale)
     }
 
-    return { success: false, flowState: await this.getFlowState(character.id, questId) }
+    return { success: false, flowState: await this.getFlowState(character.id, questId, locale) }
   }
 
   static async trackFlowObjectiveProgress(
@@ -1063,7 +1069,10 @@ export default class QuestService {
         await state.save()
       }
 
-      return { success: true, flowState: await this.getFlowState(character.id, state.questId) }
+      return {
+        success: true,
+        flowState: await this.getFlowState(character.id, state.questId, locale),
+      }
     }
 
     // No more steps — quest complete
@@ -1073,7 +1082,7 @@ export default class QuestService {
     return {
       success: true,
       event: events[0],
-      flowState: await this.getFlowState(character.id, state.questId),
+      flowState: await this.getFlowState(character.id, state.questId, locale),
     }
   }
 }

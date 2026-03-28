@@ -85,6 +85,7 @@ export default function FloatingChat() {
       username={auth.user.username}
       activeCharacterName={auth.activeCharacterName || null}
       partyChannel={partyChannel || null}
+      isGuest={Boolean(auth.user.isGuest)}
     />
   )
 }
@@ -93,10 +94,12 @@ function ChatWidget({
   username,
   activeCharacterName,
   partyChannel,
+  isGuest,
 }: {
   username: string
   activeCharacterName: string | null
   partyChannel: string | null
+  isGuest: boolean
 }) {
   const { t, i18n } = useTranslation(['chat', 'common'])
 
@@ -441,11 +444,21 @@ function ChatWidget({
     e.preventDefault()
     if (!input.trim()) return
 
-    await fetch('/chat/send', {
+    const res = await fetch('/chat/send', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': getCsrfToken() },
       body: JSON.stringify({ message: input, channel: activeChannel }),
     })
+    const data = await res.json().catch(() => null)
+    if (!res.ok) {
+      const message = data?.error ? translateBackendMessage(data.error, t) : t('chat:actionFailed')
+      setFeedback({ type: 'error', message })
+      if (data?.upgradeRequired) {
+        router.visit(data.upgradePath || '/account/upgrade')
+      }
+      return
+    }
+
     setInput('')
     setMentionQuery(null)
     loadMessages()
@@ -453,6 +466,11 @@ function ChatWidget({
 
   const handleCreateChannel = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (isGuest) {
+      router.visit('/account/upgrade')
+      return
+    }
+
     const res = await fetch('/chat/channels/create', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': getCsrfToken() },
@@ -477,6 +495,11 @@ function ChatWidget({
 
   const handleJoinChannel = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (isGuest) {
+      router.visit('/account/upgrade')
+      return
+    }
+
     const res = await fetch('/chat/channels/join', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': getCsrfToken() },
@@ -720,24 +743,28 @@ function ChatWidget({
                 </button>
               ))}
               <div className="flex gap-1 pt-1 border-t border-gray-800">
-                <button
-                  onClick={() => {
-                    setShowCreateChannel(true)
-                    setShowChannelMenu(false)
-                  }}
-                  className="flex-1 text-[9px] px-1 py-1 rounded border border-cyber-green/20 text-cyber-green hover:bg-cyber-green/10"
-                >
-                  + {t('chat:create')}
-                </button>
-                <button
-                  onClick={() => {
-                    setShowJoin(true)
-                    setShowChannelMenu(false)
-                  }}
-                  className="flex-1 text-[9px] px-1 py-1 rounded border border-cyber-blue/20 text-cyber-blue hover:bg-cyber-blue/10"
-                >
-                  {t('chat:join')}
-                </button>
+                {!isGuest && (
+                  <>
+                    <button
+                      onClick={() => {
+                        setShowCreateChannel(true)
+                        setShowChannelMenu(false)
+                      }}
+                      className="flex-1 text-[9px] px-1 py-1 rounded border border-cyber-green/20 text-cyber-green hover:bg-cyber-green/10"
+                    >
+                      + {t('chat:create')}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowJoin(true)
+                        setShowChannelMenu(false)
+                      }}
+                      className="flex-1 text-[9px] px-1 py-1 rounded border border-cyber-blue/20 text-cyber-blue hover:bg-cyber-blue/10"
+                    >
+                      {t('chat:join')}
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           )}
@@ -900,7 +927,7 @@ function ChatWidget({
             onSubmit={handleSend}
             className="relative border-t border-cyber-green/20 p-2 flex gap-2 shrink-0"
           >
-            {mentionQuery && (
+            {!isGuest && mentionQuery && (
               <div className="absolute bottom-full left-2 right-2 mb-2 overflow-hidden rounded-lg border border-cyber-green/20 bg-cyber-black/95 shadow-2xl backdrop-blur">
                 <div className="border-b border-cyber-green/10 px-3 py-2 text-[9px] uppercase tracking-[0.3em] text-gray-500">
                   {t('chat:onlinePlayers')}
@@ -933,30 +960,50 @@ function ChatWidget({
                 )}
               </div>
             )}
-            <input
-              ref={inputRef}
-              type="text"
-              value={input}
-              onChange={handleInputChange}
-              onClick={handleInputSelect}
-              onKeyUp={handleInputSelect}
-              onSelect={handleInputSelect}
-              onKeyDown={handleInputKeyDown}
-              maxLength={500}
-              placeholder={
-                activeChannel === partyChannel
-                  ? t('chat:messageInParty')
-                  : t('chat:messageInChannel', { channel: `#${activeChannel}` })
-              }
-              className="flex-1 bg-cyber-dark border border-gray-800 rounded px-2 py-1.5 text-[11px] text-white font-mono focus:border-cyber-green/30 focus:outline-none placeholder-gray-800"
-              autoFocus
-            />
-            <button
-              type="submit"
-              className="text-[10px] px-2 py-1 rounded border border-cyber-green/30 text-cyber-green hover:bg-cyber-green/10 transition-all shrink-0"
-            >
-              ↵
-            </button>
+            {isGuest ? (
+              <div className="flex w-full items-center justify-between gap-3 rounded border border-cyber-yellow/20 bg-cyber-yellow/5 px-3 py-2">
+                <div>
+                  <div className="text-[10px] uppercase tracking-widest text-cyber-yellow">
+                    {t('chat:guestReadonly')}
+                  </div>
+                  <div className="text-[10px] text-gray-500">{t('chat:guestLocked')}</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => router.visit('/account/upgrade')}
+                  className="shrink-0 rounded border border-cyber-yellow/30 px-3 py-1.5 text-[10px] uppercase tracking-widest text-cyber-yellow hover:bg-cyber-yellow/10"
+                >
+                  {t('chat:upgradeGuest')}
+                </button>
+              </div>
+            ) : (
+              <>
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={input}
+                  onChange={handleInputChange}
+                  onClick={handleInputSelect}
+                  onKeyUp={handleInputSelect}
+                  onSelect={handleInputSelect}
+                  onKeyDown={handleInputKeyDown}
+                  maxLength={500}
+                  placeholder={
+                    activeChannel === partyChannel
+                      ? t('chat:messageInParty')
+                      : t('chat:messageInChannel', { channel: `#${activeChannel}` })
+                  }
+                  className="flex-1 bg-cyber-dark border border-gray-800 rounded px-2 py-1.5 text-[11px] text-white font-mono focus:border-cyber-green/30 focus:outline-none placeholder-gray-800"
+                  autoFocus
+                />
+                <button
+                  type="submit"
+                  className="text-[10px] px-2 py-1 rounded border border-cyber-green/30 text-cyber-green hover:bg-cyber-green/10 transition-all shrink-0"
+                >
+                  ↵
+                </button>
+              </>
+            )}
           </form>
         </div>
       )}
@@ -977,13 +1024,15 @@ function ChatWidget({
           >
             <span>{t('chat:viewProfile')}</span>
           </button>
-          <button
-            type="button"
-            onClick={() => handleAddFriend(userMenu.characterName)}
-            className="flex w-full items-center justify-between rounded px-2 py-1.5 text-left text-[11px] text-gray-300 transition hover:bg-cyber-green/10 hover:text-white"
-          >
-            <span>{t('addFriend')}</span>
-          </button>
+          {!isGuest && (
+            <button
+              type="button"
+              onClick={() => handleAddFriend(userMenu.characterName)}
+              className="flex w-full items-center justify-between rounded px-2 py-1.5 text-left text-[11px] text-gray-300 transition hover:bg-cyber-green/10 hover:text-white"
+            >
+              <span>{t('addFriend')}</span>
+            </button>
+          )}
           <button
             type="button"
             onClick={() => handleUnavailableAction(t('chat:privateMessage'))}

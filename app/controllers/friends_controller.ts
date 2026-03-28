@@ -5,11 +5,28 @@ import Friendship from '#models/friendship'
 import ChatPresenceService from '#services/chat_presence_service'
 
 export default class FriendsController {
+  private guestFriendsMessage(locale: string) {
+    return locale === 'en'
+      ? 'Guest accounts cannot use the friends system. Create an account first.'
+      : 'Les comptes invites ne peuvent pas utiliser le systeme d amis. Cree un compte d abord.'
+  }
+
+  private guestTargetFriendsMessage(locale: string) {
+    return locale === 'en'
+      ? 'Guest accounts cannot receive friend requests. They must create an account first.'
+      : 'Les comptes invites ne peuvent pas recevoir de demandes d ami. Ils doivent creer un compte.'
+  }
+
   private async getCurrentCharacter(userId: number) {
     return Character.query().where('userId', userId).firstOrFail()
   }
 
-  async index({ inertia, auth }: HttpContext) {
+  async index({ inertia, auth, response, session, locale }: HttpContext) {
+    if (auth.user!.isGuest) {
+      session.flash('errors', { message: this.guestFriendsMessage(locale) })
+      return response.redirect('/play')
+    }
+
     const character = await this.getCurrentCharacter(auth.user!.id)
 
     const [accepted, incoming, outgoing] = await Promise.all([
@@ -74,7 +91,15 @@ export default class FriendsController {
     })
   }
 
-  async requests({ auth, response }: HttpContext) {
+  async requests({ auth, response, locale }: HttpContext) {
+    if (auth.user!.isGuest) {
+      return response.forbidden({
+        error: this.guestFriendsMessage(locale),
+        upgradeRequired: true,
+        upgradePath: '/account/upgrade',
+      })
+    }
+
     const character = await this.getCurrentCharacter(auth.user!.id)
 
     const incoming = await Friendship.query()
@@ -98,7 +123,12 @@ export default class FriendsController {
     )
   }
 
-  async send({ request, auth, response, session }: HttpContext) {
+  async send({ request, auth, response, session, locale }: HttpContext) {
+    if (auth.user!.isGuest) {
+      session.flash('errors', { message: this.guestFriendsMessage(locale) })
+      return response.redirect().back()
+    }
+
     const character = await this.getCurrentCharacter(auth.user!.id)
     const targetName = request.input('characterName', '').trim()
 
@@ -113,6 +143,12 @@ export default class FriendsController {
 
     if (!target) {
       session.flash('errors', { message: 'Personnage introuvable' })
+      return response.redirect().back()
+    }
+
+    await target.load('user')
+    if (target.user.isGuest) {
+      session.flash('errors', { message: this.guestTargetFriendsMessage(locale) })
       return response.redirect().back()
     }
 
@@ -164,7 +200,12 @@ export default class FriendsController {
     return response.redirect().back()
   }
 
-  async accept({ params, auth, response, session }: HttpContext) {
+  async accept({ params, auth, response, session, locale }: HttpContext) {
+    if (auth.user!.isGuest) {
+      session.flash('errors', { message: this.guestFriendsMessage(locale) })
+      return response.redirect('/play')
+    }
+
     const character = await this.getCurrentCharacter(auth.user!.id)
 
     const friendship = await Friendship.query()
@@ -187,7 +228,12 @@ export default class FriendsController {
     return response.redirect('/friends')
   }
 
-  async decline({ params, auth, response, session }: HttpContext) {
+  async decline({ params, auth, response, session, locale }: HttpContext) {
+    if (auth.user!.isGuest) {
+      session.flash('errors', { message: this.guestFriendsMessage(locale) })
+      return response.redirect('/play')
+    }
+
     const character = await this.getCurrentCharacter(auth.user!.id)
 
     const friendship = await Friendship.query()
@@ -210,7 +256,12 @@ export default class FriendsController {
     return response.redirect('/friends')
   }
 
-  async cancel({ params, auth, response, session }: HttpContext) {
+  async cancel({ params, auth, response, session, locale }: HttpContext) {
+    if (auth.user!.isGuest) {
+      session.flash('errors', { message: this.guestFriendsMessage(locale) })
+      return response.redirect('/play')
+    }
+
     const character = await this.getCurrentCharacter(auth.user!.id)
 
     const friendship = await Friendship.query()
@@ -231,7 +282,12 @@ export default class FriendsController {
     return response.redirect('/friends')
   }
 
-  async remove({ params, auth, response, session }: HttpContext) {
+  async remove({ params, auth, response, session, locale }: HttpContext) {
+    if (auth.user!.isGuest) {
+      session.flash('errors', { message: this.guestFriendsMessage(locale) })
+      return response.redirect('/play')
+    }
+
     const character = await this.getCurrentCharacter(auth.user!.id)
 
     const friendship = await Friendship.query()
@@ -256,7 +312,15 @@ export default class FriendsController {
     return response.redirect('/friends')
   }
 
-  async acceptRequest({ params, auth, response }: HttpContext) {
+  async acceptRequest({ params, auth, response, locale }: HttpContext) {
+    if (auth.user!.isGuest) {
+      return response.forbidden({
+        error: this.guestFriendsMessage(locale),
+        upgradeRequired: true,
+        upgradePath: '/account/upgrade',
+      })
+    }
+
     const character = await this.getCurrentCharacter(auth.user!.id)
 
     const friendship = await Friendship.query()
@@ -279,7 +343,15 @@ export default class FriendsController {
     })
   }
 
-  async declineRequest({ params, auth, response }: HttpContext) {
+  async declineRequest({ params, auth, response, locale }: HttpContext) {
+    if (auth.user!.isGuest) {
+      return response.forbidden({
+        error: this.guestFriendsMessage(locale),
+        upgradeRequired: true,
+        upgradePath: '/account/upgrade',
+      })
+    }
+
     const character = await this.getCurrentCharacter(auth.user!.id)
 
     const friendship = await Friendship.query()

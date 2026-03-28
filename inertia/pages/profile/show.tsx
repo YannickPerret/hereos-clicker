@@ -1,4 +1,5 @@
 import { router } from '@inertiajs/react'
+import { usePage } from '@inertiajs/react'
 import { useTranslation } from 'react-i18next'
 import CyberpunkAvatar from '~/components/cyberpunk_avatar'
 import GameLayout from '~/components/layout'
@@ -66,6 +67,7 @@ interface Props {
   talents: Talent[]
   companions: Companion[]
   friendStatus: 'self' | 'none' | 'incoming' | 'outgoing' | 'friend'
+  canReceiveFriendRequests: boolean
 }
 
 const SPEC_COLORS: Record<string, { color: string; border: string }> = {
@@ -89,8 +91,11 @@ export default function PublicProfile({
   talents,
   companions,
   friendStatus,
+  canReceiveFriendRequests,
 }: Props) {
   const { t } = useTranslation(['profile', 'common', 'companions'])
+  const page = usePage() as any
+  const isGuest = Boolean(page.props?.auth?.user?.isGuest)
   const specColors = character.chosenSpec ? SPEC_COLORS[character.chosenSpec] : null
   const equipmentSlots = [
     'weapon',
@@ -115,7 +120,7 @@ export default function PublicProfile({
             </h1>
           </div>
           <div className="flex items-center gap-2">
-            {friendStatus === 'none' && (
+            {friendStatus === 'none' && canReceiveFriendRequests && !isGuest && (
               <button
                 type="button"
                 onClick={() =>

@@ -14,6 +14,7 @@ interface FlowStepRecord {
   stepType: string
   sortOrder: number
   contentJson: string
+  contentJsonEn: string
   nextStepId: number | null
 }
 
@@ -32,6 +33,9 @@ interface QuestRecord {
   title: string
   summary: string
   narrative: string | null
+  titleEn: string | null
+  summaryEn: string | null
+  narrativeEn: string | null
   objectiveType: string
   targetValue: number
   icon: string
@@ -76,7 +80,12 @@ interface Props {
 }
 
 type QuestFormReward = { type: string; value: number; itemId: string }
-type QuestFormStep = { stepType: string; contentJson: string; nextStepId: string }
+type QuestFormStep = {
+  stepType: string
+  contentJson: string
+  contentJsonEn: string
+  nextStepId: string
+}
 
 type QuestFormState = {
   key: string
@@ -89,6 +98,9 @@ type QuestFormState = {
   title: string
   summary: string
   narrative: string
+  titleEn: string
+  summaryEn: string
+  narrativeEn: string
   objectiveType: string
   targetValue: number
   icon: string
@@ -118,6 +130,9 @@ const emptyForm = (arcs: ArcRecord[]): QuestFormState => ({
   title: '',
   summary: '',
   narrative: '',
+  titleEn: '',
+  summaryEn: '',
+  narrativeEn: '',
   objectiveType: 'hack_clicks',
   targetValue: 50,
   icon: 'terminal',
@@ -138,12 +153,20 @@ function serializeQuestToForm(quest: QuestRecord): QuestFormState {
     title: quest.title,
     summary: quest.summary,
     narrative: quest.narrative || '',
+    titleEn: quest.titleEn || '',
+    summaryEn: quest.summaryEn || '',
+    narrativeEn: quest.narrativeEn || '',
     objectiveType: quest.objectiveType,
     targetValue: quest.targetValue,
     icon: quest.icon,
     sortOrder: quest.sortOrder,
     rewards: quest.rewards.map((r) => ({ type: r.type, value: r.value, itemId: r.itemId ? String(r.itemId) : '' })),
-    flowSteps: quest.flowSteps.map((s) => ({ stepType: s.stepType, contentJson: s.contentJson, nextStepId: s.nextStepId ? String(s.nextStepId) : '' })),
+    flowSteps: quest.flowSteps.map((s) => ({
+      stepType: s.stepType,
+      contentJson: s.contentJson,
+      contentJsonEn: s.contentJsonEn || '',
+      nextStepId: s.nextStepId ? String(s.nextStepId) : '',
+    })),
   }
 }
 
@@ -177,10 +200,12 @@ export default function AdminQuests({ quests, questOptions, arcs, seasons, items
   const [flowEditQuestId, setFlowEditQuestId] = useState<number | null>(null)
   const [newStepType, setNewStepType] = useState('narration')
   const [newStepContent, setNewStepContent] = useState('{}')
+  const [newStepContentEn, setNewStepContentEn] = useState('{}')
   const [newStepNextId, setNewStepNextId] = useState('')
   const [editingStepId, setEditingStepId] = useState<number | null>(null)
   const [editStepType, setEditStepType] = useState('')
   const [editStepContent, setEditStepContent] = useState('')
+  const [editStepContentEn, setEditStepContentEn] = useState('')
   const [editStepNextId, setEditStepNextId] = useState('')
   const [dragIdx, setDragIdx] = useState<number | null>(null)
 
@@ -217,9 +242,11 @@ export default function AdminQuests({ quests, questOptions, arcs, seasons, items
       questId,
       stepType: newStepType,
       contentJson: newStepContent,
+      contentJsonEn: newStepContentEn,
       nextStepId: newStepNextId,
     } as any)
     setNewStepContent('{}')
+    setNewStepContentEn('{}')
     setNewStepNextId('')
   }
 
@@ -227,6 +254,7 @@ export default function AdminQuests({ quests, questOptions, arcs, seasons, items
     router.post(`/admin/quest-steps/${stepId}/update`, {
       stepType: editStepType,
       contentJson: editStepContent,
+      contentJsonEn: editStepContentEn,
       nextStepId: editStepNextId,
     } as any)
     setEditingStepId(null)
@@ -372,12 +400,24 @@ export default function AdminQuests({ quests, questOptions, arcs, seasons, items
         <input value={form.title} onChange={(e) => update('title', e.target.value)} className={inputCls} />
       </div>
       <div className="md:col-span-2">
+        <label className="mb-1 block text-[10px] uppercase text-gray-500">Titre EN</label>
+        <input value={form.titleEn} onChange={(e) => update('titleEn', e.target.value)} className={inputCls} />
+      </div>
+      <div className="md:col-span-2">
         <label className="mb-1 block text-[10px] uppercase text-gray-500">Resume</label>
         <input value={form.summary} onChange={(e) => update('summary', e.target.value)} className={inputCls} />
       </div>
       <div className="md:col-span-2">
+        <label className="mb-1 block text-[10px] uppercase text-gray-500">Resume EN</label>
+        <input value={form.summaryEn} onChange={(e) => update('summaryEn', e.target.value)} className={inputCls} />
+      </div>
+      <div className="md:col-span-2">
         <label className="mb-1 block text-[10px] uppercase text-gray-500">Narration</label>
         <textarea value={form.narrative} onChange={(e) => update('narrative', e.target.value)} rows={3} className={inputCls} />
+      </div>
+      <div>
+        <label className="mb-1 block text-[10px] uppercase text-gray-500">Narration EN</label>
+        <textarea value={form.narrativeEn} onChange={(e) => update('narrativeEn', e.target.value)} rows={3} className={inputCls} />
       </div>
       <div>
         <label className="mb-1 block text-[10px] uppercase text-gray-500">Objectif</label>
@@ -407,7 +447,7 @@ export default function AdminQuests({ quests, questOptions, arcs, seasons, items
               <div className="text-[10px] uppercase tracking-widest text-cyber-green">Flow Steps</div>
               <div className="text-xs text-gray-600">{form.flowSteps.length} step(s) — narration, conversation, objectif, attente, choix.</div>
             </div>
-            <button type="button" onClick={() => update('flowSteps', [...form.flowSteps, { stepType: 'narration', contentJson: STEP_TEMPLATES.narration, nextStepId: '' }])}
+            <button type="button" onClick={() => update('flowSteps', [...form.flowSteps, { stepType: 'narration', contentJson: STEP_TEMPLATES.narration, contentJsonEn: STEP_TEMPLATES.narration, nextStepId: '' }])}
               className="rounded border border-cyber-green/30 px-3 py-1.5 text-[10px] uppercase tracking-widest text-cyber-green hover:bg-cyber-green/10">
               + Step
             </button>
@@ -423,7 +463,12 @@ export default function AdminQuests({ quests, questOptions, arcs, seasons, items
                       <span className="text-[10px] text-gray-600">#{idx + 1}</span>
                       <select value={step.stepType} onChange={(e) => {
                         const next = [...form.flowSteps]
-                        next[idx] = { ...next[idx], stepType: e.target.value, contentJson: STEP_TEMPLATES[e.target.value] || '{}' }
+                        next[idx] = {
+                          ...next[idx],
+                          stepType: e.target.value,
+                          contentJson: STEP_TEMPLATES[e.target.value] || '{}',
+                          contentJsonEn: STEP_TEMPLATES[e.target.value] || '{}',
+                        }
                         update('flowSteps', next)
                       }} className={inputCls + ' !w-auto'}>
                         {Object.entries(stepTypeLabels).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
@@ -446,10 +491,18 @@ export default function AdminQuests({ quests, questOptions, arcs, seasons, items
                         className="text-[10px] px-2 py-1 rounded border border-cyber-red/30 text-cyber-red hover:bg-cyber-red/10">X</button>
                     </div>
                   </div>
-                  <textarea value={step.contentJson} onChange={(e) => {
-                    const next = [...form.flowSteps]; next[idx] = { ...next[idx], contentJson: e.target.value }
-                    update('flowSteps', next)
-                  }} rows={3} className={inputCls + ' font-mono text-xs'} placeholder="Content JSON" />
+                  <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                    <textarea value={step.contentJson} onChange={(e) => {
+                      const next = [...form.flowSteps]
+                      next[idx] = { ...next[idx], contentJson: e.target.value }
+                      update('flowSteps', next)
+                    }} rows={3} className={inputCls + ' font-mono text-xs'} placeholder="Content JSON FR" />
+                    <textarea value={step.contentJsonEn} onChange={(e) => {
+                      const next = [...form.flowSteps]
+                      next[idx] = { ...next[idx], contentJsonEn: e.target.value }
+                      update('flowSteps', next)
+                    }} rows={3} className={inputCls + ' font-mono text-xs'} placeholder="Content JSON EN" />
+                  </div>
                 </div>
               ))}
             </div>
@@ -646,8 +699,12 @@ export default function AdminQuests({ quests, questOptions, arcs, seasons, items
                                     className="text-[10px] px-2 py-1 text-gray-600 hover:text-white uppercase">X</button>
                                 </div>
                               </div>
-                              <textarea value={editStepContent} onChange={(e) => setEditStepContent(e.target.value)} rows={4}
-                                className={inputCls + ' font-mono text-xs'} placeholder="Content JSON" />
+                              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                                <textarea value={editStepContent} onChange={(e) => setEditStepContent(e.target.value)} rows={4}
+                                  className={inputCls + ' font-mono text-xs'} placeholder="Content JSON FR" />
+                                <textarea value={editStepContentEn} onChange={(e) => setEditStepContentEn(e.target.value)} rows={4}
+                                  className={inputCls + ' font-mono text-xs'} placeholder="Content JSON EN" />
+                              </div>
                             </div>
                           ) : (
                             <div className="flex items-center justify-between gap-3">
@@ -662,7 +719,7 @@ export default function AdminQuests({ quests, questOptions, arcs, seasons, items
                                 {step.nextStepId && <span className="text-[9px] text-gray-600 shrink-0">→#{step.nextStepId}</span>}
                               </div>
                               <div className="flex gap-1 shrink-0">
-                                <button onClick={() => { setEditingStepId(step.id); setEditStepType(step.stepType); setEditStepContent(step.contentJson); setEditStepNextId(step.nextStepId ? String(step.nextStepId) : '') }}
+                                <button onClick={() => { setEditingStepId(step.id); setEditStepType(step.stepType); setEditStepContent(step.contentJson); setEditStepContentEn(step.contentJsonEn || ''); setEditStepNextId(step.nextStepId ? String(step.nextStepId) : '') }}
                                   className="text-[10px] px-2 py-1 rounded border border-cyber-blue/30 text-cyber-blue hover:bg-cyber-blue/10 uppercase">E</button>
                                 <button onClick={() => { if (confirm('Supprimer cette step ?')) router.post(`/admin/quest-steps/${step.id}/delete`) }}
                                   className="text-[10px] px-2 py-1 rounded border border-cyber-red/30 text-cyber-red hover:bg-cyber-red/10 uppercase">X</button>
@@ -690,6 +747,7 @@ export default function AdminQuests({ quests, questOptions, arcs, seasons, items
                             choice: '{"prompt": "", "options": [{"label": "", "nextStepId": null}]}',
                           }
                           setNewStepContent(templates[e.target.value] || '{}')
+                          setNewStepContentEn(templates[e.target.value] || '{}')
                         }} className={inputCls}>
                           {Object.entries(stepTypeLabels).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                         </select>
@@ -699,8 +757,12 @@ export default function AdminQuests({ quests, questOptions, arcs, seasons, items
                           Ajouter
                         </button>
                       </div>
-                      <textarea value={newStepContent} onChange={(e) => setNewStepContent(e.target.value)} rows={3}
-                        className={inputCls + ' font-mono text-xs'} placeholder="Content JSON" />
+                      <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                        <textarea value={newStepContent} onChange={(e) => setNewStepContent(e.target.value)} rows={3}
+                          className={inputCls + ' font-mono text-xs'} placeholder="Content JSON FR" />
+                        <textarea value={newStepContentEn} onChange={(e) => setNewStepContentEn(e.target.value)} rows={3}
+                          className={inputCls + ' font-mono text-xs'} placeholder="Content JSON EN" />
+                      </div>
                     </div>
                   </div>
                 )}

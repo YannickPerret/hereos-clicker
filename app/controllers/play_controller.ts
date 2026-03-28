@@ -15,6 +15,7 @@ import { localize } from '#services/locale_service'
 export default class PlayController {
   private async getLeaderboardData() {
     const leaderboard = await Character.query()
+      .whereHas('user', (query) => query.where('isGuest', false))
       .orderBy('credits', 'desc')
       .limit(10)
       .select('id', 'name', 'credits', 'level', 'totalClicks')
@@ -249,6 +250,8 @@ export default class PlayController {
       return response.notFound('Personnage introuvable')
     }
 
+    await character.load('user')
+
     const equippedItems = await InventoryItem.query()
       .where('characterId', character.id)
       .where('isEquipped', true)
@@ -298,6 +301,7 @@ export default class PlayController {
     return inertia.render('profile/show', {
       character: character.serialize(),
       friendStatus,
+      canReceiveFriendRequests: !character.user.isGuest,
       equippedItems: equippedItems.map((entry) => ({
         ...entry.serialize(),
         item: localize(entry.item.serialize(), locale, ['name', 'description']),

@@ -11,6 +11,18 @@ import ChatChannel from '#models/chat_channel'
 import transmit from '@adonisjs/transmit/services/main'
 
 export default class PartyController {
+  private guestPartyMessage(locale: string) {
+    return locale === 'en'
+      ? 'Guest accounts cannot use party features. Create an account first.'
+      : 'Les comptes invites ne peuvent pas utiliser les groupes. Cree un compte d abord.'
+  }
+
+  private guestTargetPartyMessage(locale: string) {
+    return locale === 'en'
+      ? 'Guest accounts cannot join parties. They must create an account first.'
+      : 'Les comptes invites ne peuvent pas rejoindre un groupe. Ils doivent creer un compte.'
+  }
+
   private isMissingInviteTable(error: unknown) {
     return error instanceof Error && error.message.toLowerCase().includes('party_invites')
   }
@@ -27,7 +39,12 @@ export default class PartyController {
       .first()
   }
 
-  async index({ inertia, auth }: HttpContext) {
+  async index({ inertia, auth, response, session, locale }: HttpContext) {
+    if (auth.user!.isGuest) {
+      session.flash('errors', { message: this.guestPartyMessage(locale) })
+      return response.redirect('/play')
+    }
+
     const character = await this.getCurrentCharacter(auth.user!.id)
 
     // Check if already in an active party
@@ -52,7 +69,15 @@ export default class PartyController {
   }
 
   /** JSON API: poll party state */
-  async state({ params, auth, response }: HttpContext) {
+  async state({ params, auth, response, locale }: HttpContext) {
+    if (auth.user!.isGuest) {
+      return response.forbidden({
+        error: this.guestPartyMessage(locale),
+        upgradeRequired: true,
+        upgradePath: '/account/upgrade',
+      })
+    }
+
     const character = await this.getCurrentCharacter(auth.user!.id)
 
     const party = await Party.query()
@@ -144,7 +169,12 @@ export default class PartyController {
     })
   }
 
-  async create({ request, auth, response, session }: HttpContext) {
+  async create({ request, auth, response, session, locale }: HttpContext) {
+    if (auth.user!.isGuest) {
+      session.flash('errors', { message: this.guestPartyMessage(locale) })
+      return response.redirect('/play')
+    }
+
     const character = await this.getCurrentCharacter(auth.user!.id)
 
     // Check not already in party
@@ -193,7 +223,12 @@ export default class PartyController {
     return response.redirect('/party')
   }
 
-  async join({ request, auth, response, session }: HttpContext) {
+  async join({ request, auth, response, session, locale }: HttpContext) {
+    if (auth.user!.isGuest) {
+      session.flash('errors', { message: this.guestPartyMessage(locale) })
+      return response.redirect('/play')
+    }
+
     const character = await this.getCurrentCharacter(auth.user!.id)
 
     const code = request.input('code', '').toUpperCase()
@@ -239,7 +274,15 @@ export default class PartyController {
     return response.redirect('/party')
   }
 
-  async invitations({ auth, response }: HttpContext) {
+  async invitations({ auth, response, locale }: HttpContext) {
+    if (auth.user!.isGuest) {
+      return response.forbidden({
+        error: this.guestPartyMessage(locale),
+        upgradeRequired: true,
+        upgradePath: '/account/upgrade',
+      })
+    }
+
     const character = await this.getCurrentCharacter(auth.user!.id)
 
     try {
@@ -273,6 +316,14 @@ export default class PartyController {
   }
 
   async invite({ request, auth, response, locale }: HttpContext) {
+    if (auth.user!.isGuest) {
+      return response.forbidden({
+        error: this.guestPartyMessage(locale),
+        upgradeRequired: true,
+        upgradePath: '/account/upgrade',
+      })
+    }
+
     const character = await this.getCurrentCharacter(auth.user!.id)
     const membership = await this.getActiveMembership(character.id)
 
@@ -301,6 +352,11 @@ export default class PartyController {
 
     if (!invitedCharacter) {
       return response.notFound({ error: 'Personnage introuvable.' })
+    }
+
+    await invitedCharacter.load('user')
+    if (invitedCharacter.user.isGuest) {
+      return response.badRequest({ error: this.guestTargetPartyMessage(locale) })
     }
 
     if (invitedCharacter.id === character.id) {
@@ -348,7 +404,15 @@ export default class PartyController {
     })
   }
 
-  async acceptInvite({ params, auth, response }: HttpContext) {
+  async acceptInvite({ params, auth, response, locale }: HttpContext) {
+    if (auth.user!.isGuest) {
+      return response.forbidden({
+        error: this.guestPartyMessage(locale),
+        upgradeRequired: true,
+        upgradePath: '/account/upgrade',
+      })
+    }
+
     const character = await this.getCurrentCharacter(auth.user!.id)
     const existingMembership = await this.getActiveMembership(character.id)
     if (existingMembership) {
@@ -411,7 +475,15 @@ export default class PartyController {
     return response.json({ ok: true, redirectTo: '/party' })
   }
 
-  async declineInvite({ params, auth, response }: HttpContext) {
+  async declineInvite({ params, auth, response, locale }: HttpContext) {
+    if (auth.user!.isGuest) {
+      return response.forbidden({
+        error: this.guestPartyMessage(locale),
+        upgradeRequired: true,
+        upgradePath: '/account/upgrade',
+      })
+    }
+
     const character = await this.getCurrentCharacter(auth.user!.id)
 
     let invite: PartyInvite | null
@@ -441,7 +513,12 @@ export default class PartyController {
     return response.json({ ok: true })
   }
 
-  async ready({ auth, response }: HttpContext) {
+  async ready({ auth, response, session, locale }: HttpContext) {
+    if (auth.user!.isGuest) {
+      session.flash('errors', { message: this.guestPartyMessage(locale) })
+      return response.redirect('/play')
+    }
+
     const character = await this.getCurrentCharacter(auth.user!.id)
 
     const membership = await PartyMember.query()
@@ -461,7 +538,12 @@ export default class PartyController {
     return response.redirect('/party')
   }
 
-  async leave({ auth, response }: HttpContext) {
+  async leave({ auth, response, session, locale }: HttpContext) {
+    if (auth.user!.isGuest) {
+      session.flash('errors', { message: this.guestPartyMessage(locale) })
+      return response.redirect('/play')
+    }
+
     const character = await this.getCurrentCharacter(auth.user!.id)
 
     const membership = await PartyMember.query()
@@ -498,7 +580,12 @@ export default class PartyController {
     return response.redirect('/party')
   }
 
-  async kick({ params, auth, response, session }: HttpContext) {
+  async kick({ params, auth, response, session, locale }: HttpContext) {
+    if (auth.user!.isGuest) {
+      session.flash('errors', { message: this.guestPartyMessage(locale) })
+      return response.redirect('/play')
+    }
+
     const character = await this.getCurrentCharacter(auth.user!.id)
 
     const leaderMembership = await PartyMember.query()
@@ -564,7 +651,12 @@ export default class PartyController {
     return response.redirect('/party')
   }
 
-  async startDungeon({ request, auth, response, session }: HttpContext) {
+  async startDungeon({ request, auth, response, session, locale }: HttpContext) {
+    if (auth.user!.isGuest) {
+      session.flash('errors', { message: this.guestPartyMessage(locale) })
+      return response.redirect('/play')
+    }
+
     const character = await this.getCurrentCharacter(auth.user!.id)
 
     const membership = await PartyMember.query()

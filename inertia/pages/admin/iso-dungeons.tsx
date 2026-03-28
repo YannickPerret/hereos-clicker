@@ -7,7 +7,8 @@ interface SpriteRecord { id: number; key: string; name: string; imagePath: strin
 interface EnemyOption { id: number; name: string; hp: number; tier: number }
 interface RoomEnemyRecord { id: number; roomId: number; enemyId: number; spriteKey: string | null; gridX: number; gridY: number; isBoss: boolean; blocksExit: boolean }
 interface RoomRecord { id: number; dungeonId: number; name: string; roomOrder: number; isBossRoom: boolean; width: number; height: number; tilesetKey: string | null; spawnX: number; spawnY: number; exitX: number | null; exitY: number | null; enemies: RoomEnemyRecord[] }
-interface DungeonRecord { id: number; name: string; slug: string; description: string; minLevel: number; maxPlayers: number; icon: string | null; isActive: boolean; sortOrder: number; rooms: RoomRecord[] }
+interface DungeonRecord { id: number; name: string; nameEn: string | null; slug: string; description: string; descriptionEn: string | null; minLevel: number; maxPlayers: number; icon: string | null; isActive: boolean; sortOrder: number; rooms: RoomRecord[] }
+type DungeonFormState = { name: string; nameEn: string; slug: string; description: string; descriptionEn: string; minLevel: number; maxPlayers: number; icon: string; sortOrder: number }
 
 interface Props {
   dungeons: DungeonRecord[]
@@ -19,6 +20,18 @@ interface Props {
 export default function AdminIsoDungeons({ dungeons, tilesets, sprites, enemies }: Props) {
   const { props } = usePage<{ errors?: { message?: string }; success?: string }>()
   const [expandedDungeon, setExpandedDungeon] = useState<number | null>(null)
+  const [editingDungeonId, setEditingDungeonId] = useState<number | null>(null)
+  const [editDungeon, setEditDungeon] = useState<DungeonFormState>({
+    name: '',
+    nameEn: '',
+    slug: '',
+    description: '',
+    descriptionEn: '',
+    minLevel: 1,
+    maxPlayers: 1,
+    icon: '',
+    sortOrder: 1,
+  })
 
   // Upload refs
   const tilesetFileRef = useRef<HTMLInputElement>(null)
@@ -27,6 +40,24 @@ export default function AdminIsoDungeons({ dungeons, tilesets, sprites, enemies 
   const [tiledRoomId, setTiledRoomId] = useState<number | null>(null)
 
   const inputCls = 'w-full rounded border border-gray-800 bg-cyber-black px-3 py-2 text-sm text-white focus:border-cyber-blue/50 focus:outline-none'
+
+  const startEditDungeon = (dungeon: DungeonRecord) => {
+    setEditingDungeonId(dungeon.id)
+    setEditDungeon({
+      name: dungeon.name,
+      nameEn: dungeon.nameEn || '',
+      slug: dungeon.slug,
+      description: dungeon.description || '',
+      descriptionEn: dungeon.descriptionEn || '',
+      minLevel: dungeon.minLevel,
+      maxPlayers: dungeon.maxPlayers,
+      icon: dungeon.icon || '',
+      sortOrder: dungeon.sortOrder,
+    })
+  }
+
+  const updateEditDungeon = (field: keyof DungeonFormState, value: string | number) =>
+    setEditDungeon((prev) => ({ ...prev, [field]: value }))
 
   return (
     <GameLayout>
@@ -97,9 +128,14 @@ export default function AdminIsoDungeons({ dungeons, tilesets, sprites, enemies 
           {/* Create dungeon */}
           <form onSubmit={(e) => { e.preventDefault(); const fd = new FormData(e.currentTarget); router.post('/admin/iso-dungeons/create', fd as any) }} className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-4">
             <div><label className="mb-1 block text-[10px] uppercase text-gray-500">Nom</label><input name="name" placeholder="Catacombes" className={inputCls} required /></div>
+            <div><label className="mb-1 block text-[10px] uppercase text-gray-500">Nom EN</label><input name="nameEn" placeholder="Catacombs" className={inputCls} /></div>
             <div><label className="mb-1 block text-[10px] uppercase text-gray-500">Slug</label><input name="slug" placeholder="catacombes" className={inputCls} required /></div>
             <div><label className="mb-1 block text-[10px] uppercase text-gray-500">Niveau min</label><input name="minLevel" type="number" defaultValue={1} className={inputCls} /></div>
             <div><label className="mb-1 block text-[10px] uppercase text-gray-500">Description</label><input name="description" placeholder="Un donjon sombre..." className={inputCls} /></div>
+            <div><label className="mb-1 block text-[10px] uppercase text-gray-500">Description EN</label><input name="descriptionEn" placeholder="A dark dungeon..." className={inputCls} /></div>
+            <div><label className="mb-1 block text-[10px] uppercase text-gray-500">Joueurs max</label><input name="maxPlayers" type="number" defaultValue={1} className={inputCls} /></div>
+            <div><label className="mb-1 block text-[10px] uppercase text-gray-500">Icone</label><input name="icon" placeholder="skull" className={inputCls} /></div>
+            <div><label className="mb-1 block text-[10px] uppercase text-gray-500">Ordre</label><input name="sortOrder" type="number" defaultValue={1} className={inputCls} /></div>
             <button type="submit" className="rounded border border-cyber-purple/30 px-3 py-2 text-[10px] uppercase tracking-widest text-cyber-purple hover:bg-cyber-purple/10 self-end">Creer</button>
           </form>
 
@@ -116,6 +152,10 @@ export default function AdminIsoDungeons({ dungeons, tilesets, sprites, enemies 
                     </span>
                   </div>
                   <div className="flex gap-1">
+                    <button type="button" onClick={() => startEditDungeon(d)}
+                      className="text-[10px] px-2 py-1 rounded border border-cyber-blue/30 text-cyber-blue hover:bg-cyber-blue/10 uppercase">
+                      Editer
+                    </button>
                     <button onClick={() => router.post(`/admin/iso-dungeons/${d.id}/toggle`)}
                       className={`text-[10px] px-2 py-1 rounded border uppercase ${d.isActive ? 'border-cyber-yellow/30 text-cyber-yellow hover:bg-cyber-yellow/10' : 'border-cyber-green/30 text-cyber-green hover:bg-cyber-green/10'}`}>
                       {d.isActive ? 'Desactiver' : 'Activer'}
@@ -126,6 +166,56 @@ export default function AdminIsoDungeons({ dungeons, tilesets, sprites, enemies 
                     <button onClick={() => { if (confirm('Supprimer ?')) router.post(`/admin/iso-dungeons/${d.id}/delete`) }} className="text-[10px] px-2 py-1 rounded border border-cyber-red/30 text-cyber-red hover:bg-cyber-red/10 uppercase">X</button>
                   </div>
                 </div>
+
+                {editingDungeonId === d.id && (
+                  <form onSubmit={(e) => { e.preventDefault(); router.post(`/admin/iso-dungeons/${d.id}/update`, editDungeon as any) }}
+                    className="mb-3 grid grid-cols-1 gap-2 rounded border border-cyber-blue/20 bg-cyber-black/30 p-3 md:grid-cols-2">
+                    <div>
+                      <label className="mb-1 block text-[10px] uppercase text-gray-500">Nom</label>
+                      <input value={editDungeon.name} onChange={(e) => updateEditDungeon('name', e.target.value)} className={inputCls} />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-[10px] uppercase text-gray-500">Nom EN</label>
+                      <input value={editDungeon.nameEn} onChange={(e) => updateEditDungeon('nameEn', e.target.value)} className={inputCls} />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-[10px] uppercase text-gray-500">Slug</label>
+                      <input value={editDungeon.slug} onChange={(e) => updateEditDungeon('slug', e.target.value)} className={inputCls} />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-[10px] uppercase text-gray-500">Niveau min</label>
+                      <input type="number" min={1} value={editDungeon.minLevel} onChange={(e) => updateEditDungeon('minLevel', Number(e.target.value))} className={inputCls} />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="mb-1 block text-[10px] uppercase text-gray-500">Description</label>
+                      <textarea value={editDungeon.description} onChange={(e) => updateEditDungeon('description', e.target.value)} rows={3} className={inputCls} />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="mb-1 block text-[10px] uppercase text-gray-500">Description EN</label>
+                      <textarea value={editDungeon.descriptionEn} onChange={(e) => updateEditDungeon('descriptionEn', e.target.value)} rows={3} className={inputCls} />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-[10px] uppercase text-gray-500">Joueurs max</label>
+                      <input type="number" min={1} value={editDungeon.maxPlayers} onChange={(e) => updateEditDungeon('maxPlayers', Number(e.target.value))} className={inputCls} />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-[10px] uppercase text-gray-500">Icone</label>
+                      <input value={editDungeon.icon} onChange={(e) => updateEditDungeon('icon', e.target.value)} className={inputCls} />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-[10px] uppercase text-gray-500">Ordre</label>
+                      <input type="number" min={1} value={editDungeon.sortOrder} onChange={(e) => updateEditDungeon('sortOrder', Number(e.target.value))} className={inputCls} />
+                    </div>
+                    <div className="flex items-end justify-end gap-2">
+                      <button type="button" onClick={() => setEditingDungeonId(null)} className="px-3 py-2 text-[10px] uppercase tracking-widest text-gray-500 hover:text-white">
+                        Annuler
+                      </button>
+                      <button type="submit" className="rounded border border-cyber-blue/30 px-3 py-2 text-[10px] uppercase tracking-widest text-cyber-blue hover:bg-cyber-blue/10">
+                        Sauver
+                      </button>
+                    </div>
+                  </form>
+                )}
 
                 {expandedDungeon === d.id && (
                   <div className="mt-3 space-y-3 border-t border-gray-800 pt-3">

@@ -23,6 +23,32 @@ const BACKEND_MESSAGE_MAP: Record<string, string> = {
   'Mission reclamee': 'backendMsg.missionClaimed',
   'Recompense reclamee': 'backendMsg.rewardClaimed',
   'Guest account upgraded': 'backendMsg.guestAccountUpgraded',
+  'Guest session expired after 3 days. Start a new guest run or create an account.':
+    'backendMsg.guestSessionExpired',
+  'La session invite a expire apres 3 jours. Lance une nouvelle partie ou cree un compte.':
+    'backendMsg.guestSessionExpired',
+  'Guests cannot send chat messages. Create an account first.': 'backendMsg.guestChatRestricted',
+  'Les invites ne peuvent pas parler dans le chat. Cree un compte d abord.':
+    'backendMsg.guestChatRestricted',
+  'Guest accounts cannot use party features. Create an account first.':
+    'backendMsg.guestPartyRestricted',
+  'Les comptes invites ne peuvent pas utiliser les groupes. Cree un compte d abord.':
+    'backendMsg.guestPartyRestricted',
+  'Guest accounts cannot join parties. They must create an account first.':
+    'backendMsg.guestCannotJoinParty',
+  'Les comptes invites ne peuvent pas rejoindre un groupe. Ils doivent creer un compte.':
+    'backendMsg.guestCannotJoinParty',
+  'Guest accounts cannot use the friends system. Create an account first.':
+    'backendMsg.guestFriendsRestricted',
+  'Les comptes invites ne peuvent pas utiliser le systeme d amis. Cree un compte d abord.':
+    'backendMsg.guestFriendsRestricted',
+  'Guest accounts cannot receive friend requests. They must create an account first.':
+    'backendMsg.guestCannotReceiveFriendRequest',
+  'Les comptes invites ne peuvent pas recevoir de demandes d ami. Ils doivent creer un compte.':
+    'backendMsg.guestCannotReceiveFriendRequest',
+  'Guest accounts cannot join PvP. Create an account first.': 'backendMsg.guestPvpRestricted',
+  'Les comptes invites ne peuvent pas faire de PvP. Cree un compte d abord.':
+    'backendMsg.guestPvpRestricted',
   'Le PvP classe est desactive pour la saison active': 'backendMsg.rankedPvpDisabled',
   'Ranked PvP is disabled for the active season': 'backendMsg.rankedPvpDisabled',
   'Mode indisponible': 'backendMsg.modeUnavailable',

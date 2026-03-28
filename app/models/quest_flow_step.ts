@@ -20,6 +20,9 @@ export default class QuestFlowStep extends BaseModel {
   declare contentJson: string
 
   @column()
+  declare contentJsonEn: string | null
+
+  @column()
   declare nextStepId: number | null
 
   @column.dateTime({ autoCreate: true })
@@ -40,5 +43,15 @@ export default class QuestFlowStep extends BaseModel {
     } catch {
       return {}
     }
+  }
+
+  getContent(locale: 'fr' | 'en' = 'fr') {
+    try {
+      if (locale === 'en' && this.contentJsonEn) {
+        return JSON.parse(this.contentJsonEn)
+      }
+    } catch {}
+
+    return this.content
   }
 }

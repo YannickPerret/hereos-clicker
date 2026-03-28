@@ -125,6 +125,7 @@ export default class IsoAdminController {
 
   async createDungeon({ request, response, session }: HttpContext) {
     const name = String(request.input('name', '')).trim()
+    const nameEn = String(request.input('nameEn', '')).trim()
     const slug = String(request.input('slug', '')).trim().toLowerCase().replace(/\s+/g, '-')
     if (!name || !slug) {
       session.flash('errors', { message: 'Nom et slug requis' })
@@ -133,8 +134,10 @@ export default class IsoAdminController {
 
     await IsoDungeon.create({
       name,
+      nameEn: nameEn || null,
       slug,
       description: String(request.input('description', '')).trim(),
+      descriptionEn: String(request.input('descriptionEn', '')).trim() || null,
       minLevel: Math.max(1, Number(request.input('minLevel', 1)) || 1),
       maxPlayers: Math.max(1, Number(request.input('maxPlayers', 1)) || 1),
       icon: request.input('icon') || null,
@@ -143,6 +146,44 @@ export default class IsoAdminController {
     })
 
     session.flash('success', `Donjon "${name}" cree`)
+    return response.redirect('/admin/iso-dungeons')
+  }
+
+  async updateDungeon({ params, request, response, session }: HttpContext) {
+    const dungeon = await IsoDungeon.findOrFail(params.id)
+    const name = String(request.input('name', dungeon.name)).trim()
+    const nameEn = String(request.input('nameEn', dungeon.nameEn || '')).trim()
+    const slug = String(request.input('slug', dungeon.slug))
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, '-')
+
+    if (!name || !slug) {
+      session.flash('errors', { message: 'Nom et slug requis' })
+      return response.redirect('/admin/iso-dungeons')
+    }
+
+    dungeon.merge({
+      name,
+      nameEn: nameEn || null,
+      slug,
+      description: String(request.input('description', dungeon.description || '')).trim(),
+      descriptionEn:
+        String(request.input('descriptionEn', dungeon.descriptionEn || '')).trim() || null,
+      minLevel: Math.max(1, Number(request.input('minLevel', dungeon.minLevel)) || dungeon.minLevel),
+      maxPlayers: Math.max(
+        1,
+        Number(request.input('maxPlayers', dungeon.maxPlayers)) || dungeon.maxPlayers
+      ),
+      icon: String(request.input('icon', dungeon.icon || '')).trim() || null,
+      sortOrder: Math.max(
+        1,
+        Number(request.input('sortOrder', dungeon.sortOrder)) || dungeon.sortOrder
+      ),
+    })
+    await dungeon.save()
+
+    session.flash('success', `Donjon "${dungeon.name}" mis a jour`)
     return response.redirect('/admin/iso-dungeons')
   }
 

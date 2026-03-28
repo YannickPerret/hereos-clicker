@@ -13,6 +13,8 @@ interface ItemEntry {
   id: number
   name: string
   description: string
+  nameEn: string | null
+  descriptionEn: string | null
   type: string
   rarity: string
   icon: string
@@ -66,6 +68,8 @@ export default function AdminItems({ items }: Props) {
   const [newItem, setNewItem] = useState({
     name: '',
     description: '',
+    nameEn: '',
+    descriptionEn: '',
     type: 'weapon',
     rarity: 'common',
     icon: '',
@@ -153,6 +157,15 @@ export default function AdminItems({ items }: Props) {
                 />
               </div>
               <div>
+                <label className="text-[10px] text-gray-500 uppercase block mb-1">Nom EN</label>
+                <input
+                  type="text"
+                  value={newItem.nameEn}
+                  onChange={(e) => setNewItem({ ...newItem, nameEn: e.target.value })}
+                  className="w-full bg-cyber-black border border-gray-800 rounded px-2 py-1.5 text-xs text-white focus:border-cyber-green/50 focus:outline-none"
+                />
+              </div>
+              <div>
                 <label className="text-[10px] text-gray-500 uppercase block mb-1">Type</label>
                 <select
                   value={newItem.type}
@@ -199,6 +212,17 @@ export default function AdminItems({ items }: Props) {
                   type="text"
                   value={newItem.description}
                   onChange={(e) => setNewItem({ ...newItem, description: e.target.value })}
+                  className="w-full bg-cyber-black border border-gray-800 rounded px-2 py-1.5 text-xs text-white focus:outline-none"
+                />
+              </div>
+              <div className="col-span-2">
+                <label className="text-[10px] text-gray-500 uppercase block mb-1">
+                  Description EN
+                </label>
+                <input
+                  type="text"
+                  value={newItem.descriptionEn}
+                  onChange={(e) => setNewItem({ ...newItem, descriptionEn: e.target.value })}
                   className="w-full bg-cyber-black border border-gray-800 rounded px-2 py-1.5 text-xs text-white focus:outline-none"
                 />
               </div>
@@ -302,6 +326,13 @@ export default function AdminItems({ items }: Props) {
                       onChange={(e) => setEditData({ ...editData, name: e.target.value })}
                       className="bg-cyber-black border border-gray-800 rounded px-2 py-1 text-xs text-white focus:outline-none"
                     />
+                    <input
+                      type="text"
+                      value={editData.nameEn || ''}
+                      onChange={(e) => setEditData({ ...editData, nameEn: e.target.value })}
+                      placeholder="Nom EN"
+                      className="bg-cyber-black border border-gray-800 rounded px-2 py-1 text-xs text-white focus:outline-none"
+                    />
                     <select
                       value={editData.type}
                       onChange={(e) => setEditData({ ...editData, type: e.target.value })}
@@ -348,6 +379,15 @@ export default function AdminItems({ items }: Props) {
                       type="text"
                       value={editData.description}
                       onChange={(e) => setEditData({ ...editData, description: e.target.value })}
+                      className="bg-cyber-black border border-gray-800 rounded px-2 py-1 text-xs text-white focus:outline-none"
+                    />
+                    <input
+                      type="text"
+                      value={editData.descriptionEn || ''}
+                      onChange={(e) =>
+                        setEditData({ ...editData, descriptionEn: e.target.value })
+                      }
+                      placeholder="Description EN"
                       className="bg-cyber-black border border-gray-800 rounded px-2 py-1 text-xs text-white focus:outline-none"
                     />
                     <input
