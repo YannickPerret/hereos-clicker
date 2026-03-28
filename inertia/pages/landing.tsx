@@ -2,8 +2,6 @@ import { Link } from '@inertiajs/react'
 import { useTranslation } from 'react-i18next'
 import LanguageSwitcher from '~/components/language_switcher'
 
-const PRIMARY_STEPS = ['click', 'upgrade', 'automate'] as const
-const DEEP_STEPS = ['dungeon', 'party', 'pvp'] as const
 const PATCH_NOTES = ['stability', 'phantom', 'warning', 'mobile', 'event'] as const
 
 export default function Landing() {
@@ -53,16 +51,6 @@ export default function Landing() {
         <div className="grid flex-1 items-start gap-10 py-8 lg:grid-cols-[1.08fr_0.92fr]">
           <section className="space-y-8">
             <div className="space-y-5">
-              <div className="flex items-center gap-3">
-                <span className="inline-block h-2 w-2 animate-pulse bg-cyber-blue" />
-                <span
-                  className="text-[10px] font-bold uppercase tracking-[0.32em] text-cyber-blue"
-                  style={{ fontFamily: 'Space Grotesk, sans-serif' }}
-                >
-                  {t('eyebrow')}
-                </span>
-              </div>
-
               <h1
                 className="max-w-4xl text-5xl font-black uppercase leading-[0.9] tracking-[0.04em] text-white sm:text-6xl lg:text-7xl"
                 style={{ fontFamily: 'Space Grotesk, sans-serif' }}
@@ -247,56 +235,6 @@ export default function Landing() {
                   <div className="absolute left-[27%] top-[46%] h-28 w-10 -rotate-[22deg] rounded-full border border-cyber-blue/12 bg-cyber-blue/8" />
                   <div className="absolute right-[27%] top-[46%] h-28 w-10 rotate-[22deg] rounded-full border border-cyber-blue/12 bg-cyber-blue/8" />
                 </div>
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-cyber-blue/25 bg-cyber-dark/70 p-5 backdrop-blur-sm">
-              <div
-                className="text-[10px] uppercase tracking-[0.32em] text-cyber-blue"
-                style={{ fontFamily: 'Space Grotesk, sans-serif' }}
-              >
-                {t('eyebrow')}
-              </div>
-              <div className="mt-2 text-sm text-gray-400">{t('primaryLoopDescription')}</div>
-              <div className="mt-5 grid gap-3">
-                {PRIMARY_STEPS.map((step) => (
-                  <div
-                    key={step}
-                    className="rounded-xl border border-cyber-blue/15 bg-cyber-black/40 p-4"
-                  >
-                    <div className="text-sm font-bold uppercase tracking-[0.16em] text-white">
-                      {t(`primaryLoopSteps.${step}.title`)}
-                    </div>
-                    <div className="mt-2 text-sm leading-6 text-gray-400">
-                      {t(`primaryLoopSteps.${step}.description`)}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-cyber-pink/20 bg-cyber-dark/55 p-5">
-              <div
-                className="text-[10px] uppercase tracking-[0.32em] text-cyber-pink"
-                style={{ fontFamily: 'Space Grotesk, sans-serif' }}
-              >
-                {t('primaryLoopTitle')}
-              </div>
-              <div className="mt-2 text-sm text-gray-400">{t('deepLoopDescription')}</div>
-              <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                {DEEP_STEPS.map((step) => (
-                  <div
-                    key={step}
-                    className="rounded-xl border border-cyber-pink/15 bg-cyber-black/40 p-4"
-                  >
-                    <div className="text-sm font-bold uppercase tracking-[0.16em] text-cyber-pink">
-                      {t(`deepLoopSteps.${step}.title`)}
-                    </div>
-                    <div className="mt-2 text-xs leading-6 text-gray-400">
-                      {t(`deepLoopSteps.${step}.description`)}
-                    </div>
-                  </div>
-                ))}
               </div>
             </div>
           </section>
