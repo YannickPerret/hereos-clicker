@@ -221,19 +221,17 @@ export default function Landing() {
                   <p>&gt; {t('terminal.target')}</p>
                 </div>
 
-                <div className="relative aspect-square overflow-hidden border border-cyber-blue/10 bg-[radial-gradient(circle_at_top,rgba(0,240,255,0.24),transparent_35%),linear-gradient(180deg,rgba(255,0,255,0.08),rgba(10,10,15,0.95))]">
-                  <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-cyber-blue/15 to-transparent" />
-                  <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-cyber-black to-transparent" />
+                <div className="relative aspect-square overflow-hidden border border-cyber-blue/10 bg-cyber-black">
+                  <img
+                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuBG0o_fZJGSmEhxJ6YnBMLr0gAzStLDxXCVNoqy984jb_PU6RvAA07QQ9qpwXkQ_KwXNLqsFwciBR-9Nw-pwFGhdNptq5HXK80NnlW6L2wiOeJNf1D0XwRkwvDCxFYxVLlSYj0pDVGhW3edOkPCBfYU8hp9oC_iVEJSBoaW8kNeZm8H4lqzOZLesvejquTHRM0h24vpI2eeULNBwG20FeCLZzISbXuASZr6DFEr19tOEM-YdU0U5Dfg9lmEcYfMfhIIqoljQHUhmdU"
+                    alt="Cyberpunk runner portrait"
+                    className="h-full w-full object-cover opacity-60 grayscale transition duration-700 hover:grayscale-0"
+                  />
                   <div className="absolute right-4 top-4 border border-cyber-pink/50 bg-cyber-pink/15 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-cyber-pink">
                     {t('terminal.danger')}
                   </div>
-                  <div className="absolute inset-x-[18%] bottom-0 top-[18%] rounded-t-[999px] border border-cyber-blue/20 bg-gradient-to-b from-cyber-blue/18 via-cyber-dark to-cyber-black opacity-90" />
-                  <div className="absolute left-1/2 top-[21%] h-16 w-16 -translate-x-1/2 rounded-full border border-cyber-blue/35 bg-cyber-black shadow-[0_0_35px_rgba(0,240,255,0.18)]" />
-                  <div className="absolute left-[39%] top-[25%] h-2 w-2 rounded-full bg-cyber-blue shadow-[0_0_10px_rgba(0,240,255,0.9)]" />
-                  <div className="absolute right-[39%] top-[25%] h-2 w-2 rounded-full bg-cyber-blue shadow-[0_0_10px_rgba(0,240,255,0.9)]" />
-                  <div className="absolute left-1/2 top-[34%] h-24 w-24 -translate-x-1/2 border-x border-cyber-blue/20" />
-                  <div className="absolute left-[27%] top-[46%] h-28 w-10 -rotate-[22deg] rounded-full border border-cyber-blue/12 bg-cyber-blue/8" />
-                  <div className="absolute right-[27%] top-[46%] h-28 w-10 rotate-[22deg] rounded-full border border-cyber-blue/12 bg-cyber-blue/8" />
+                  <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-cyber-blue/15 to-transparent" />
+                  <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-cyber-black to-transparent" />
                 </div>
               </div>
             </div>
