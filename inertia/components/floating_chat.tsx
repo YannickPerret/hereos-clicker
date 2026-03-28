@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { router, usePage } from '@inertiajs/react'
 import { useTranslation } from 'react-i18next'
+import { translateBackendMessage } from '~/i18n/backend_messages'
 
 interface Message {
   id: number
@@ -97,7 +98,7 @@ function ChatWidget({
   activeCharacterName: string | null
   partyChannel: string | null
 }) {
-  const { t } = useTranslation('chat')
+  const { t, i18n } = useTranslation(['chat', 'common'])
 
   const [isOpen, setIsOpen] = useState(() => {
     if (typeof window === 'undefined') return false
@@ -203,12 +204,14 @@ function ChatWidget({
       return
     }
 
-    document.title = `(${mentionAlertCount}) Mention${mentionAlertCount > 1 ? 's' : ''} | ${baseTitleRef.current}`
+    document.title = `(${mentionAlertCount}) ${
+      mentionAlertCount > 1 ? t('chat:mentionTitlePlural') : t('chat:mentionTitle')
+    } | ${baseTitleRef.current}`
 
     return () => {
       document.title = baseTitleRef.current
     }
-  }, [mentionAlertCount])
+  }, [mentionAlertCount, t])
 
   useEffect(() => {
     if (typeof window === 'undefined' || typeof document === 'undefined') return
@@ -513,8 +516,8 @@ function ChatWidget({
     setFeedback({
       type: isBlocked ? 'success' : 'info',
       message: isBlocked
-        ? `${characterName} a ete debloque.`
-        : `${characterName} est maintenant masque dans le chat.`,
+        ? t('chat:userUnblocked', { name: characterName })
+        : t('chat:userBlocked', { name: characterName }),
     })
     setUserMenu(null)
   }
@@ -533,12 +536,15 @@ function ChatWidget({
       const data = await res.json().catch(() => ({}))
       setFeedback({
         type: res.ok ? 'success' : 'error',
-        message: data.message || data.error || t('actionFailed'),
+        message:
+          data.message || data.error
+            ? translateBackendMessage(data.message || data.error, t)
+            : t('chat:actionFailed'),
       })
     } catch {
       setFeedback({
         type: 'error',
-        message: t('networkError'),
+        message: t('chat:networkError'),
       })
     }
 
@@ -549,8 +555,11 @@ function ChatWidget({
     const params = new URLSearchParams({
       compose: '1',
       category: 'player',
-      title: `Signalement joueur: ${characterName}`,
-      description: `Pseudo concerne: ${characterName}\nSalon: ${activeChannel}\nMotif: `,
+      title: t('chat:reportPlayerTitle', { name: characterName }),
+      description: t('chat:reportPlayerDescription', {
+        name: characterName,
+        channel: activeChannel,
+      }),
     })
 
     setUserMenu(null)
@@ -577,14 +586,17 @@ function ChatWidget({
   const handleUnavailableAction = (label: string) => {
     setFeedback({
       type: 'info',
-      message: `${label} sera branche quand le backend social sera ajoute.`,
+      message: t('chat:socialBackendLater', { label }),
     })
     setUserMenu(null)
   }
 
   const formatTime = (dateStr: string) => {
     const date = new Date(dateStr)
-    return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+    return date.toLocaleTimeString(i18n.language === 'en' ? 'en-US' : 'fr-FR', {
+      hour: '2-digit',
+      minute: '2-digit',
+    })
   }
 
   const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -660,7 +672,7 @@ function ChatWidget({
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-cyber-green animate-pulse" />
               <span className="text-[10px] text-cyber-green uppercase tracking-widest font-bold">
-                IRC TERMINAL
+                {t('chat:chatHeader')}
               </span>
             </div>
             <div className="flex items-center gap-1">
@@ -715,7 +727,7 @@ function ChatWidget({
                   }}
                   className="flex-1 text-[9px] px-1 py-1 rounded border border-cyber-green/20 text-cyber-green hover:bg-cyber-green/10"
                 >
-                  + CREER
+                  + {t('chat:create')}
                 </button>
                 <button
                   onClick={() => {
@@ -724,7 +736,7 @@ function ChatWidget({
                   }}
                   className="flex-1 text-[9px] px-1 py-1 rounded border border-cyber-blue/20 text-cyber-blue hover:bg-cyber-blue/10"
                 >
-                  REJOINDRE
+                  {t('chat:join')}
                 </button>
               </div>
             </div>
@@ -753,14 +765,14 @@ function ChatWidget({
                   onClick={() => setNewChannelPublic(!newChannelPublic)}
                   className={`text-[9px] px-2 py-0.5 rounded border ${newChannelPublic ? 'border-cyber-green/30 text-cyber-green' : 'border-cyber-yellow/30 text-cyber-yellow'}`}
                 >
-                  {newChannelPublic ? 'PUBLIC' : 'PRIVE'}
+                  {newChannelPublic ? t('chat:public') : t('chat:private')}
                 </button>
                 {!newChannelPublic && (
                   <input
                     type="text"
                     value={newChannelPassword}
                     onChange={(e) => setNewChannelPassword(e.target.value)}
-                    placeholder="mot de passe"
+                    placeholder={t('chat:passwordPlaceholder')}
                     className="flex-1 bg-cyber-black border border-gray-800 rounded px-2 py-0.5 text-[10px] text-white focus:outline-none"
                   />
                 )}
@@ -777,7 +789,7 @@ function ChatWidget({
                   onClick={() => setShowCreateChannel(false)}
                   className="text-[9px] px-2 py-1 text-gray-600"
                 >
-                  Annuler
+                  {t('chat:cancel')}
                 </button>
               </div>
             </form>
@@ -801,7 +813,7 @@ function ChatWidget({
                 type="password"
                 value={joinPassword}
                 onChange={(e) => setJoinPassword(e.target.value)}
-                placeholder="mot de passe"
+                placeholder={t('chat:passwordPlaceholder')}
                 className="w-full bg-cyber-black border border-gray-800 rounded px-2 py-1 text-[10px] text-white focus:outline-none"
               />
               <div className="flex gap-1">
@@ -809,14 +821,14 @@ function ChatWidget({
                   type="submit"
                   className="text-[9px] px-2 py-1 rounded border border-cyber-blue/30 text-cyber-blue hover:bg-cyber-blue/10"
                 >
-                  REJOINDRE
+                  {t('chat:join')}
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowJoin(false)}
                   className="text-[9px] px-2 py-1 text-gray-600"
                 >
-                  Annuler
+                  {t('chat:cancel')}
                 </button>
               </div>
             </form>
@@ -843,7 +855,7 @@ function ChatWidget({
           >
             {visibleMessages.length === 0 ? (
               <div className="text-gray-700 text-center py-10 text-[10px]">
-                &gt; En attente de transmission..._
+                {t('chat:waitingTransmission')}
               </div>
             ) : (
               visibleMessages.map((msg) => (
@@ -891,7 +903,7 @@ function ChatWidget({
             {mentionQuery && (
               <div className="absolute bottom-full left-2 right-2 mb-2 overflow-hidden rounded-lg border border-cyber-green/20 bg-cyber-black/95 shadow-2xl backdrop-blur">
                 <div className="border-b border-cyber-green/10 px-3 py-2 text-[9px] uppercase tracking-[0.3em] text-gray-500">
-                  Joueurs en ligne
+                  {t('chat:onlinePlayers')}
                 </div>
                 {mentionSuggestions.length > 0 ? (
                   <div className="max-h-44 overflow-y-auto py-1">
@@ -909,14 +921,14 @@ function ChatWidget({
                       >
                         <span>@{playerName}</span>
                         <span className="text-[9px] uppercase tracking-widest text-gray-600">
-                          Online
+                          {t('chat:online')}
                         </span>
                       </button>
                     ))}
                   </div>
                 ) : (
                   <div className="px-3 py-3 text-[10px] uppercase tracking-widest text-gray-600">
-                    Aucun joueur en ligne ne correspond.
+                    {t('chat:noOnlinePlayerMatch')}
                   </div>
                 )}
               </div>
@@ -931,7 +943,11 @@ function ChatWidget({
               onSelect={handleInputSelect}
               onKeyDown={handleInputKeyDown}
               maxLength={500}
-              placeholder={`Message dans ${activeChannel === partyChannel ? 'le groupe' : `#${activeChannel}`}...`}
+              placeholder={
+                activeChannel === partyChannel
+                  ? t('chat:messageInParty')
+                  : t('chat:messageInChannel', { channel: `#${activeChannel}` })
+              }
               className="flex-1 bg-cyber-dark border border-gray-800 rounded px-2 py-1.5 text-[11px] text-white font-mono focus:border-cyber-green/30 focus:outline-none placeholder-gray-800"
               autoFocus
             />
@@ -959,7 +975,7 @@ function ChatWidget({
             onClick={() => handleViewProfile(userMenu.characterName)}
             className="flex w-full items-center justify-between rounded px-2 py-1.5 text-left text-[11px] text-gray-300 transition hover:bg-cyber-blue/10 hover:text-cyber-blue"
           >
-            <span>Voir le profil</span>
+            <span>{t('chat:viewProfile')}</span>
           </button>
           <button
             type="button"
@@ -970,18 +986,18 @@ function ChatWidget({
           </button>
           <button
             type="button"
-            onClick={() => handleUnavailableAction('Message prive')}
+            onClick={() => handleUnavailableAction(t('chat:privateMessage'))}
             className="flex w-full items-center justify-between rounded px-2 py-1.5 text-left text-[11px] text-gray-300 transition hover:bg-cyber-green/10 hover:text-white"
           >
             <span>{t('sendPrivateMsg')}</span>
-            <span className="text-[9px] uppercase text-gray-600">Bientot</span>
+            <span className="text-[9px] uppercase text-gray-600">{t('chat:soon')}</span>
           </button>
           <button
             type="button"
             onClick={() => handleReportUser(userMenu.characterName)}
             className="flex w-full items-center justify-between rounded px-2 py-1.5 text-left text-[11px] text-gray-300 transition hover:bg-cyber-orange/10 hover:text-cyber-orange"
           >
-            <span>Signaler</span>
+            <span>{t('common:reportBug')}</span>
           </button>
           <button
             type="button"

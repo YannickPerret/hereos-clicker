@@ -1,6 +1,7 @@
 import { router, usePage } from '@inertiajs/react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { translateBackendMessage } from '~/i18n/backend_messages'
 
 interface InviteNotification {
   id: number
@@ -47,7 +48,7 @@ function getCsrfToken() {
 
 export default function NotificationCenter() {
   const { auth } = usePage().props as any
-  const { t } = useTranslation('chat')
+  const { t } = useTranslation(['chat', 'common'])
   const [isOpen, setIsOpen] = useState(false)
   const [invites, setInvites] = useState<InviteNotification[]>([])
   const [friendRequests, setFriendRequests] = useState<FriendRequestNotification[]>([])
@@ -78,7 +79,7 @@ export default function NotificationCenter() {
       const res = await fetch('/party/invitations')
       if (!res.ok) return
 
-      const data = await res.json() as InviteNotification[]
+      const data = (await res.json()) as InviteNotification[]
       setInvites(data)
 
       const unseen = data.filter((invite) => !seenInviteIds.current.has(invite.id))
@@ -147,36 +148,39 @@ export default function NotificationCenter() {
     setFriendToasts((prev) => prev.filter((request) => request.id !== requestId))
   }, [])
 
-  const respondToInvite = useCallback(async (inviteId: number, action: 'accept' | 'decline') => {
-    setBusyInviteId(inviteId)
-    setError(null)
+  const respondToInvite = useCallback(
+    async (inviteId: number, action: 'accept' | 'decline') => {
+      setBusyInviteId(inviteId)
+      setError(null)
 
-    try {
-      const res = await fetch(`/party/invitations/${inviteId}/${action}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-XSRF-TOKEN': getCsrfToken(),
-        },
-      })
+      try {
+        const res = await fetch(`/party/invitations/${inviteId}/${action}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-XSRF-TOKEN': getCsrfToken(),
+          },
+        })
 
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        setError(data.error || t('actionFailed'))
-        return
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) {
+          setError(data.error ? translateBackendMessage(data.error, t) : t('chat:actionFailed'))
+          return
+        }
+
+        removeInviteEverywhere(inviteId)
+
+        if (action === 'accept') {
+          router.visit(data.redirectTo || '/party')
+        }
+      } catch {
+        setError(t('networkError'))
+      } finally {
+        setBusyInviteId(null)
       }
-
-      removeInviteEverywhere(inviteId)
-
-      if (action === 'accept') {
-        router.visit(data.redirectTo || '/party')
-      }
-    } catch {
-      setError(t('networkError'))
-    } finally {
-      setBusyInviteId(null)
-    }
-  }, [removeInviteEverywhere])
+    },
+    [removeInviteEverywhere]
+  )
 
   const respondToFriendRequest = useCallback(
     async (requestId: number, action: 'accept' | 'decline') => {
@@ -194,7 +198,7 @@ export default function NotificationCenter() {
 
         const data = await res.json().catch(() => ({}))
         if (!res.ok) {
-          setError(data.error || t('actionFailed'))
+          setError(data.error ? translateBackendMessage(data.error, t) : t('chat:actionFailed'))
           return
         }
 
@@ -233,8 +237,12 @@ export default function NotificationCenter() {
         <div className="fixed bottom-20 left-4 z-50 w-[22rem] max-w-[calc(100vw-2rem)] overflow-hidden rounded-lg border border-cyber-orange/30 bg-cyber-black/95 shadow-2xl backdrop-blur-sm">
           <div className="flex items-center justify-between border-b border-cyber-orange/20 bg-cyber-dark px-3 py-2">
             <div>
-              <div className="text-[10px] uppercase tracking-[0.3em] text-cyber-orange">{t('notifCenter')}</div>
-              <div className="text-[10px] text-gray-500">{t('activeNotifs', { count: totalNotifications })}</div>
+              <div className="text-[10px] uppercase tracking-[0.3em] text-cyber-orange">
+                {t('notifCenter')}
+              </div>
+              <div className="text-[10px] text-gray-500">
+                {t('activeNotifs', { count: totalNotifications })}
+              </div>
             </div>
             <button
               type="button"
@@ -259,7 +267,10 @@ export default function NotificationCenter() {
             ) : (
               <div className="space-y-3">
                 {friendRequests.map((request) => (
-                  <div key={request.id} className="rounded-lg border border-cyber-green/20 bg-cyber-dark/50 p-3">
+                  <div
+                    key={request.id}
+                    className="rounded-lg border border-cyber-green/20 bg-cyber-dark/50 p-3"
+                  >
                     <div className="mb-1 text-xs font-bold uppercase tracking-widest text-cyber-green">
                       {t('friendRequest')}
                     </div>
@@ -298,7 +309,10 @@ export default function NotificationCenter() {
                 ))}
 
                 {invites.map((invite) => (
-                  <div key={invite.id} className="rounded-lg border border-cyber-orange/20 bg-cyber-dark/50 p-3">
+                  <div
+                    key={invite.id}
+                    className="rounded-lg border border-cyber-orange/20 bg-cyber-dark/50 p-3"
+                  >
                     <div className="mb-1 text-xs font-bold uppercase tracking-widest text-cyber-orange">
                       {invite.partyName}
                     </div>
@@ -306,7 +320,11 @@ export default function NotificationCenter() {
                       {t('partyInviteMsg', { name: invite.invitedByName })}
                     </div>
                     <div className="mt-1 text-[10px] uppercase tracking-wider text-gray-500">
-                      {t('partyInfo', { code: invite.partyCode, current: invite.memberCount, max: invite.maxSize })}
+                      {t('partyInfo', {
+                        code: invite.partyCode,
+                        current: invite.memberCount,
+                        max: invite.maxSize,
+                      })}
                     </div>
                     <div className="mt-3 flex gap-2">
                       <button
@@ -340,13 +358,19 @@ export default function NotificationCenter() {
             key={invite.id}
             className="pointer-events-auto rounded-lg border border-cyber-orange/40 bg-cyber-dark/95 p-4 shadow-2xl backdrop-blur-sm"
           >
-            <div className="text-[10px] uppercase tracking-[0.3em] text-cyber-orange">{t('partyInvite')}</div>
+            <div className="text-[10px] uppercase tracking-[0.3em] text-cyber-orange">
+              {t('partyInvite')}
+            </div>
             <div className="mt-2 text-sm font-bold text-white">{invite.partyName}</div>
             <div className="mt-1 text-xs text-gray-300">
               {t('partyInviteToast', { name: invite.invitedByName })}
             </div>
             <div className="mt-1 text-[10px] uppercase tracking-wider text-gray-500">
-              {t('partyInfo', { code: invite.partyCode, current: invite.memberCount, max: invite.maxSize })}
+              {t('partyInfo', {
+                code: invite.partyCode,
+                current: invite.memberCount,
+                max: invite.maxSize,
+              })}
             </div>
             <div className="mt-3 flex gap-2">
               <button
@@ -381,7 +405,9 @@ export default function NotificationCenter() {
             key={request.id}
             className="pointer-events-auto rounded-lg border border-cyber-green/40 bg-cyber-dark/95 p-4 shadow-2xl backdrop-blur-sm"
           >
-            <div className="text-[10px] uppercase tracking-[0.3em] text-cyber-green">{t('friendRequest')}</div>
+            <div className="text-[10px] uppercase tracking-[0.3em] text-cyber-green">
+              {t('friendRequest')}
+            </div>
             <div className="mt-2 text-sm font-bold text-white">{request.name}</div>
             <div className="mt-1 text-xs text-gray-300">
               {t('friendRequestMsg', { name: request.name })}
@@ -409,7 +435,9 @@ export default function NotificationCenter() {
             </div>
             <button
               type="button"
-              onClick={() => setFriendToasts((prev) => prev.filter((toast) => toast.id !== request.id))}
+              onClick={() =>
+                setFriendToasts((prev) => prev.filter((toast) => toast.id !== request.id))
+              }
               className="mt-3 text-[10px] uppercase tracking-widest text-gray-500 transition-colors hover:text-white"
             >
               {t('hide')}

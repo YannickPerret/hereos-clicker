@@ -17,5 +17,18 @@
   "openFlow": "Open narrative flow",
   "activeQuest": "Active Quest",
   "liveProgress": "Live progress",
-  "trackDone": "This entire track is completed."
+  "trackDone": "This entire track is completed.",
+  "overlay": {
+    "minimize": "Minimize",
+    "next": "Next >",
+    "continue": "Continue >",
+    "objectiveInProgress": "Objective in progress",
+    "progress": "Progress",
+    "autoClose": "The overlay will close automatically when the objective is complete.",
+    "calculating": "Calculating...",
+    "complete": "Complete!",
+    "waitingInProgress": "Waiting in progress",
+    "duration": "Duration: {{duration}} {{unit}}",
+    "choice": "Choice"
+  }
 }

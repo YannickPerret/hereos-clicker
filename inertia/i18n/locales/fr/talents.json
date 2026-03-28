@@ -9,6 +9,7 @@
   "cpsBonus": "CPS Bonus",
   "combat": "Combat",
   "economy": "Economie",
+  "economyValue": "-{{shopDiscount}}% prix, +{{lootBonus}}% loot, +{{dungeonCredits}}% donjon",
   "yourSpec": "ta spec",
   "active": "actif",
   "locked": "verrouille",

@@ -9,6 +9,7 @@
   "cpsBonus": "CPS Bonus",
   "combat": "Combat",
   "economy": "Economy",
+  "economyValue": "-{{shopDiscount}}% price, +{{lootBonus}}% loot, +{{dungeonCredits}}% dungeon",
   "yourSpec": "your spec",
   "active": "active",
   "locked": "locked",

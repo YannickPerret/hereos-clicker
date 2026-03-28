@@ -16,9 +16,7 @@ export default class PartyController {
   }
 
   private async getCurrentCharacter(userId: number) {
-    return Character.query()
-      .where('userId', userId)
-      .firstOrFail()
+    return Character.query().where('userId', userId).firstOrFail()
   }
 
   private async getActiveMembership(characterId: number) {
@@ -253,16 +251,18 @@ export default class PartyController {
         .preload('invitedBy')
         .orderBy('createdAt', 'desc')
 
-      return response.json(invites.map((invite) => ({
-        id: invite.id,
-        partyId: invite.partyId,
-        partyName: invite.party.name,
-        partyCode: invite.party.code,
-        invitedByName: invite.invitedBy.name,
-        memberCount: invite.party.members.length,
-        maxSize: invite.party.maxSize,
-        createdAt: invite.createdAt.toISO(),
-      })))
+      return response.json(
+        invites.map((invite) => ({
+          id: invite.id,
+          partyId: invite.partyId,
+          partyName: invite.party.name,
+          partyCode: invite.party.code,
+          invitedByName: invite.invitedBy.name,
+          memberCount: invite.party.members.length,
+          maxSize: invite.party.maxSize,
+          createdAt: invite.createdAt.toISO(),
+        }))
+      )
     } catch (error) {
       if (this.isMissingInviteTable(error)) {
         return response.json([])
@@ -272,7 +272,7 @@ export default class PartyController {
     }
   }
 
-  async invite({ request, auth, response }: HttpContext) {
+  async invite({ request, auth, response, locale }: HttpContext) {
     const character = await this.getCurrentCharacter(auth.user!.id)
     const membership = await this.getActiveMembership(character.id)
 
@@ -281,7 +281,9 @@ export default class PartyController {
     }
 
     if (membership.party.status !== 'waiting') {
-      return response.badRequest({ error: 'Impossible d\'inviter pendant un donjon ou un countdown.' })
+      return response.badRequest({
+        error: "Impossible d'inviter pendant un donjon ou un countdown.",
+      })
     }
 
     if (membership.party.members.length >= membership.party.maxSize) {
@@ -302,7 +304,7 @@ export default class PartyController {
     }
 
     if (invitedCharacter.id === character.id) {
-      return response.badRequest({ error: 'Tu ne peux pas t\'inviter toi-meme.' })
+      return response.badRequest({ error: "Tu ne peux pas t'inviter toi-meme." })
     }
 
     const invitedMembership = await this.getActiveMembership(invitedCharacter.id)
@@ -329,7 +331,9 @@ export default class PartyController {
       })
     } catch (error) {
       if (this.isMissingInviteTable(error)) {
-        return response.status(503).json({ error: 'Les invitations ne sont pas encore activees. Lance la migration.' })
+        return response
+          .status(503)
+          .json({ error: 'Les invitations ne sont pas encore activees. Lance la migration.' })
       }
 
       throw error
@@ -337,7 +341,10 @@ export default class PartyController {
 
     return response.json({
       ok: true,
-      message: `Invitation envoyee a ${invitedCharacter.name}.`,
+      message:
+        locale === 'en'
+          ? `Invitation sent to ${invitedCharacter.name}.`
+          : `Invitation envoyee a ${invitedCharacter.name}.`,
     })
   }
 
@@ -358,7 +365,9 @@ export default class PartyController {
         .first()
     } catch (error) {
       if (this.isMissingInviteTable(error)) {
-        return response.status(503).json({ error: 'Les invitations ne sont pas encore activees. Lance la migration.' })
+        return response
+          .status(503)
+          .json({ error: 'Les invitations ne sont pas encore activees. Lance la migration.' })
       }
 
       throw error
@@ -371,7 +380,7 @@ export default class PartyController {
     if (invite.party.status !== 'waiting') {
       invite.status = 'expired'
       await invite.save()
-      return response.badRequest({ error: 'Cette invitation n\'est plus valide.' })
+      return response.badRequest({ error: "Cette invitation n'est plus valide." })
     }
 
     if (invite.party.members.length >= invite.party.maxSize) {
@@ -414,7 +423,9 @@ export default class PartyController {
         .first()
     } catch (error) {
       if (this.isMissingInviteTable(error)) {
-        return response.status(503).json({ error: 'Les invitations ne sont pas encore activees. Lance la migration.' })
+        return response
+          .status(503)
+          .json({ error: 'Les invitations ne sont pas encore activees. Lance la migration.' })
       }
 
       throw error
@@ -508,7 +519,7 @@ export default class PartyController {
     }
 
     if (party.status === 'in_dungeon') {
-      session.flash('errors', { message: 'Impossible d\'expulser un membre pendant un donjon' })
+      session.flash('errors', { message: "Impossible d'expulser un membre pendant un donjon" })
       return response.redirect('/party')
     }
 
@@ -519,7 +530,7 @@ export default class PartyController {
     }
 
     if (targetCharacterId === character.id) {
-      session.flash('errors', { message: 'Le leader ne peut pas s\'expulser lui-meme' })
+      session.flash('errors', { message: "Le leader ne peut pas s'expulser lui-meme" })
       return response.redirect('/party')
     }
 
@@ -573,7 +584,10 @@ export default class PartyController {
     // Check all ready
     const notReady = party.members.filter((m) => !m.isReady)
     if (notReady.length > 0) {
-      console.log('[startDungeon] Not all ready:', party.members.map((m) => ({ id: m.characterId, ready: m.isReady })))
+      console.log(
+        '[startDungeon] Not all ready:',
+        party.members.map((m) => ({ id: m.characterId, ready: m.isReady }))
+      )
       session.flash('errors', { message: 'Tous les membres doivent etre prets' })
       return response.redirect('/party')
     }
@@ -591,7 +605,9 @@ export default class PartyController {
     for (const member of party.members) {
       const memberChar = await Character.findOrFail(member.characterId)
       if (memberChar.level < floor.minLevel) {
-        session.flash('errors', { message: `${memberChar.name} n'a pas le niveau requis (${floor.minLevel})` })
+        session.flash('errors', {
+          message: `${memberChar.name} n'a pas le niveau requis (${floor.minLevel})`,
+        })
         return response.redirect('/party')
       }
     }

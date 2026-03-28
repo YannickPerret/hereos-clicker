@@ -17,5 +17,18 @@
   "openFlow": "Ouvrir le flow narratif",
   "activeQuest": "Quete Active",
   "liveProgress": "Progression live",
-  "trackDone": "Tout ce track est termine."
+  "trackDone": "Tout ce track est termine.",
+  "overlay": {
+    "minimize": "Minimiser",
+    "next": "Suivant >",
+    "continue": "Continuer >",
+    "objectiveInProgress": "Objectif en cours",
+    "progress": "Progression",
+    "autoClose": "L'overlay se fermera automatiquement quand l'objectif sera atteint.",
+    "calculating": "Calcul...",
+    "complete": "Termine !",
+    "waitingInProgress": "Attente en cours",
+    "duration": "Duree: {{duration}} {{unit}}",
+    "choice": "Choix"
+  }
 }

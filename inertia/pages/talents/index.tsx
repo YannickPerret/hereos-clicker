@@ -92,20 +92,32 @@ function TalentCard({
       }`}
     >
       <div className="flex items-center gap-2 mb-1">
-        <span className={`text-xs font-bold ${isUnlocked ? config.color : canUnlock ? 'text-white' : 'text-gray-500'}`}>
+        <span
+          className={`text-xs font-bold ${isUnlocked ? config.color : canUnlock ? 'text-white' : 'text-gray-500'}`}
+        >
           {talent.name}
         </span>
         {isUnlocked && (
-          <span className={`text-[9px] ${config.bg}/20 ${config.color} px-1.5 py-0.5 rounded uppercase font-bold`}>
+          <span
+            className={`text-[9px] ${config.bg}/20 ${config.color} px-1.5 py-0.5 rounded uppercase font-bold`}
+          >
             {t('talents:active')}
           </span>
         )}
       </div>
-      <p className={`text-[11px] leading-snug mb-1.5 ${isUnlocked ? 'text-gray-300' : canUnlock ? 'text-gray-400' : 'text-gray-600'}`}>{talent.description}</p>
+      <p
+        className={`text-[11px] leading-snug mb-1.5 ${isUnlocked ? 'text-gray-300' : canUnlock ? 'text-gray-400' : 'text-gray-600'}`}
+      >
+        {talent.description}
+      </p>
       {!isUnlocked && !isExcluded && (
         <div className="flex items-center gap-3 text-[11px]">
-          <span className={`font-bold ${canUnlock ? 'text-cyber-purple' : 'text-gray-600'}`}>{talent.cost} PT</span>
-          <span className={`font-medium ${characterLevel >= talent.requiresLevel ? 'text-gray-500' : 'text-cyber-red'}`}>
+          <span className={`font-bold ${canUnlock ? 'text-cyber-purple' : 'text-gray-600'}`}>
+            {talent.cost} PT
+          </span>
+          <span
+            className={`font-medium ${characterLevel >= talent.requiresLevel ? 'text-gray-500' : 'text-cyber-red'}`}
+          >
             LVL {talent.requiresLevel}
           </span>
         </div>
@@ -119,18 +131,26 @@ export default function Talents(props: Props) {
   const { character } = props
   const { tree, bonuses, hasRespecChip } = props
   const [showRespecConfirm, setShowRespecConfirm] = useState(false)
-  const [expandedSpec, setExpandedSpec] = useState<string | null>(props.character.chosenSpec || null)
+  const [expandedSpec, setExpandedSpec] = useState<string | null>(
+    props.character.chosenSpec || null
+  )
 
   return (
     <GameLayout>
       {/* Respec confirmation modal */}
       {showRespecConfirm && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50" onClick={() => setShowRespecConfirm(false)}>
-          <div className="bg-cyber-dark border border-cyber-red rounded-lg p-6 max-w-sm text-center" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-bold text-cyber-red tracking-widest mb-3">{t('talents:respecTitle')}</h3>
-            <p className="text-xs text-gray-400 mb-4">
-              {t('talents:respecMessage')}
-            </p>
+        <div
+          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50"
+          onClick={() => setShowRespecConfirm(false)}
+        >
+          <div
+            className="bg-cyber-dark border border-cyber-red rounded-lg p-6 max-w-sm text-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-bold text-cyber-red tracking-widest mb-3">
+              {t('talents:respecTitle')}
+            </h3>
+            <p className="text-xs text-gray-400 mb-4">{t('talents:respecMessage')}</p>
             <p className="text-cyber-yellow text-sm font-bold mb-4">{t('talents:respecWarning')}</p>
             <div className="flex gap-2">
               <button
@@ -140,7 +160,10 @@ export default function Talents(props: Props) {
                 {t('common:cancel')}
               </button>
               <button
-                onClick={() => { router.post('/talents/respec'); setShowRespecConfirm(false) }}
+                onClick={() => {
+                  router.post('/talents/respec')
+                  setShowRespecConfirm(false)
+                }}
                 className="flex-1 py-2 text-xs bg-cyber-red/20 border border-cyber-red text-cyber-red rounded hover:bg-cyber-red/30 transition-all uppercase font-bold"
               >
                 {t('common:confirm')}
@@ -153,11 +176,17 @@ export default function Talents(props: Props) {
       {/* Header */}
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-cyber-purple tracking-widest">{t('talents:title')}</h1>
+          <h1 className="text-2xl font-bold text-cyber-purple tracking-widest">
+            {t('talents:title')}
+          </h1>
           <p className="text-xs text-gray-600 mt-1">
-            {character.chosenSpec
-              ? <>{ t('talents:specInfo', { spec: t(`talents:specs.${character.chosenSpec}.label`) }) }</>
-              : t('talents:intro')}
+            {character.chosenSpec ? (
+              <>
+                {t('talents:specInfo', { spec: t(`talents:specs.${character.chosenSpec}.label`) })}
+              </>
+            ) : (
+              t('talents:intro')
+            )}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -183,10 +212,30 @@ export default function Talents(props: Props) {
       {/* Active bonuses */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-6">
         {[
-          { label: t('talents:cpcBonus'), value: `+${bonuses.cpcFlat} (+${bonuses.cpcPercent}%)`, color: 'text-cyber-green' },
-          { label: t('talents:cpsBonus'), value: `+${bonuses.cpsFlat} (+${bonuses.cpsPercent}%)`, color: 'text-cyber-blue' },
-          { label: t('talents:combat'), value: `ATK+${bonuses.atkFlat} DEF+${bonuses.defFlat} HP+${bonuses.hpFlat} (+${bonuses.combatPercent}%)`, color: 'text-cyber-red' },
-          { label: t('talents:economy'), value: `-${bonuses.shopDiscount}% prix, +${bonuses.lootBonus}% loot, +${bonuses.dungeonCredits}% donjon`, color: 'text-cyber-yellow' },
+          {
+            label: t('talents:cpcBonus'),
+            value: `+${bonuses.cpcFlat} (+${bonuses.cpcPercent}%)`,
+            color: 'text-cyber-green',
+          },
+          {
+            label: t('talents:cpsBonus'),
+            value: `+${bonuses.cpsFlat} (+${bonuses.cpsPercent}%)`,
+            color: 'text-cyber-blue',
+          },
+          {
+            label: t('talents:combat'),
+            value: `ATK+${bonuses.atkFlat} DEF+${bonuses.defFlat} HP+${bonuses.hpFlat} (+${bonuses.combatPercent}%)`,
+            color: 'text-cyber-red',
+          },
+          {
+            label: t('talents:economy'),
+            value: t('talents:economyValue', {
+              shopDiscount: bonuses.shopDiscount,
+              lootBonus: bonuses.lootBonus,
+              dungeonCredits: bonuses.dungeonCredits,
+            }),
+            color: 'text-cyber-yellow',
+          },
         ].map((b) => (
           <div key={b.label} className="bg-cyber-dark/50 border border-gray-800 rounded px-3 py-2">
             <div className="text-[11px] text-gray-400 uppercase tracking-wider">{b.label}</div>
@@ -221,14 +270,20 @@ export default function Talents(props: Props) {
               }`}
             >
               <div className="flex items-center justify-between mb-1">
-                <span className={`text-sm font-bold ${config.color} tracking-widest`}>{t(`talents:specs.${spec}.label`)}</span>
+                <span className={`text-sm font-bold ${config.color} tracking-widest`}>
+                  {t(`talents:specs.${spec}.label`)}
+                </span>
                 {isChosenSpec && (
-                  <span className={`text-[9px] ${config.bg}/20 ${config.color} px-2 py-0.5 rounded-full uppercase font-bold`}>
+                  <span
+                    className={`text-[9px] ${config.bg}/20 ${config.color} px-2 py-0.5 rounded-full uppercase font-bold`}
+                  >
                     {t('talents:yourSpec')}
                   </span>
                 )}
               </div>
-              <p className="text-[11px] text-gray-400 mb-2">{t(`talents:specs.${spec}.description`)}</p>
+              <p className="text-[11px] text-gray-400 mb-2">
+                {t(`talents:specs.${spec}.description`)}
+              </p>
               <div className="flex items-center justify-between">
                 <div className="flex-1 h-1.5 bg-cyber-black rounded-full overflow-hidden mr-2">
                   <div
@@ -236,7 +291,9 @@ export default function Talents(props: Props) {
                     style={{ width: `${(unlockedCount / (totalTiers * 2)) * 100}%` }}
                   />
                 </div>
-                <span className="text-xs text-gray-400 font-medium">{unlockedCount}/{totalTiers}</span>
+                <span className="text-xs text-gray-400 font-medium">
+                  {unlockedCount}/{totalTiers}
+                </span>
               </div>
             </button>
           )
@@ -244,111 +301,132 @@ export default function Talents(props: Props) {
       </div>
 
       {/* Expanded talent tree */}
-      {expandedSpec && tree[expandedSpec] && (() => {
-        const config = SPEC_STYLES[expandedSpec]
-        const talents = tree[expandedSpec]
-        const isLockedSpec = character.chosenSpec !== null && character.chosenSpec !== expandedSpec
+      {expandedSpec &&
+        tree[expandedSpec] &&
+        (() => {
+          const config = SPEC_STYLES[expandedSpec]
+          const talents = tree[expandedSpec]
+          const isLockedSpec =
+            character.chosenSpec !== null && character.chosenSpec !== expandedSpec
 
-        // Group by tier
-        const tiers: Record<number, TalentNode[]> = {}
-        for (const t of talents) {
-          if (!tiers[t.tier]) tiers[t.tier] = []
-          tiers[t.tier].push(t)
-        }
+          // Group by tier
+          const tiers: Record<number, TalentNode[]> = {}
+          for (const t of talents) {
+            if (!tiers[t.tier]) tiers[t.tier] = []
+            tiers[t.tier].push(t)
+          }
 
-        const tierNumbers = Object.keys(tiers).map(Number).sort((a, b) => a - b)
+          const tierNumbers = Object.keys(tiers)
+            .map(Number)
+            .sort((a, b) => a - b)
 
-        return (
-          <div className={`bg-cyber-dark border rounded-lg p-5 ${config.border}/30 ${config.glow}`}>
-            <div className="flex items-center justify-between mb-5">
-              <h2 className={`text-base font-bold ${config.color} tracking-widest`}>
-                {t('talents:specTreeTitle', { spec: t(`talents:specs.${expandedSpec}.label`) })}
-              </h2>
-              {isLockedSpec && (
-                <span className="text-[9px] bg-gray-800 text-gray-600 px-2 py-0.5 rounded-full uppercase">
-                  {t('talents:locked')}
-                </span>
-              )}
-            </div>
+          return (
+            <div
+              className={`bg-cyber-dark border rounded-lg p-5 ${config.border}/30 ${config.glow}`}
+            >
+              <div className="flex items-center justify-between mb-5">
+                <h2 className={`text-base font-bold ${config.color} tracking-widest`}>
+                  {t('talents:specTreeTitle', { spec: t(`talents:specs.${expandedSpec}.label`) })}
+                </h2>
+                {isLockedSpec && (
+                  <span className="text-[9px] bg-gray-800 text-gray-600 px-2 py-0.5 rounded-full uppercase">
+                    {t('talents:locked')}
+                  </span>
+                )}
+              </div>
 
-            <div className="space-y-1">
-              {tierNumbers.map((tier) => {
-                const tierTalents = tiers[tier].sort((a, b) => a.choiceGroup - b.choiceGroup)
-                const choiceA = tierTalents.find((t) => t.choiceGroup === 1)
-                const choiceB = tierTalents.find((t) => t.choiceGroup === 2)
+              <div className="space-y-1">
+                {tierNumbers.map((tier) => {
+                  const tierTalents = tiers[tier].sort((a, b) => a.choiceGroup - b.choiceGroup)
+                  const choiceA = tierTalents.find((t) => t.choiceGroup === 1)
+                  const choiceB = tierTalents.find((t) => t.choiceGroup === 2)
 
-                return (
-                  <div key={tier} className="relative">
-                    {/* Tier connector */}
-                    {tier > 1 && (
-                      <div className="flex justify-center my-1">
-                        <div className={`w-0.5 h-4 ${
-                          tiers[tier - 1]?.some((t) => t.unlocked) ? `${config.bg}/50` : 'bg-gray-800'
-                        }`} />
-                      </div>
-                    )}
-
-                    <div className="flex items-stretch gap-2">
-                      {/* Tier badge */}
-                      <div className={`flex items-center justify-center w-12 shrink-0 rounded-lg border text-xs font-bold ${
-                        tierTalents.some((t) => t.unlocked)
-                          ? `${config.border}/60 ${config.color} ${config.bg}/10`
-                          : 'border-gray-700 text-gray-500'
-                      }`}>
-                        {t('talents:tier', { n: tier })}
-                      </div>
-
-                      {/* Choice A */}
-                      <div className="flex-1 min-w-0">
-                        {choiceA && (
-                          <TalentCard
-                            talent={choiceA}
-                            config={config}
-                            characterLevel={character.level}
-                            onClick={() => router.post('/talents/unlock', { talentId: choiceA.id })}
-                            t={t}
+                  return (
+                    <div key={tier} className="relative">
+                      {/* Tier connector */}
+                      {tier > 1 && (
+                        <div className="flex justify-center my-1">
+                          <div
+                            className={`w-0.5 h-4 ${
+                              tiers[tier - 1]?.some((t) => t.unlocked)
+                                ? `${config.bg}/50`
+                                : 'bg-gray-800'
+                            }`}
                           />
-                        )}
-                      </div>
+                        </div>
+                      )}
 
-                      {/* OR divider */}
-                      <div className="flex items-center px-1">
-                        <div className="flex flex-col items-center gap-1">
-                          <div className="w-px h-3 bg-gray-700" />
-                          <span className={`text-[10px] font-bold uppercase ${
-                            tierTalents.some((t) => t.canUnlock) ? 'text-gray-400' : 'text-gray-600'
-                          }`}>{t('talents:or')}</span>
-                          <div className="w-px h-3 bg-gray-700" />
+                      <div className="flex items-stretch gap-2">
+                        {/* Tier badge */}
+                        <div
+                          className={`flex items-center justify-center w-12 shrink-0 rounded-lg border text-xs font-bold ${
+                            tierTalents.some((t) => t.unlocked)
+                              ? `${config.border}/60 ${config.color} ${config.bg}/10`
+                              : 'border-gray-700 text-gray-500'
+                          }`}
+                        >
+                          {t('talents:tier', { n: tier })}
+                        </div>
+
+                        {/* Choice A */}
+                        <div className="flex-1 min-w-0">
+                          {choiceA && (
+                            <TalentCard
+                              talent={choiceA}
+                              config={config}
+                              characterLevel={character.level}
+                              onClick={() =>
+                                router.post('/talents/unlock', { talentId: choiceA.id })
+                              }
+                              t={t}
+                            />
+                          )}
+                        </div>
+
+                        {/* OR divider */}
+                        <div className="flex items-center px-1">
+                          <div className="flex flex-col items-center gap-1">
+                            <div className="w-px h-3 bg-gray-700" />
+                            <span
+                              className={`text-[10px] font-bold uppercase ${
+                                tierTalents.some((t) => t.canUnlock)
+                                  ? 'text-gray-400'
+                                  : 'text-gray-600'
+                              }`}
+                            >
+                              {t('talents:or')}
+                            </span>
+                            <div className="w-px h-3 bg-gray-700" />
+                          </div>
+                        </div>
+
+                        {/* Choice B */}
+                        <div className="flex-1 min-w-0">
+                          {choiceB && (
+                            <TalentCard
+                              talent={choiceB}
+                              config={config}
+                              characterLevel={character.level}
+                              onClick={() =>
+                                router.post('/talents/unlock', { talentId: choiceB.id })
+                              }
+                              t={t}
+                            />
+                          )}
                         </div>
                       </div>
-
-                      {/* Choice B */}
-                      <div className="flex-1 min-w-0">
-                        {choiceB && (
-                          <TalentCard
-                            talent={choiceB}
-                            config={config}
-                            characterLevel={character.level}
-                            onClick={() => router.post('/talents/unlock', { talentId: choiceB.id })}
-                            t={t}
-                          />
-                        )}
-                      </div>
                     </div>
-                  </div>
-                )
-              })}
+                  )
+                })}
+              </div>
             </div>
-          </div>
-        )
-      })()}
+          )
+        })()}
 
       {/* Respec hint */}
       {character.chosenSpec && !hasRespecChip && (
         <div className="mt-6 text-center">
-          <p className="text-[10px] text-gray-700">
-            {t('talents:respecHint')}
-          </p>
+          <p className="text-[10px] text-gray-700">{t('talents:respecHint')}</p>
         </div>
       )}
     </GameLayout>

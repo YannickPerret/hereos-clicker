@@ -2,6 +2,7 @@ import { Link, router, usePage } from '@inertiajs/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import GameLayout from '~/components/layout'
+import { translateBackendMessage } from '~/i18n/backend_messages'
 
 interface FriendEntry {
   id: number
@@ -68,7 +69,10 @@ function CharacterCard({
   )
 }
 
-function formatPresenceLabel(entry: FriendEntry, t: (key: string, opts?: Record<string, any>) => string) {
+function formatPresenceLabel(
+  entry: FriendEntry,
+  t: (key: string, opts?: Record<string, any>) => string
+) {
   if (entry.isOnline) {
     return t('friends:online')
   }
@@ -115,19 +119,25 @@ export default function FriendsIndex({
         <div className="mb-6 flex items-center justify-between gap-4">
           <div>
             <div className="text-[10px] uppercase tracking-[0.32em] text-gray-500">Social</div>
-            <h1 className="mt-2 text-2xl font-bold tracking-widest text-cyber-green">{t('friends:title')}</h1>
-            <div className="mt-1 text-xs text-gray-500">{t('friends:networkOf', { name: character.name })}</div>
+            <h1 className="mt-2 text-2xl font-bold tracking-widest text-cyber-green">
+              {t('friends:title')}
+            </h1>
+            <div className="mt-1 text-xs text-gray-500">
+              {t('friends:networkOf', { name: character.name })}
+            </div>
           </div>
         </div>
 
         {errors?.message && (
           <div className="mb-4 rounded-lg border border-cyber-red/40 bg-cyber-red/10 px-4 py-3 text-sm text-cyber-red">
-            {errors.message}
+            {translateBackendMessage(errors.message, t)}
           </div>
         )}
 
         <div className="mb-6 rounded-lg border border-cyber-green/20 bg-cyber-dark p-4">
-          <div className="mb-3 text-[10px] uppercase tracking-[0.28em] text-gray-500">{t('friends:addFriend')}</div>
+          <div className="mb-3 text-[10px] uppercase tracking-[0.28em] text-gray-500">
+            {t('friends:addFriend')}
+          </div>
           <form
             onSubmit={(event) => {
               event.preventDefault()

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 
 interface FlowStep {
   id: number
@@ -48,7 +49,14 @@ async function getJson(url: string) {
   return res.json()
 }
 
-export default function QuestOverlay({ questId, questTitle, flowState: initialFlowState, onClose, onUpdate }: Props) {
+export default function QuestOverlay({
+  questId,
+  questTitle,
+  flowState: initialFlowState,
+  onClose,
+  onUpdate,
+}: Props) {
+  const { t } = useTranslation('quests')
   const [flowState, setFlowState] = useState<FlowState>(initialFlowState)
   const [conversationLine, setConversationLine] = useState(0)
 
@@ -59,11 +67,14 @@ export default function QuestOverlay({ questId, questTitle, flowState: initialFl
     setConversationLine(initialFlowState.stepState?.currentLine || 0)
   }, [initialFlowState])
 
-  const updateState = useCallback((newState: FlowState) => {
-    setFlowState(newState)
-    setConversationLine(newState.stepState?.currentLine || 0)
-    onUpdate(newState)
-  }, [onUpdate])
+  const updateState = useCallback(
+    (newState: FlowState) => {
+      setFlowState(newState)
+      setConversationLine(newState.stepState?.currentLine || 0)
+      onUpdate(newState)
+    },
+    [onUpdate]
+  )
 
   const handleAdvance = useCallback(async () => {
     const result = await postJson(`/quests/${questId}/advance`)
@@ -75,15 +86,18 @@ export default function QuestOverlay({ questId, questTitle, flowState: initialFl
     }
   }, [questId, updateState, onClose])
 
-  const handleChoice = useCallback(async (optionIndex: number) => {
-    const result = await postJson(`/quests/${questId}/choose`, { optionIndex })
-    if (result.success && result.flowState) {
-      updateState(result.flowState)
-    }
-    if (result.event || result.flowState?.status === 'completed') {
-      onClose()
-    }
-  }, [questId, updateState, onClose])
+  const handleChoice = useCallback(
+    async (optionIndex: number) => {
+      const result = await postJson(`/quests/${questId}/choose`, { optionIndex })
+      if (result.success && result.flowState) {
+        updateState(result.flowState)
+      }
+      if (result.event || result.flowState?.status === 'completed') {
+        onClose()
+      }
+    },
+    [questId, updateState, onClose]
+  )
 
   // Poll for wait/objective steps
   useEffect(() => {
@@ -125,7 +139,7 @@ export default function QuestOverlay({ questId, questTitle, flowState: initialFl
             onClick={onClose}
             className="text-[10px] uppercase tracking-widest text-gray-500 hover:text-white border border-gray-700 rounded px-3 py-1.5 hover:border-gray-500 transition-all"
           >
-            Minimiser
+            {t('overlay.minimize')}
           </button>
         )}
       </div>
@@ -141,154 +155,158 @@ export default function QuestOverlay({ questId, questTitle, flowState: initialFl
                   {step.content.speaker}
                 </div>
               )}
-              <p className="text-base text-gray-200 leading-relaxed">
-                {step.content.text}
-              </p>
+              <p className="text-base text-gray-200 leading-relaxed">{step.content.text}</p>
               <div className="mt-6 flex justify-end">
                 <button
                   onClick={handleAdvance}
                   className="px-6 py-2.5 border border-cyber-blue/40 text-cyber-blue rounded text-[11px] uppercase tracking-widest hover:bg-cyber-blue/10 transition-all"
                 >
-                  Suivant &gt;
+                  {t('overlay.next')}
                 </button>
               </div>
             </div>
           )}
 
           {/* ── CONVERSATION ── */}
-          {step.stepType === 'conversation' && (() => {
-            const lines = step.content.lines || []
-            const currentLineIdx = flowState.stepState?.currentLine || conversationLine
-            const line = lines[currentLineIdx]
-            if (!line) return null
+          {step.stepType === 'conversation' &&
+            (() => {
+              const lines = step.content.lines || []
+              const currentLineIdx = flowState.stepState?.currentLine || conversationLine
+              const line = lines[currentLineIdx]
+              if (!line) return null
 
-            return (
-              <div className="rounded-xl border border-cyber-purple/30 bg-cyber-dark/90 p-6">
-                <div className="flex items-start gap-4">
-                  {line.avatar && (
-                    <div className="w-12 h-12 rounded-lg border border-cyber-purple/30 bg-cyber-purple/10 flex items-center justify-center text-lg shrink-0">
-                      {line.avatar === 'player' ? '🧑' : '👤'}
+              return (
+                <div className="rounded-xl border border-cyber-purple/30 bg-cyber-dark/90 p-6">
+                  <div className="flex items-start gap-4">
+                    {line.avatar && (
+                      <div className="w-12 h-12 rounded-lg border border-cyber-purple/30 bg-cyber-purple/10 flex items-center justify-center text-lg shrink-0">
+                        {line.avatar === 'player' ? '🧑' : '👤'}
+                      </div>
+                    )}
+                    <div className="flex-1">
+                      <div className="text-[10px] uppercase tracking-[0.3em] text-cyber-purple mb-2">
+                        {line.speaker}
+                      </div>
+                      <p className="text-base text-gray-200 leading-relaxed">{line.text}</p>
                     </div>
-                  )}
-                  <div className="flex-1">
-                    <div className="text-[10px] uppercase tracking-[0.3em] text-cyber-purple mb-2">
-                      {line.speaker}
+                  </div>
+                  <div className="mt-6 flex items-center justify-between">
+                    <div className="text-[10px] text-gray-600">
+                      {currentLineIdx + 1} / {lines.length}
                     </div>
-                    <p className="text-base text-gray-200 leading-relaxed">
-                      {line.text}
-                    </p>
+                    <button
+                      onClick={handleAdvance}
+                      className="px-6 py-2.5 border border-cyber-purple/40 text-cyber-purple rounded text-[11px] uppercase tracking-widest hover:bg-cyber-purple/10 transition-all"
+                    >
+                      {currentLineIdx < lines.length - 1
+                        ? t('overlay.next')
+                        : t('overlay.continue')}
+                    </button>
                   </div>
                 </div>
-                <div className="mt-6 flex items-center justify-between">
-                  <div className="text-[10px] text-gray-600">
-                    {currentLineIdx + 1} / {lines.length}
-                  </div>
-                  <button
-                    onClick={handleAdvance}
-                    className="px-6 py-2.5 border border-cyber-purple/40 text-cyber-purple rounded text-[11px] uppercase tracking-widest hover:bg-cyber-purple/10 transition-all"
-                  >
-                    {currentLineIdx < lines.length - 1 ? 'Suivant >' : 'Continuer >'}
-                  </button>
-                </div>
-              </div>
-            )
-          })()}
+              )
+            })()}
 
           {/* ── OBJECTIVE ── */}
-          {step.stepType === 'objective' && (() => {
-            const content = step.content
-            const stepState = flowState.stepState || {}
-            const progress = stepState.progress || 0
-            const target = content.targetValue || 1
-            const percent = Math.min(100, (progress / target) * 100)
+          {step.stepType === 'objective' &&
+            (() => {
+              const content = step.content
+              const stepState = flowState.stepState || {}
+              const progress = stepState.progress || 0
+              const target = content.targetValue || 1
+              const percent = Math.min(100, (progress / target) * 100)
 
-            return (
-              <div className="rounded-xl border border-cyber-yellow/30 bg-cyber-dark/90 p-6">
-                <div className="text-[10px] uppercase tracking-[0.3em] text-cyber-yellow mb-3">
-                  Objectif en cours
+              return (
+                <div className="rounded-xl border border-cyber-yellow/30 bg-cyber-dark/90 p-6">
+                  <div className="text-[10px] uppercase tracking-[0.3em] text-cyber-yellow mb-3">
+                    {t('overlay.objectiveInProgress')}
+                  </div>
+                  <p className="text-base text-gray-200 mb-4">
+                    {content.label || `${content.objectiveType}: ${target}`}
+                  </p>
+                  <div className="flex justify-between text-[10px] text-gray-500 mb-1.5">
+                    <span>{t('overlay.progress')}</span>
+                    <span>
+                      {progress}/{target}
+                    </span>
+                  </div>
+                  <div className="h-3 rounded-full overflow-hidden border border-gray-800 bg-cyber-black/60">
+                    <div
+                      className="h-full bg-gradient-to-r from-cyber-yellow to-cyber-orange transition-all duration-500"
+                      style={{ width: `${percent}%` }}
+                    />
+                  </div>
+                  <div className="mt-4 text-[10px] text-gray-600 text-center">
+                    {t('overlay.autoClose')}
+                  </div>
                 </div>
-                <p className="text-base text-gray-200 mb-4">
-                  {content.label || `${content.objectiveType}: ${target}`}
-                </p>
-                <div className="flex justify-between text-[10px] text-gray-500 mb-1.5">
-                  <span>Progression</span>
-                  <span>{progress}/{target}</span>
-                </div>
-                <div className="h-3 rounded-full overflow-hidden border border-gray-800 bg-cyber-black/60">
-                  <div
-                    className="h-full bg-gradient-to-r from-cyber-yellow to-cyber-orange transition-all duration-500"
-                    style={{ width: `${percent}%` }}
-                  />
-                </div>
-                <div className="mt-4 text-[10px] text-gray-600 text-center">
-                  L'overlay se fermera automatiquement quand l'objectif sera atteint.
-                </div>
-              </div>
-            )
-          })()}
+              )
+            })()}
 
           {/* ── WAIT ── */}
-          {step.stepType === 'wait' && (() => {
-            const content = step.content
-            const stepState = flowState.stepState || {}
-            const duration = content.duration || 1
-            const unit = content.unit || 'minutes'
+          {step.stepType === 'wait' &&
+            (() => {
+              const content = step.content
+              const stepState = flowState.stepState || {}
+              const duration = content.duration || 1
+              const unit = content.unit || 'minutes'
 
-            let remainingLabel = 'Calcul...'
-            if (stepState.waitStartedAt) {
-              const start = new Date(stepState.waitStartedAt).getTime()
-              const durationMs = duration * (unit === 'hours' ? 3600000 : unit === 'seconds' ? 1000 : 60000)
-              const endMs = start + durationMs
-              const remainMs = Math.max(0, endMs - Date.now())
-              if (remainMs <= 0) {
-                remainingLabel = 'Termine !'
-              } else {
-                const mins = Math.ceil(remainMs / 60000)
-                remainingLabel = mins > 60 ? `${Math.floor(mins / 60)}h ${mins % 60}min` : `${mins} min`
+              let remainingLabel = t('overlay.calculating')
+              if (stepState.waitStartedAt) {
+                const start = new Date(stepState.waitStartedAt).getTime()
+                const durationMs =
+                  duration * (unit === 'hours' ? 3600000 : unit === 'seconds' ? 1000 : 60000)
+                const endMs = start + durationMs
+                const remainMs = Math.max(0, endMs - Date.now())
+                if (remainMs <= 0) {
+                  remainingLabel = t('overlay.complete')
+                } else {
+                  const mins = Math.ceil(remainMs / 60000)
+                  remainingLabel =
+                    mins > 60 ? `${Math.floor(mins / 60)}h ${mins % 60}min` : `${mins} min`
+                }
               }
-            }
 
-            return (
-              <div className="rounded-xl border border-gray-700 bg-cyber-dark/90 p-6 text-center">
-                <div className="text-[10px] uppercase tracking-[0.3em] text-gray-500 mb-3">
-                  Attente en cours
+              return (
+                <div className="rounded-xl border border-gray-700 bg-cyber-dark/90 p-6 text-center">
+                  <div className="text-[10px] uppercase tracking-[0.3em] text-gray-500 mb-3">
+                    {t('overlay.waitingInProgress')}
+                  </div>
+                  <div className="text-3xl font-bold text-white mb-2">{remainingLabel}</div>
+                  <div className="text-xs text-gray-500">
+                    {t('overlay.duration', { duration, unit })}
+                  </div>
                 </div>
-                <div className="text-3xl font-bold text-white mb-2">{remainingLabel}</div>
-                <div className="text-xs text-gray-500">
-                  Duree: {duration} {unit}
-                </div>
-              </div>
-            )
-          })()}
+              )
+            })()}
 
           {/* ── CHOICE ── */}
-          {step.stepType === 'choice' && (() => {
-            const content = step.content
-            const options = content.options || []
+          {step.stepType === 'choice' &&
+            (() => {
+              const content = step.content
+              const options = content.options || []
 
-            return (
-              <div className="rounded-xl border border-cyber-green/30 bg-cyber-dark/90 p-6">
-                <div className="text-[10px] uppercase tracking-[0.3em] text-cyber-green mb-3">
-                  Choix
+              return (
+                <div className="rounded-xl border border-cyber-green/30 bg-cyber-dark/90 p-6">
+                  <div className="text-[10px] uppercase tracking-[0.3em] text-cyber-green mb-3">
+                    {t('overlay.choice')}
+                  </div>
+                  <p className="text-base text-gray-200 mb-6">{content.prompt}</p>
+                  <div className="space-y-3">
+                    {options.map((opt: any, idx: number) => (
+                      <button
+                        key={idx}
+                        onClick={() => handleChoice(idx)}
+                        className="w-full text-left rounded-lg border border-cyber-green/30 bg-cyber-black/40 px-5 py-3.5 text-sm text-gray-200 hover:bg-cyber-green/10 hover:border-cyber-green/50 hover:text-white transition-all"
+                      >
+                        <span className="text-cyber-green mr-2">&gt;</span>
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <p className="text-base text-gray-200 mb-6">
-                  {content.prompt}
-                </p>
-                <div className="space-y-3">
-                  {options.map((opt: any, idx: number) => (
-                    <button
-                      key={idx}
-                      onClick={() => handleChoice(idx)}
-                      className="w-full text-left rounded-lg border border-cyber-green/30 bg-cyber-black/40 px-5 py-3.5 text-sm text-gray-200 hover:bg-cyber-green/10 hover:border-cyber-green/50 hover:text-white transition-all"
-                    >
-                      <span className="text-cyber-green mr-2">&gt;</span>
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )
-          })()}
+              )
+            })()}
         </div>
       </div>
     </div>

@@ -2,6 +2,7 @@ import { useForm, router, usePage } from '@inertiajs/react'
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import GameLayout from '~/components/layout'
+import { translateBackendMessage } from '~/i18n/backend_messages'
 
 interface CharacterInfo {
   id: number
@@ -95,7 +96,10 @@ export default function PartyIndex({ character, currentParty: initialParty, floo
     // Poll immediately on mount/change
     pollFn()
     const poll = setInterval(pollFn, isCountdown ? 1000 : 2000)
-    return () => { active = false; clearInterval(poll) }
+    return () => {
+      active = false
+      clearInterval(poll)
+    }
   }, [currentParty?.id, isCountdown])
 
   // Not in a party
@@ -107,8 +111,15 @@ export default function PartyIndex({ character, currentParty: initialParty, floo
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl">
           {/* Create */}
           <div className="bg-cyber-dark border border-cyber-orange/30 rounded-lg p-6">
-            <h2 className="text-sm uppercase tracking-widest text-cyber-orange mb-4">{t('create')}</h2>
-            <form onSubmit={(e) => { e.preventDefault(); createForm.post('/party/create') }}>
+            <h2 className="text-sm uppercase tracking-widest text-cyber-orange mb-4">
+              {t('create')}
+            </h2>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                createForm.post('/party/create')
+              }}
+            >
               <input
                 type="text"
                 value={createForm.data.name}
@@ -130,7 +141,12 @@ export default function PartyIndex({ character, currentParty: initialParty, floo
           {/* Join */}
           <div className="bg-cyber-dark border border-cyber-blue/30 rounded-lg p-6">
             <h2 className="text-sm uppercase tracking-widest text-cyber-blue mb-4">{t('join')}</h2>
-            <form onSubmit={(e) => { e.preventDefault(); joinForm.post('/party/join') }}>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                joinForm.post('/party/join')
+              }}
+            >
               <input
                 type="text"
                 value={joinForm.data.code}
@@ -167,18 +183,20 @@ export default function PartyIndex({ character, currentParty: initialParty, floo
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-XSRF-TOKEN': decodeURIComponent(document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] || ''),
+          'X-XSRF-TOKEN': decodeURIComponent(
+            document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] || ''
+          ),
         },
         body: JSON.stringify({ characterName: inviteName }),
       })
 
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        setInviteFeedback(data.error || t('inviteFailed'))
+        setInviteFeedback(data.error ? translateBackendMessage(data.error, t) : t('inviteFailed'))
         return
       }
 
-      setInviteFeedback(data.message || t('inviteSent'))
+      setInviteFeedback(data.message ? translateBackendMessage(data.message, t) : t('inviteSent'))
       setInviteName('')
     } catch {
       setInviteFeedback(t('networkError'))
@@ -194,14 +212,15 @@ export default function PartyIndex({ character, currentParty: initialParty, floo
             <div className="text-xs uppercase tracking-widest text-cyber-red mb-4 animate-pulse">
               {t('launchTitle')}
             </div>
-            <div className="text-8xl font-bold text-cyber-yellow neon-text mb-6" style={{
-              animation: 'pulse 1s ease-in-out infinite',
-            }}>
+            <div
+              className="text-8xl font-bold text-cyber-yellow neon-text mb-6"
+              style={{
+                animation: 'pulse 1s ease-in-out infinite',
+              }}
+            >
               {countdown}
             </div>
-            <div className="text-sm text-gray-500">
-              {t('launchMessage')}
-            </div>
+            <div className="text-sm text-gray-500">{t('launchMessage')}</div>
           </div>
         </div>
       )}
@@ -210,7 +229,7 @@ export default function PartyIndex({ character, currentParty: initialParty, floo
         {/* Errors */}
         {(errors?.message || error) && (
           <div className="bg-cyber-red/10 border border-cyber-red/30 rounded-lg p-3 mb-4 text-xs text-cyber-red">
-            {errors?.message || error}
+            {translateBackendMessage(errors?.message || error || '', t)}
           </div>
         )}
 
@@ -218,7 +237,9 @@ export default function PartyIndex({ character, currentParty: initialParty, floo
         <div className="bg-cyber-dark border border-cyber-orange/30 rounded-lg p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h1 className="text-xl font-bold text-cyber-orange tracking-widest">{currentParty.name}</h1>
+              <h1 className="text-xl font-bold text-cyber-orange tracking-widest">
+                {currentParty.name}
+              </h1>
               <div className="flex items-center gap-3 mt-1">
                 <span className="text-xs text-gray-500">{t('code')}</span>
                 <span className="font-mono text-sm text-cyber-yellow tracking-[0.3em] bg-cyber-black px-3 py-1 rounded border border-cyber-yellow/20">
@@ -250,7 +271,9 @@ export default function PartyIndex({ character, currentParty: initialParty, floo
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <div className={`w-2 h-2 rounded-full ${member.isReady ? 'bg-cyber-green animate-pulse' : 'bg-gray-700'}`} />
+                  <div
+                    className={`w-2 h-2 rounded-full ${member.isReady ? 'bg-cyber-green animate-pulse' : 'bg-gray-700'}`}
+                  />
                   <div>
                     <div className="text-sm text-white font-bold">
                       {member.character.name}
@@ -259,12 +282,16 @@ export default function PartyIndex({ character, currentParty: initialParty, floo
                       )}
                     </div>
                     <div className="text-[10px] text-gray-600">
-                      LVL {member.character.level} | ATK {member.character.attack} | DEF {member.character.defense} | HP {member.character.hpCurrent}/{member.character.hpMax}
+                      LVL {member.character.level} | ATK {member.character.attack} | DEF{' '}
+                      {member.character.defense} | HP {member.character.hpCurrent}/
+                      {member.character.hpMax}
                     </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={`text-xs font-bold ${member.isReady ? 'text-cyber-green' : 'text-gray-600'}`}>
+                  <span
+                    className={`text-xs font-bold ${member.isReady ? 'text-cyber-green' : 'text-gray-600'}`}
+                  >
                     {member.isReady ? t('ready') : t('waiting')}
                   </span>
                   {currentParty.isLeader && member.characterId !== currentParty.leaderId && (
@@ -272,10 +299,14 @@ export default function PartyIndex({ character, currentParty: initialParty, floo
                       type="button"
                       onClick={() => {
                         if (!confirm(t('kickConfirm', { name: member.character.name }))) return
-                        router.post(`/party/members/${member.characterId}/kick`, {}, {
-                          preserveScroll: true,
-                          preserveState: true,
-                        })
+                        router.post(
+                          `/party/members/${member.characterId}/kick`,
+                          {},
+                          {
+                            preserveScroll: true,
+                            preserveState: true,
+                          }
+                        )
                       }}
                       className="rounded border border-cyber-red/30 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-cyber-red transition-all hover:bg-cyber-red/10"
                     >
@@ -330,7 +361,9 @@ export default function PartyIndex({ character, currentParty: initialParty, floo
                 </button>
               </form>
               {inviteFeedback && (
-                <div className={`mt-2 text-xs ${inviteFeedback === t('inviteSent') ? 'text-cyber-green' : 'text-cyber-red'}`}>
+                <div
+                  className={`mt-2 text-xs ${inviteFeedback === t('inviteSent') ? 'text-cyber-green' : 'text-cyber-red'}`}
+                >
                   {inviteFeedback}
                 </div>
               )}
@@ -341,12 +374,16 @@ export default function PartyIndex({ character, currentParty: initialParty, floo
         {/* Dungeon selection (leader only) */}
         {currentParty.isLeader && (
           <div className="bg-cyber-dark border border-cyber-red/30 rounded-lg p-6">
-            <h2 className="text-sm uppercase tracking-widest text-cyber-red mb-4">{t('selectDungeon')}</h2>
+            <h2 className="text-sm uppercase tracking-widest text-cyber-red mb-4">
+              {t('selectDungeon')}
+            </h2>
 
             <div className="space-y-2 mb-4">
               {floors.map((floor) => {
                 const hasEnoughPlayers = currentParty.members.length >= floor.minPlayers
-                const minMemberLevel = Math.min(...currentParty.members.map((m) => m.character.level))
+                const minMemberLevel = Math.min(
+                  ...currentParty.members.map((m) => m.character.level)
+                )
                 const hasLevel = minMemberLevel >= floor.minLevel
                 const canSelect = hasEnoughPlayers && hasLevel
                 const isSelected = selectedFloor === floor.id
@@ -370,17 +407,25 @@ export default function PartyIndex({ character, currentParty: initialParty, floo
                           F{floor.floorNumber} - {floor.name}
                         </span>
                         <div className="flex items-center gap-3 text-[10px] text-gray-600 mt-0.5">
-                          <span className={!hasLevel ? 'text-cyber-red' : ''}>{t('levelReq', { n: floor.minLevel })}</span>
-                          <span className={isGroupRequired ? 'text-cyber-orange' : ''}>
-                            {floor.minPlayers === 1 ? t('soloOrGroup') : t('playerRange', { min: floor.minPlayers, max: floor.maxPlayers })}
+                          <span className={!hasLevel ? 'text-cyber-red' : ''}>
+                            {t('levelReq', { n: floor.minLevel })}
                           </span>
-                          {floor.bossEnemyId && <span className="text-cyber-yellow">{t('boss')}</span>}
+                          <span className={isGroupRequired ? 'text-cyber-orange' : ''}>
+                            {floor.minPlayers === 1
+                              ? t('soloOrGroup')
+                              : t('playerRange', { min: floor.minPlayers, max: floor.maxPlayers })}
+                          </span>
+                          {floor.bossEnemyId && (
+                            <span className="text-cyber-yellow">{t('boss')}</span>
+                          )}
                         </div>
                       </div>
                       <div className="text-right">
                         {!hasEnoughPlayers && (
                           <span className="text-[10px] text-cyber-red block">
-                            {t('missingPlayers', { count: floor.minPlayers - currentParty.members.length })}
+                            {t('missingPlayers', {
+                              count: floor.minPlayers - currentParty.members.length,
+                            })}
                           </span>
                         )}
                         {!hasLevel && (
@@ -399,10 +444,14 @@ export default function PartyIndex({ character, currentParty: initialParty, floo
               onClick={() => {
                 if (!selectedFloor || !allReady) return
                 setError(null)
-                router.post('/party/start-dungeon', { floorId: selectedFloor }, {
-                  onError: (errors: any) => setError(errors.message || t('networkError')),
-                  preserveState: true,
-                })
+                router.post(
+                  '/party/start-dungeon',
+                  { floorId: selectedFloor },
+                  {
+                    onError: (errors: any) => setError(errors.message || t('networkError')),
+                    preserveState: true,
+                  }
+                )
               }}
               disabled={!selectedFloor || !allReady}
               className="w-full py-3 bg-cyber-red/20 border border-cyber-red text-cyber-red font-bold uppercase tracking-widest rounded hover:bg-cyber-red/30 transition-all text-sm disabled:opacity-30 disabled:cursor-not-allowed"
