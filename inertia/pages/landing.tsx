@@ -37,7 +37,20 @@ export default function Landing() {
               className="flex h-10 w-10 items-center justify-center border border-cyber-blue/20 bg-white/5 text-cyber-blue transition hover:bg-cyber-blue/10"
               aria-label={t('login')}
             >
-              <span className="text-sm">+</span>
+              <svg
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+                className="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M15 8V5a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3v14a3 3 0 0 0 3 3h5a3 3 0 0 0 3-3v-3" />
+                <path d="M10 12h10" />
+                <path d="m17 7 5 5-5 5" />
+              </svg>
             </Link>
           </div>
         </div>
