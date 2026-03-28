@@ -16,7 +16,7 @@ export default function Register() {
   }
 
   return (
-    <div className="min-h-screen bg-cyber-black flex items-center justify-center relative">
+    <div className="min-h-screen bg-cyber-black flex flex-col items-center justify-center relative">
       <div className="absolute top-4 right-4 z-20">
         <LanguageSwitcher />
       </div>
@@ -92,6 +92,10 @@ export default function Register() {
           </p>
         </form>
       </div>
+
+      <footer className="relative z-10 mt-auto pb-6 pt-8 text-center text-[10px] uppercase tracking-[0.3em] text-gray-700">
+        HEREOS &copy; 2025 &mdash; All rights reserved
+      </footer>
     </div>
   )
 }
