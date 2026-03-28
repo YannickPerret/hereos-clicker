@@ -888,7 +888,7 @@ function ChatWidget({
               visibleMessages.map((msg) => (
                 <div
                   key={msg.id}
-                  className={`flex gap-1.5 px-1 rounded ${msg.characterName === '[SYSTEM]' ? 'bg-cyber-yellow/5' : 'hover:bg-cyber-green/5'}`}
+                  className={`flex items-start gap-1.5 px-1 rounded ${msg.characterName === '[SYSTEM]' ? 'bg-cyber-yellow/5' : 'hover:bg-cyber-green/5'}`}
                 >
                   <span className="text-gray-700 shrink-0">[{formatTime(msg.createdAt)}]</span>
                   {msg.characterName === '[SYSTEM]' ? (
@@ -912,7 +912,7 @@ function ChatWidget({
                     </button>
                   )}
                   <span
-                    className={`break-all ${msg.characterName === '[SYSTEM]' ? 'text-cyber-yellow/80 italic' : 'text-gray-300'}`}
+                    className={`min-w-0 flex-1 whitespace-pre-wrap break-words ${msg.characterName === '[SYSTEM]' ? 'text-cyber-yellow/80 italic' : 'text-gray-300'}`}
                   >
                     {msg.message}
                   </span>

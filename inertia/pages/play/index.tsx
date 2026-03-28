@@ -1,7 +1,6 @@
 import { useForm, router } from '@inertiajs/react'
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import CyberpunkAvatar from '~/components/cyberpunk_avatar'
 import GameLayout from '~/components/layout'
 
 interface Character {
@@ -108,16 +107,6 @@ const RARITY_TEXT: Record<string, string> = {
   legendary: 'text-cyber-yellow',
 }
 
-const SPEC_STYLE: Record<string, { color: string; border: string }> = {
-  hacker: { color: 'text-cyber-green', border: 'border-cyber-green/30' },
-  netrunner: { color: 'text-cyber-blue', border: 'border-cyber-blue/30' },
-  samurai: { color: 'text-cyber-red', border: 'border-cyber-red/30' },
-  chrome_dealer: {
-    color: 'text-cyber-yellow',
-    border: 'border-cyber-yellow/30',
-  },
-}
-
 function formatCredits(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`
@@ -127,9 +116,11 @@ function formatCredits(n: number): string {
 function QuestTrackCard({
   track,
   accent,
+  layout = 'compact',
 }: {
   track: NonNullable<Props['questSummary']>['mainTrack']
   accent: 'blue' | 'yellow'
+  layout?: 'compact' | 'wide'
 }) {
   const { t } = useTranslation(['play', 'common'])
   if (!track) return null
@@ -176,28 +167,39 @@ function QuestTrackCard({
       </div>
 
       {track.activeQuest ? (
-        <div className={`rounded-lg border bg-cyber-black/40 p-3 ${accentClasses.inner}`}>
-          <div className="text-[10px] uppercase tracking-[0.24em] text-gray-500 mb-1">
-            {t('play:active')}
+        <div
+          className={`rounded-lg border bg-cyber-black/40 p-3 ${accentClasses.inner} ${
+            layout === 'wide' ? 'lg:grid lg:grid-cols-[1.2fr_0.8fr] lg:gap-6 lg:items-center' : ''
+          }`}
+        >
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.24em] text-gray-500 mb-1">
+              {t('play:active')}
+            </div>
+            <div className={`text-sm font-bold ${accentClasses.text}`}>
+              {track.activeQuest.title}
+            </div>
+            <div className="text-xs text-gray-400 mt-1">{track.activeQuest.summary}</div>
+            <div className="text-[11px] text-cyber-yellow mt-3">
+              {track.activeQuest.objectiveLabel}
+            </div>
           </div>
-          <div className={`text-sm font-bold ${accentClasses.text}`}>{track.activeQuest.title}</div>
-          <div className="text-xs text-gray-400 mt-1">{track.activeQuest.summary}</div>
-          <div className="text-[11px] text-cyber-yellow mt-3">
-            {track.activeQuest.objectiveLabel}
-          </div>
-          <div className="mt-2 flex justify-between text-[10px] text-gray-500">
-            <span>{track.activeQuest.rewardLabel}</span>
-            <span>
-              {track.activeQuest.progress}/{track.activeQuest.targetValue}
-            </span>
-          </div>
-          <div className="mt-1.5 h-2 rounded-full overflow-hidden border bg-cyber-black border-gray-800">
-            <div
-              className={`h-full bg-gradient-to-r transition-all duration-300 ${accentClasses.fill}`}
-              style={{
-                width: `${Math.min(100, (track.activeQuest.progress / track.activeQuest.targetValue) * 100)}%`,
-              }}
-            />
+
+          <div className={layout === 'wide' ? 'mt-4 lg:mt-0' : ''}>
+            <div className="mt-2 flex justify-between text-[10px] text-gray-500">
+              <span>{track.activeQuest.rewardLabel}</span>
+              <span>
+                {track.activeQuest.progress}/{track.activeQuest.targetValue}
+              </span>
+            </div>
+            <div className="mt-1.5 h-2 rounded-full overflow-hidden border bg-cyber-black border-gray-800">
+              <div
+                className={`h-full bg-gradient-to-r transition-all duration-300 ${accentClasses.fill}`}
+                style={{
+                  width: `${Math.min(100, (track.activeQuest.progress / track.activeQuest.targetValue) * 100)}%`,
+                }}
+              />
+            </div>
           </div>
         </div>
       ) : (
@@ -660,82 +662,9 @@ export default function Play({
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 xl:grid-cols-[1.15fr_0.85fr] gap-4">
-                <div className="bg-cyber-dark border border-cyber-green/30 rounded-lg p-4">
-                  <div className="flex items-start justify-between gap-3 mb-4">
-                    <div>
-                      <div className="text-[10px] uppercase tracking-widest text-gray-500">
-                        {t('play:characterLabel')}
-                      </div>
-                      <h3 className="text-lg uppercase tracking-widest text-cyber-green font-bold mt-1">
-                        {char.name}
-                      </h3>
-                    </div>
-                  </div>
-
-                  <CyberpunkAvatar
-                    name={char.name}
-                    chosenSpec={char.chosenSpec}
-                    equippedItems={equippedItems}
-                  />
-                </div>
-
-                <div className="bg-cyber-dark border border-cyber-purple/30 rounded-lg p-4">
-                  <div className="mb-4">
-                    <div>
-                      <div className="text-[10px] uppercase tracking-widest text-gray-500">
-                        {t('play:customizationLabel')}
-                      </div>
-                      <h3 className="text-lg uppercase tracking-widest text-cyber-purple font-bold mt-1">
-                        {t('play:customizationTitle')}
-                      </h3>
-                    </div>
-                  </div>
-
-                  <div className="rounded border border-gray-800 bg-cyber-black/30 px-3 py-3 mb-3">
-                    <div className="text-[10px] uppercase tracking-widest text-gray-500 mb-2">
-                      {t('play:specLabel')}
-                    </div>
-                    {char.chosenSpec ? (
-                      <span
-                        className={`inline-flex rounded border px-2 py-1 text-[10px] font-bold uppercase tracking-widest ${SPEC_STYLE[char.chosenSpec]?.color} ${SPEC_STYLE[char.chosenSpec]?.border}`}
-                      >
-                        {t(`common:specs.${char.chosenSpec}`)}
-                      </span>
-                    ) : (
-                      <span className="text-xs text-gray-600">{t('play:noSpec')}</span>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
-                    {['clothes_hair', 'clothes_face', 'clothes_outer', 'clothes_legs'].map(
-                      (type) => {
-                        const entry = equippedItems.find((item) => item.item.type === type)
-
-                        return (
-                          <div
-                            key={type}
-                            className="rounded border border-gray-800 bg-cyber-black/40 px-3 py-2"
-                          >
-                            <div className="text-[10px] uppercase tracking-wider text-gray-600 mb-1">
-                              {t(`common:types.${type}`)}
-                            </div>
-                            {entry ? (
-                              <div
-                                className={`text-xs font-bold ${RARITY_TEXT[entry.item.rarity] || 'text-white'}`}
-                              >
-                                {entry.item.name}
-                              </div>
-                            ) : (
-                              <div className="text-xs text-gray-700">{t('play:emptySlot')}</div>
-                            )}
-                          </div>
-                        )
-                      }
-                    )}
-                  </div>
-                </div>
-              </div>
+              {questSummary?.mainTrack && (
+                <QuestTrackCard track={questSummary.mainTrack} accent="blue" layout="wide" />
+              )}
             </div>
           )}
         </div>
@@ -773,9 +702,6 @@ export default function Play({
             </div>
           </div>
 
-          {questSummary?.mainTrack && (
-            <QuestTrackCard track={questSummary.mainTrack} accent="blue" />
-          )}
           {questSummary?.seasonalTrack && (
             <QuestTrackCard track={questSummary.seasonalTrack} accent="yellow" />
           )}

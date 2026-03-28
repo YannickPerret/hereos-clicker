@@ -6,7 +6,6 @@ interface ThreadEntry {
   id: number
   title: string
   postCount: number
-  isPinned: boolean
   isLocked: boolean
   createdAt: string
   lastPostedAt: string
@@ -62,11 +61,6 @@ export default function ForumCategoryPage({ category, threads, forumBan }: Props
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
-                    {thread.isPinned && (
-                      <span className="rounded border border-cyber-yellow/30 px-1.5 py-0.5 text-[9px] uppercase text-cyber-yellow">
-                        {t('pinned')}
-                      </span>
-                    )}
                     {thread.isLocked && (
                       <span className="rounded border border-cyber-red/30 px-1.5 py-0.5 text-[9px] uppercase text-cyber-red">
                         {t('locked')}

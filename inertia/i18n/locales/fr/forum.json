@@ -1,7 +1,7 @@
 {
   "title": "Forum",
   "eyebrow": "Discussions",
-  "subtitle": "Sujets admin, reponses joueurs, moderation serveur.",
+  "subtitle": "Les categories contiennent des threads. Les threads contiennent les posts et reponses des joueurs.",
   "categories": "Categories",
   "latestThreads": "Threads recents",
   "pinned": "Epingle",
@@ -26,9 +26,16 @@
   "noRepliesForPost": "Aucune reponse pour ce post.",
   "newPostBox": "Nouveau post",
   "threadLocked": "Ce thread est verrouille.",
+  "postLocked": "Ce post est verrouille.",
   "postPlaceholder": "Ecris ton post ici...",
   "postRules": "Anti-spam actif. Pas de flood, pas de doublons.",
   "publishPost": "Publier",
   "replyToPostPlaceholder": "Ecris ta reponse a ce post...",
-  "replyToPost": "Repondre au post"
+  "replyToPost": "Repondre au post",
+  "deletePost": "Supprimer",
+  "confirmDeletePost": "Supprimer ce post ?",
+  "pinPost": "Epingler le post",
+  "unpinPost": "Desepingler le post",
+  "lockPost": "Fermer le post",
+  "unlockPost": "Reouvrir le post"
 }

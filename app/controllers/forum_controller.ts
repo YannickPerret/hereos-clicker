@@ -3,6 +3,7 @@ import ForumCategory from '#models/forum_category'
 import ForumThread from '#models/forum_thread'
 import ForumPost from '#models/forum_post'
 import ForumService from '#services/forum_service'
+import User from '#models/user'
 
 export default class ForumController {
   private ensureForumAccount(ctx: HttpContext) {
@@ -16,25 +17,45 @@ export default class ForumController {
     return ctx.response.redirect('/account/upgrade')
   }
 
+  private async ensureRole(user: User) {
+    if (!(user as any).$preloaded?.role) {
+      await user.load('role')
+    }
+    return user
+  }
+
+  private serializePost(post: ForumPost, viewer: User, canModerate: boolean) {
+    return {
+      id: post.id,
+      body: ForumService.sanitizeHtml(post.body),
+      createdAt: post.createdAt.toISO(),
+      editedAt: post.editedAt?.toISO() || null,
+      isPinned: post.isPinned,
+      isLocked: post.isLocked,
+      canDelete: canModerate || post.userId === viewer.id,
+      canModerate,
+      author: {
+        id: post.user.id,
+        username: post.user.username,
+      },
+    }
+  }
+
   async index(ctx: HttpContext) {
     const denied = this.ensureForumAccount(ctx)
     if (denied) return denied
 
-    const [categories, latestThreads, ban] = await Promise.all([
+    const [categories, ban] = await Promise.all([
       ForumCategory.query()
         .where('isActive', true)
-        .withCount('threads', (query) => {
-          query.whereHas('category', (inner) => inner.where('isActive', true))
+        .preload('threads', (query) => {
+          query
+            .preload('user')
+            .orderBy('lastPostedAt', 'desc')
+            .orderBy('createdAt', 'desc')
         })
         .orderBy('sortOrder', 'asc')
         .orderBy('name', 'asc'),
-      ForumThread.query()
-        .preload('category')
-        .preload('user')
-        .whereHas('category', (query) => query.where('isActive', true))
-        .orderBy('isPinned', 'desc')
-        .orderBy('lastPostedAt', 'desc')
-        .limit(20),
       ForumService.getActiveBan(ctx.auth.user!.id),
     ])
 
@@ -45,25 +66,19 @@ export default class ForumController {
         slug: category.slug,
         description: category.description,
         sortOrder: category.sortOrder,
-        threadCount: Number(category.$extras.threads_count || 0),
-      })),
-      latestThreads: latestThreads.map((thread) => ({
-        id: thread.id,
-        title: thread.title,
-        postCount: thread.replyCount,
-        isPinned: thread.isPinned,
-        isLocked: thread.isLocked,
-        lastPostedAt: thread.lastPostedAt.toISO(),
-        createdAt: thread.createdAt.toISO(),
-        category: {
-          id: thread.category.id,
-          name: thread.category.name,
-          slug: thread.category.slug,
-        },
-        author: {
-          id: thread.user.id,
-          username: thread.user.username,
-        },
+        threadCount: category.threads.length,
+        threads: category.threads.map((thread) => ({
+          id: thread.id,
+          title: thread.title,
+          postCount: thread.replyCount,
+          isLocked: thread.isLocked,
+          lastPostedAt: thread.lastPostedAt.toISO(),
+          createdAt: thread.createdAt.toISO(),
+          author: {
+            id: thread.user.id,
+            username: thread.user.username,
+          },
+        })),
       })),
       forumBan: ban
         ? {
@@ -88,8 +103,8 @@ export default class ForumController {
       ForumThread.query()
         .where('forumCategoryId', category.id)
         .preload('user')
-        .orderBy('isPinned', 'desc')
-        .orderBy('lastPostedAt', 'desc'),
+        .orderBy('lastPostedAt', 'desc')
+        .orderBy('createdAt', 'desc'),
       ForumService.getActiveBan(ctx.auth.user!.id),
     ])
 
@@ -104,7 +119,6 @@ export default class ForumController {
         id: thread.id,
         title: thread.title,
         postCount: thread.replyCount,
-        isPinned: thread.isPinned,
         isLocked: thread.isLocked,
         createdAt: thread.createdAt.toISO(),
         lastPostedAt: thread.lastPostedAt.toISO(),
@@ -127,6 +141,9 @@ export default class ForumController {
     const denied = this.ensureForumAccount(ctx)
     if (denied) return denied
 
+    const viewer = await this.ensureRole(ctx.auth.user!)
+    const canModerate = ForumService.isStaff(viewer)
+
     const thread = await ForumThread.query()
       .where('id', ctx.params.id)
       .preload('category')
@@ -141,15 +158,15 @@ export default class ForumController {
         .preload('replies', (query) => {
           query.preload('user').orderBy('createdAt', 'asc')
         })
+        .orderBy('isPinned', 'desc')
         .orderBy('createdAt', 'asc'),
-      ForumService.getActiveBan(ctx.auth.user!.id),
+      ForumService.getActiveBan(viewer.id),
     ])
 
     return ctx.inertia.render('forum/thread', {
       thread: {
         id: thread.id,
         title: thread.title,
-        isPinned: thread.isPinned,
         isLocked: thread.isLocked,
         postCount: thread.replyCount,
         createdAt: thread.createdAt.toISO(),
@@ -165,23 +182,10 @@ export default class ForumController {
         },
       },
       posts: posts.map((post) => ({
-        id: post.id,
-        body: post.body,
-        createdAt: post.createdAt.toISO(),
-        editedAt: post.editedAt?.toISO() || null,
-        author: {
-          id: post.user.id,
-          username: post.user.username,
-        },
+        ...this.serializePost(post, viewer, canModerate),
+        replyCount: post.replies.length,
         replies: post.replies.map((reply) => ({
-          id: reply.id,
-          body: reply.body,
-          createdAt: reply.createdAt.toISO(),
-          editedAt: reply.editedAt?.toISO() || null,
-          author: {
-            id: reply.user.id,
-            username: reply.user.username,
-          },
+          ...this.serializePost(reply, viewer, canModerate),
         })),
       })),
       forumBan: ban
@@ -192,6 +196,7 @@ export default class ForumController {
           }
         : null,
       canPost: !thread.isLocked && !ban,
+      canModerate,
     })
   }
 
@@ -232,6 +237,8 @@ export default class ForumController {
       userId: ctx.auth.user!.id,
       parentPostId: null,
       body: validation.body,
+      isPinned: false,
+      isLocked: false,
     })
 
     await ForumService.syncThreadStats(thread.id)
@@ -261,6 +268,13 @@ export default class ForumController {
       return ctx.response.redirect(`/forum/thread/${parentPost.forumThreadId}`)
     }
 
+    if (parentPost.isLocked) {
+      ctx.session.flash('errors', {
+        message: ForumService.cannotReplyToPostMessage(ctx.locale),
+      })
+      return ctx.response.redirect(`/forum/thread/${parentPost.forumThreadId}`)
+    }
+
     const validation = await ForumService.validatePosting(
       ctx.auth.user!.id,
       parentPost.forumThreadId,
@@ -278,11 +292,76 @@ export default class ForumController {
       userId: ctx.auth.user!.id,
       parentPostId: parentPost.id,
       body: validation.body,
+      isPinned: false,
+      isLocked: false,
     })
 
     await ForumService.syncThreadStats(parentPost.forumThreadId)
 
     ctx.session.flash('success', ctx.locale === 'en' ? 'Reply posted' : 'Reponse postee')
     return ctx.response.redirect(`/forum/thread/${parentPost.forumThreadId}`)
+  }
+
+  async deletePost(ctx: HttpContext) {
+    const denied = this.ensureForumAccount(ctx)
+    if (denied) return denied
+
+    const viewer = await this.ensureRole(ctx.auth.user!)
+    const post = await ForumPost.findOrFail(ctx.params.id)
+    const canDelete = ForumService.isStaff(viewer) || post.userId === viewer.id
+
+    if (!canDelete) {
+      ctx.session.flash('errors', {
+        message: ForumService.cannotDeletePostMessage(ctx.locale),
+      })
+      return ctx.response.redirect(`/forum/thread/${post.forumThreadId}`)
+    }
+
+    const threadId = post.forumThreadId
+    await post.delete()
+    await ForumService.syncThreadStats(threadId)
+
+    ctx.session.flash('success', ForumService.postDeletedMessage(ctx.locale))
+    return ctx.response.redirect(`/forum/thread/${threadId}`)
+  }
+
+  async togglePostPin(ctx: HttpContext) {
+    const denied = this.ensureForumAccount(ctx)
+    if (denied) return denied
+
+    const viewer = await this.ensureRole(ctx.auth.user!)
+    if (!ForumService.isStaff(viewer)) {
+      ctx.session.flash('errors', {
+        message: ForumService.cannotModeratePostMessage(ctx.locale),
+      })
+      return ctx.response.redirect().back()
+    }
+
+    const post = await ForumPost.findOrFail(ctx.params.id)
+    post.isPinned = !post.isPinned
+    await post.save()
+
+    ctx.session.flash('success', ForumService.postPinnedMessage(ctx.locale, post.isPinned))
+    return ctx.response.redirect(`/forum/thread/${post.forumThreadId}`)
+  }
+
+  async togglePostLock(ctx: HttpContext) {
+    const denied = this.ensureForumAccount(ctx)
+    if (denied) return denied
+
+    const viewer = await this.ensureRole(ctx.auth.user!)
+    if (!ForumService.isStaff(viewer)) {
+      ctx.session.flash('errors', {
+        message: ForumService.cannotModeratePostMessage(ctx.locale),
+      })
+      return ctx.response.redirect().back()
+    }
+
+    const post = await ForumPost.findOrFail(ctx.params.id)
+    post.isLocked = !post.isLocked
+    await post.save()
+
+    ctx.session.flash('success', ForumService.postLockedMessage(ctx.locale, post.isLocked))
+    return ctx.response.redirect(`/forum/thread/${post.forumThreadId}`)
   }
 }

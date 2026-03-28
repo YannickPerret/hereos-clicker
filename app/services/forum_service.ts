@@ -2,8 +2,32 @@ import { DateTime } from 'luxon'
 import ForumBan from '#models/forum_ban'
 import ForumPost from '#models/forum_post'
 import ForumThread from '#models/forum_thread'
+import type User from '#models/user'
 
 export default class ForumService {
+  private static readonly allowedTags = new Set([
+    'p',
+    'br',
+    'strong',
+    'b',
+    'em',
+    'i',
+    'u',
+    's',
+    'ul',
+    'ol',
+    'li',
+    'blockquote',
+    'code',
+    'pre',
+    'a',
+  ])
+
+  static isStaff(user: User & { role?: { name: string } | null }) {
+    const roleName = user.role?.name || null
+    return roleName === 'admin' || roleName === 'moderator'
+  }
+
   static forumAccountRequiredMessage(locale: string) {
     return locale === 'en'
       ? 'You need a full account to use the forum.'
@@ -50,6 +74,44 @@ export default class ForumService {
       : 'Post duplique bloque.'
   }
 
+  static postDeletedMessage(locale: string) {
+    return locale === 'en' ? 'Post deleted.' : 'Post supprime.'
+  }
+
+  static postPinnedMessage(locale: string, pinned: boolean) {
+    if (locale === 'en') {
+      return pinned ? 'Post pinned.' : 'Post unpinned.'
+    }
+
+    return pinned ? 'Post epingle.' : 'Post desepingle.'
+  }
+
+  static postLockedMessage(locale: string, locked: boolean) {
+    if (locale === 'en') {
+      return locked ? 'Post locked.' : 'Post reopened.'
+    }
+
+    return locked ? 'Post verrouille.' : 'Post reouvert.'
+  }
+
+  static cannotReplyToPostMessage(locale: string) {
+    return locale === 'en'
+      ? 'This post is locked.'
+      : 'Ce post est verrouille.'
+  }
+
+  static cannotDeletePostMessage(locale: string) {
+    return locale === 'en'
+      ? 'You cannot delete this post.'
+      : 'Tu ne peux pas supprimer ce post.'
+  }
+
+  static cannotModeratePostMessage(locale: string) {
+    return locale === 'en'
+      ? 'You cannot moderate this post.'
+      : 'Tu ne peux pas moderer ce post.'
+  }
+
   static normalizeContent(content: string) {
     return content
       .normalize('NFD')
@@ -57,6 +119,55 @@ export default class ForumService {
       .toLowerCase()
       .replace(/\s+/g, ' ')
       .trim()
+  }
+
+  static stripHtml(content: string) {
+    return content
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/p>/gi, '\n')
+      .replace(/<li>/gi, '- ')
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/&amp;/gi, '&')
+      .replace(/&lt;/gi, '<')
+      .replace(/&gt;/gi, '>')
+      .replace(/\s+/g, ' ')
+      .trim()
+  }
+
+  static sanitizeHtml(content: string) {
+    const cleaned = content
+      .replace(/<!--[\s\S]*?-->/g, '')
+      .replace(/<(script|style)[^>]*>[\s\S]*?<\/\1>/gi, '')
+      .replace(/\son\w+="[^"]*"/gi, '')
+      .replace(/\son\w+='[^']*'/gi, '')
+      .replace(/\sstyle="[^"]*"/gi, '')
+      .replace(/\sstyle='[^']*'/gi, '')
+
+    return cleaned.replace(/<(\/?)([a-z0-9]+)([^>]*)>/gi, (_match, closingSlash: string, rawTag: string, rawAttrs: string) => {
+      const tag = rawTag.toLowerCase()
+      if (!this.allowedTags.has(tag)) {
+        return ''
+      }
+
+      if (closingSlash) {
+        return `</${tag}>`
+      }
+
+      if (tag === 'a') {
+        const hrefMatch = rawAttrs.match(/\shref=(?:"([^"]*)"|'([^']*)')/i)
+        const href = hrefMatch?.[1] || hrefMatch?.[2] || ''
+        const safeHref = href.trim()
+
+        if (!safeHref || !/^(https?:\/\/|mailto:|\/|#)/i.test(safeHref)) {
+          return '<a>'
+        }
+
+        return `<a href="${safeHref.replace(/"/g, '&quot;')}" target="_blank" rel="noreferrer noopener">`
+      }
+
+      return `<${tag}>`
+    })
   }
 
   static slugify(value: string) {
@@ -82,8 +193,10 @@ export default class ForumService {
   }
 
   static async validatePosting(userId: number, threadId: number, body: string, locale: string) {
-    const trimmedBody = body.trim()
-    if (trimmedBody.length < 3 || trimmedBody.length > 4000) {
+    const sanitizedBody = this.sanitizeHtml(body.trim())
+    const plainBody = this.stripHtml(sanitizedBody)
+
+    if (plainBody.length < 3 || plainBody.length > 4000) {
       return { ok: false as const, message: this.invalidPostMessage(locale) }
     }
 
@@ -111,7 +224,7 @@ export default class ForumService {
       return { ok: false as const, message: this.rateLimitMessage(locale) }
     }
 
-    const normalizedBody = this.normalizeContent(trimmedBody)
+    const normalizedBody = this.normalizeContent(plainBody)
     const duplicate = await ForumPost.query()
       .where('userId', userId)
       .where('forumThreadId', threadId)
@@ -119,11 +232,13 @@ export default class ForumService {
       .orderBy('createdAt', 'desc')
       .limit(5)
 
-    if (duplicate.some((post) => this.normalizeContent(post.body) === normalizedBody)) {
+    if (
+      duplicate.some((post) => this.normalizeContent(this.stripHtml(this.sanitizeHtml(post.body))) === normalizedBody)
+    ) {
       return { ok: false as const, message: this.duplicatePostMessage(locale) }
     }
 
-    return { ok: true as const, body: trimmedBody }
+    return { ok: true as const, body: sanitizedBody }
   }
 
   static async syncThreadStats(threadId: number) {

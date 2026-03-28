@@ -1,6 +1,7 @@
 import { Head, Link, router, usePage } from '@inertiajs/react'
 import { useState } from 'react'
 import GameLayout from '~/components/layout'
+import ForumRichEditor from '~/components/forum_rich_editor'
 import { useTranslation } from 'react-i18next'
 
 interface ReplyEntry {
@@ -8,6 +9,10 @@ interface ReplyEntry {
   body: string
   createdAt: string
   editedAt: string | null
+  canDelete: boolean
+  canModerate: boolean
+  isPinned: boolean
+  isLocked: boolean
   author: {
     id: number
     username: string
@@ -19,6 +24,11 @@ interface PostEntry {
   body: string
   createdAt: string
   editedAt: string | null
+  canDelete: boolean
+  canModerate: boolean
+  isPinned: boolean
+  isLocked: boolean
+  replyCount: number
   author: {
     id: number
     username: string
@@ -30,7 +40,6 @@ interface Props {
   thread: {
     id: number
     title: string
-    isPinned: boolean
     isLocked: boolean
     postCount: number
     createdAt: string
@@ -52,6 +61,58 @@ interface Props {
     reason: string | null
     expiresAt: string | null
   } | null
+}
+
+function PostActions({
+  postId,
+  canDelete,
+  canModerate,
+  isPinned,
+  isLocked,
+}: {
+  postId: number
+  canDelete: boolean
+  canModerate: boolean
+  isPinned: boolean
+  isLocked: boolean
+}) {
+  const { t } = useTranslation('forum')
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {canModerate && (
+        <>
+          <button
+            type="button"
+            onClick={() => router.post(`/forum/posts/${postId}/toggle-pin`, {}, { preserveScroll: true })}
+            className="rounded border border-cyber-yellow/30 px-2 py-1 text-[10px] uppercase text-cyber-yellow hover:bg-cyber-yellow/10"
+          >
+            {isPinned ? t('unpinPost') : t('pinPost')}
+          </button>
+          <button
+            type="button"
+            onClick={() => router.post(`/forum/posts/${postId}/toggle-lock`, {}, { preserveScroll: true })}
+            className="rounded border border-cyber-red/30 px-2 py-1 text-[10px] uppercase text-cyber-red hover:bg-cyber-red/10"
+          >
+            {isLocked ? t('unlockPost') : t('lockPost')}
+          </button>
+        </>
+      )}
+      {canDelete && (
+        <button
+          type="button"
+          onClick={() => {
+            if (window.confirm(t('confirmDeletePost'))) {
+              router.post(`/forum/posts/${postId}/delete`, {}, { preserveScroll: true })
+            }
+          }}
+          className="rounded border border-cyber-red/30 px-2 py-1 text-[10px] uppercase text-cyber-red hover:bg-cyber-red/10"
+        >
+          {t('deletePost')}
+        </button>
+      )}
+    </div>
+  )
 }
 
 function ReplyForm({
@@ -79,17 +140,17 @@ function ReplyForm({
       }}
       className="mt-3 space-y-2"
     >
-      <textarea
-        rows={3}
+      <ForumRichEditor
         value={body}
-        onChange={(event) => setBody(event.target.value)}
+        onChange={setBody}
         placeholder={t('replyToPostPlaceholder')}
-        className="w-full resize-y rounded-xl border border-gray-800 bg-cyber-black px-3 py-2 text-sm text-white focus:border-cyber-orange/40 focus:outline-none"
+        minHeightClassName="min-h-24"
+        disabled={disabled}
       />
       <div className="flex justify-end">
         <button
           type="submit"
-          disabled={disabled || body.trim().length < 3}
+          disabled={disabled}
           className="rounded border border-cyber-orange/35 bg-cyber-orange/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.24em] text-cyber-orange transition-all hover:bg-cyber-orange/20 disabled:opacity-50"
         >
           {t('replyToPost')}
@@ -101,7 +162,7 @@ function ReplyForm({
 
 export default function ForumThreadPage({ thread, posts, canPost, forumBan }: Props) {
   const { t } = useTranslation('forum')
-  const page = usePage<{ errors?: { message?: string }; success?: string }>()
+  const page = usePage<{ errors?: { message?: string }; success?: string } & { auth?: { user?: { id: number } } }>()
   const [body, setBody] = useState('')
 
   return (
@@ -137,11 +198,6 @@ export default function ForumThreadPage({ thread, posts, canPost, forumBan }: Pr
 
         <article className="rounded-2xl border border-cyber-blue/20 bg-cyber-dark/40 p-5">
           <div className="flex flex-wrap items-center gap-2">
-            {thread.isPinned && (
-              <span className="rounded border border-cyber-yellow/30 px-1.5 py-0.5 text-[9px] uppercase text-cyber-yellow">
-                {t('pinned')}
-              </span>
-            )}
             {thread.isLocked && (
               <span className="rounded border border-cyber-red/30 px-1.5 py-0.5 text-[9px] uppercase text-cyber-red">
                 {t('locked')}
@@ -165,14 +221,39 @@ export default function ForumThreadPage({ thread, posts, canPost, forumBan }: Pr
           <div className="space-y-5">
             {posts.map((post) => (
               <article key={post.id} className="rounded-xl border border-gray-800 bg-cyber-black/35 p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="text-sm font-bold text-white">{post.author.username}</div>
-                  <div className="text-[11px] text-gray-500">
-                    {new Date(post.createdAt).toLocaleString()}
-                    {post.editedAt && ` • ${t('edited')}`}
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {post.isPinned && (
+                        <span className="rounded border border-cyber-yellow/30 px-1.5 py-0.5 text-[9px] uppercase text-cyber-yellow">
+                          {t('pinned')}
+                        </span>
+                      )}
+                      {post.isLocked && (
+                        <span className="rounded border border-cyber-red/30 px-1.5 py-0.5 text-[9px] uppercase text-cyber-red">
+                          {t('locked')}
+                        </span>
+                      )}
+                      <div className="text-sm font-bold text-white">{post.author.username}</div>
+                    </div>
+                    <div className="mt-1 text-[11px] text-gray-500">
+                      {new Date(post.createdAt).toLocaleString()}
+                      {post.editedAt && ` • ${t('edited')}`} • {t('replyCount', { count: post.replyCount })}
+                    </div>
                   </div>
+                  <PostActions
+                    postId={post.id}
+                    canDelete={post.canDelete}
+                    canModerate={post.canModerate}
+                    isPinned={post.isPinned}
+                    isLocked={post.isLocked}
+                  />
                 </div>
-                <div className="mt-3 whitespace-pre-wrap text-sm leading-7 text-gray-200">{post.body}</div>
+
+                <div
+                  className="prose prose-invert mt-3 max-w-none text-sm leading-7 text-gray-200 prose-a:text-cyber-blue prose-blockquote:border-cyber-orange/35 prose-code:text-cyber-orange prose-pre:bg-white/5"
+                  dangerouslySetInnerHTML={{ __html: post.body }}
+                />
 
                 <div className="mt-4 border-t border-gray-800/80 pt-4">
                   <div className="mb-3 text-[10px] uppercase tracking-[0.24em] text-gray-500">
@@ -181,16 +262,26 @@ export default function ForumThreadPage({ thread, posts, canPost, forumBan }: Pr
                   <div className="space-y-3">
                     {post.replies.map((reply) => (
                       <div key={reply.id} className="rounded-lg border border-gray-800 bg-cyber-dark/35 p-3">
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="text-sm font-bold text-white">{reply.author.username}</div>
-                          <div className="text-[11px] text-gray-500">
-                            {new Date(reply.createdAt).toLocaleString()}
-                            {reply.editedAt && ` • ${t('edited')}`}
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <div className="text-sm font-bold text-white">{reply.author.username}</div>
+                            <div className="mt-1 text-[11px] text-gray-500">
+                              {new Date(reply.createdAt).toLocaleString()}
+                              {reply.editedAt && ` • ${t('edited')}`}
+                            </div>
                           </div>
+                          <PostActions
+                            postId={reply.id}
+                            canDelete={reply.canDelete}
+                            canModerate={false}
+                            isPinned={false}
+                            isLocked={false}
+                          />
                         </div>
-                        <div className="mt-2 whitespace-pre-wrap text-sm leading-7 text-gray-300">
-                          {reply.body}
-                        </div>
+                        <div
+                          className="prose prose-invert mt-2 max-w-none text-sm leading-7 text-gray-300 prose-a:text-cyber-blue prose-blockquote:border-cyber-orange/35 prose-code:text-cyber-orange prose-pre:bg-white/5"
+                          dangerouslySetInnerHTML={{ __html: reply.body }}
+                        />
                       </div>
                     ))}
                     {post.replies.length === 0 && (
@@ -200,7 +291,12 @@ export default function ForumThreadPage({ thread, posts, canPost, forumBan }: Pr
                     )}
                   </div>
 
-                  {!thread.isLocked && !forumBan && <ReplyForm postId={post.id} disabled={!canPost} />}
+                  {!thread.isLocked && !forumBan && !post.isLocked && (
+                    <ReplyForm postId={post.id} disabled={!canPost} />
+                  )}
+                  {post.isLocked && (
+                    <div className="mt-3 text-xs text-cyber-red">{t('postLocked')}</div>
+                  )}
                 </div>
               </article>
             ))}
@@ -237,18 +333,17 @@ export default function ForumThreadPage({ thread, posts, canPost, forumBan }: Pr
               }}
               className="space-y-3"
             >
-              <textarea
-                rows={6}
+              <ForumRichEditor
                 value={body}
-                onChange={(event) => setBody(event.target.value)}
+                onChange={setBody}
                 placeholder={t('postPlaceholder')}
-                className="w-full resize-y rounded-xl border border-gray-800 bg-cyber-black px-4 py-3 text-sm text-white focus:border-cyber-orange/40 focus:outline-none"
+                disabled={!canPost}
               />
               <div className="flex items-center justify-between gap-3">
                 <div className="text-[11px] text-gray-500">{t('postRules')}</div>
                 <button
                   type="submit"
-                  disabled={!canPost || body.trim().length < 3}
+                  disabled={!canPost}
                   className="rounded border border-cyber-orange/35 bg-cyber-orange/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.24em] text-cyber-orange transition-all hover:bg-cyber-orange/20 disabled:opacity-50"
                 >
                   {t('publishPost')}

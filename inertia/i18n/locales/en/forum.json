@@ -1,7 +1,7 @@
 {
   "title": "Forum",
   "eyebrow": "Discussions",
-  "subtitle": "Admin topics, player replies, server-side moderation.",
+  "subtitle": "Categories contain threads. Threads contain player posts and replies.",
   "categories": "Categories",
   "latestThreads": "Latest threads",
   "pinned": "Pinned",
@@ -26,9 +26,16 @@
   "noRepliesForPost": "No replies for this post yet.",
   "newPostBox": "New post",
   "threadLocked": "This thread is locked.",
+  "postLocked": "This post is locked.",
   "postPlaceholder": "Write your post here...",
   "postRules": "Anti-spam is active. No flooding, no duplicates.",
   "publishPost": "Publish post",
   "replyToPostPlaceholder": "Write your reply to this post...",
-  "replyToPost": "Reply to post"
+  "replyToPost": "Reply to post",
+  "deletePost": "Delete",
+  "confirmDeletePost": "Delete this post?",
+  "pinPost": "Pin post",
+  "unpinPost": "Unpin post",
+  "lockPost": "Lock post",
+  "unlockPost": "Unlock post"
 }

@@ -177,6 +177,9 @@ router
     router.get('/forum/thread/:id', [ForumController, 'thread'])
     router.post('/forum/thread/:id/posts', [ForumController, 'createPost'])
     router.post('/forum/posts/:id/reply', [ForumController, 'replyToPost'])
+    router.post('/forum/posts/:id/delete', [ForumController, 'deletePost'])
+    router.post('/forum/posts/:id/toggle-pin', [ForumController, 'togglePostPin'])
+    router.post('/forum/posts/:id/toggle-lock', [ForumController, 'togglePostLock'])
 
     // World Map
     router.get('/map', [MapsController, 'index'])
@@ -264,6 +267,8 @@ router
     router.post('/admin/forum/threads/:id/update', [ForumAdminController, 'updateThread'])
     router.post('/admin/forum/threads/:id/delete', [ForumAdminController, 'deleteThread'])
     router.post('/admin/forum/posts/:id/update', [ForumAdminController, 'updatePost'])
+    router.post('/admin/forum/posts/:id/toggle-pin', [ForumAdminController, 'togglePostPin'])
+    router.post('/admin/forum/posts/:id/toggle-lock', [ForumAdminController, 'togglePostLock'])
     router.post('/admin/forum/posts/:id/delete', [ForumAdminController, 'deletePost'])
     router.post('/admin/forum/bans/create', [ForumAdminController, 'createBan'])
     router.post('/admin/forum/bans/:id/delete', [ForumAdminController, 'deleteBan'])

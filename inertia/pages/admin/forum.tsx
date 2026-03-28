@@ -17,7 +17,6 @@ interface ThreadRecord {
   categoryId: number
   categoryName: string
   title: string
-  isPinned: boolean
   isLocked: boolean
   replyCount: number
   lastPostedAt: string
@@ -31,6 +30,8 @@ interface PostRecord {
   threadTitle: string
   categoryName: string
   body: string
+  isPinned: boolean
+  isLocked: boolean
   authorName: string
   authorUserId: number
   createdAt: string
@@ -64,7 +65,6 @@ export default function ForumAdminPage({ categories, threads, recentPosts, bans 
     forumCategoryId: categories[0]?.id || 0,
     title: '',
     starterBody: '',
-    isPinned: false,
     isLocked: false,
   })
   const [banForm, setBanForm] = useState({
@@ -258,7 +258,6 @@ export default function ForumAdminPage({ categories, threads, recentPosts, bans 
                 event.preventDefault()
                 router.post('/admin/forum/threads/create', {
                   ...newThread,
-                  isPinned: newThread.isPinned ? 'true' : 'false',
                   isLocked: newThread.isLocked ? 'true' : 'false',
                 })
               }}
@@ -289,14 +288,6 @@ export default function ForumAdminPage({ categories, threads, recentPosts, bans 
                 className="rounded border border-gray-800 bg-cyber-black px-3 py-2 text-sm text-white focus:outline-none"
               />
               <div className="flex gap-4 text-xs text-gray-400">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={newThread.isPinned}
-                    onChange={(event) => setNewThread((prev) => ({ ...prev, isPinned: event.target.checked }))}
-                  />
-                  Pinned
-                </label>
                 <label className="flex items-center gap-2">
                   <input
                     type="checkbox"
@@ -339,14 +330,6 @@ export default function ForumAdminPage({ categories, threads, recentPosts, bans 
                         <label className="flex items-center gap-2">
                           <input
                             type="checkbox"
-                            checked={editingThread.isPinned}
-                            onChange={(event) => setEditingThread({ ...editingThread, isPinned: event.target.checked })}
-                          />
-                          Pinned
-                        </label>
-                        <label className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
                             checked={editingThread.isLocked}
                             onChange={(event) => setEditingThread({ ...editingThread, isLocked: event.target.checked })}
                           />
@@ -359,7 +342,6 @@ export default function ForumAdminPage({ categories, threads, recentPosts, bans 
                           onClick={() =>
                             router.post(`/admin/forum/threads/${thread.id}/update`, {
                               ...editingThread,
-                              isPinned: editingThread.isPinned ? 'true' : 'false',
                               isLocked: editingThread.isLocked ? 'true' : 'false',
                             })
                           }
@@ -384,7 +366,6 @@ export default function ForumAdminPage({ categories, threads, recentPosts, bans 
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="text-[10px] uppercase text-gray-500">{thread.categoryName}</span>
-                          {thread.isPinned && <span className="rounded border border-cyber-yellow/30 px-1.5 py-0.5 text-[9px] uppercase text-cyber-yellow">Pinned</span>}
                           {thread.isLocked && <span className="rounded border border-cyber-red/30 px-1.5 py-0.5 text-[9px] uppercase text-cyber-red">Locked</span>}
                         </div>
                         <div className="mt-2 text-sm font-bold text-white">{thread.title}</div>
@@ -435,6 +416,18 @@ export default function ForumAdminPage({ categories, threads, recentPosts, bans 
                     <span>{post.threadTitle}</span>
                     <span>•</span>
                     <span>{post.authorName}</span>
+                    {post.isPinned && (
+                      <>
+                        <span>•</span>
+                        <span className="text-cyber-yellow">epingle</span>
+                      </>
+                    )}
+                    {post.isLocked && (
+                      <>
+                        <span>•</span>
+                        <span className="text-cyber-red">verrouille</span>
+                      </>
+                    )}
                     {post.parentPostId && (
                       <>
                         <span>•</span>
@@ -474,6 +467,24 @@ export default function ForumAdminPage({ categories, threads, recentPosts, bans 
                     <div className="flex items-start justify-between gap-3">
                       <div className="whitespace-pre-wrap text-sm text-gray-200">{post.body}</div>
                       <div className="flex gap-1">
+                        {!post.parentPostId && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => router.post(`/admin/forum/posts/${post.id}/toggle-pin`)}
+                              className="rounded border border-cyber-yellow/35 px-2 py-1 text-[10px] uppercase text-cyber-yellow hover:bg-cyber-yellow/10"
+                            >
+                              {post.isPinned ? 'Desepingler' : 'Epingler'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => router.post(`/admin/forum/posts/${post.id}/toggle-lock`)}
+                              className="rounded border border-cyber-red/35 px-2 py-1 text-[10px] uppercase text-cyber-red hover:bg-cyber-red/10"
+                            >
+                              {post.isLocked ? 'Reouvrir' : 'Fermer'}
+                            </button>
+                          </>
+                        )}
                         <button
                           type="button"
                           onClick={() => {

@@ -20,6 +20,12 @@ export default class ForumPost extends BaseModel {
   @column()
   declare body: string
 
+  @column()
+  declare isPinned: boolean
+
+  @column()
+  declare isLocked: boolean
+
   @column.dateTime()
   declare editedAt: DateTime | null
 

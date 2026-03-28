@@ -14,7 +14,6 @@ export default class ForumAdminController {
       ForumThread.query()
         .preload('category')
         .preload('user')
-        .orderBy('isPinned', 'desc')
         .orderBy('lastPostedAt', 'desc')
         .limit(100),
       ForumPost.query()
@@ -41,6 +40,8 @@ export default class ForumAdminController {
         authorName: post.user.username,
         authorUserId: post.user.id,
         parentPostId: post.parentPostId,
+        isPinned: post.isPinned,
+        isLocked: post.isLocked,
       })),
       bans: bans.map((ban) => ({
         ...ban.serialize(),
@@ -123,11 +124,10 @@ export default class ForumAdminController {
   async createThread({ request, auth, response, session }: HttpContext) {
     const forumCategoryId = Number(request.input('forumCategoryId'))
     const title = String(request.input('title', '')).trim()
-    const starterBody = String(request.input('starterBody', '')).trim()
-    const isPinned = request.input('isPinned') === 'true' || request.input('isPinned') === true
+    const starterBody = ForumService.sanitizeHtml(String(request.input('starterBody', '')).trim())
     const isLocked = request.input('isLocked') === 'true' || request.input('isLocked') === true
 
-    if (!forumCategoryId || !title || starterBody.length < 3) {
+    if (!forumCategoryId || !title || ForumService.stripHtml(starterBody).length < 3) {
       session.flash('errors', { message: 'Thread invalide' })
       return response.redirect('/admin/forum')
     }
@@ -137,7 +137,6 @@ export default class ForumAdminController {
       userId: auth.user!.id,
       title,
       body: starterBody,
-      isPinned,
       isLocked,
       replyCount: 0,
       lastPostedAt: DateTime.now(),
@@ -148,6 +147,8 @@ export default class ForumAdminController {
       userId: auth.user!.id,
       parentPostId: null,
       body: starterBody,
+      isPinned: false,
+      isLocked: false,
     })
 
     await ForumService.syncThreadStats(thread.id)
@@ -160,7 +161,6 @@ export default class ForumAdminController {
     const thread = await ForumThread.findOrFail(params.id)
     const forumCategoryId = Number(request.input('forumCategoryId', thread.forumCategoryId))
     const title = String(request.input('title', thread.title)).trim()
-    const isPinned = request.input('isPinned') === 'true' || request.input('isPinned') === true
     const isLocked = request.input('isLocked') === 'true' || request.input('isLocked') === true
 
     if (!forumCategoryId || !title) {
@@ -170,7 +170,6 @@ export default class ForumAdminController {
 
     thread.forumCategoryId = forumCategoryId
     thread.title = title
-    thread.isPinned = isPinned
     thread.isLocked = isLocked
     await thread.save()
 
@@ -188,9 +187,9 @@ export default class ForumAdminController {
 
   async updatePost({ params, request, response, session }: HttpContext) {
     const post = await ForumPost.findOrFail(params.id)
-    const body = String(request.input('body', post.body)).trim()
+    const body = ForumService.sanitizeHtml(String(request.input('body', post.body)).trim())
 
-    if (body.length < 3 || body.length > 4000) {
+    if (ForumService.stripHtml(body).length < 3 || ForumService.stripHtml(body).length > 4000) {
       session.flash('errors', { message: 'Post invalide' })
       return response.redirect('/admin/forum')
     }
@@ -200,6 +199,24 @@ export default class ForumAdminController {
     await post.save()
 
     session.flash('success', 'Post mis a jour')
+    return response.redirect('/admin/forum')
+  }
+
+  async togglePostPin({ params, response, session }: HttpContext) {
+    const post = await ForumPost.findOrFail(params.id)
+    post.isPinned = !post.isPinned
+    await post.save()
+
+    session.flash('success', post.isPinned ? 'Post epingle' : 'Post desepingle')
+    return response.redirect('/admin/forum')
+  }
+
+  async togglePostLock({ params, response, session }: HttpContext) {
+    const post = await ForumPost.findOrFail(params.id)
+    post.isLocked = !post.isLocked
+    await post.save()
+
+    session.flash('success', post.isLocked ? 'Post verrouille' : 'Post reouvert')
     return response.redirect('/admin/forum')
   }
 
