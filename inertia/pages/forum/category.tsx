@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 interface ThreadEntry {
   id: number
   title: string
-  replyCount: number
+  postCount: number
   isPinned: boolean
   isLocked: boolean
   createdAt: string
@@ -80,7 +80,7 @@ export default function ForumCategoryPage({ category, threads, forumBan }: Props
                   </div>
                 </div>
                 <div className="rounded-full border border-cyber-blue/20 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-cyber-blue">
-                  {t('replyCount', { count: thread.replyCount })}
+                  {t('postCount', { count: thread.postCount })}
                 </div>
               </div>
             </Link>

@@ -14,7 +14,7 @@ interface CategoryEntry {
 interface ThreadEntry {
   id: number
   title: string
-  replyCount: number
+  postCount: number
   isPinned: boolean
   isLocked: boolean
   lastPostedAt: string
@@ -128,7 +128,7 @@ export default function ForumIndex({ categories, latestThreads, forumBan }: Prop
                       </div>
                     </div>
                     <div className="rounded-full border border-cyber-blue/20 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-cyber-blue">
-                      {t('replyCount', { count: thread.replyCount })}
+                      {t('postCount', { count: thread.postCount })}
                     </div>
                   </div>
                 </Link>

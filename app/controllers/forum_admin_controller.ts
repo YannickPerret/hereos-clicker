@@ -40,6 +40,7 @@ export default class ForumAdminController {
         categoryName: post.thread.category.name,
         authorName: post.user.username,
         authorUserId: post.user.id,
+        parentPostId: post.parentPostId,
       })),
       bans: bans.map((ban) => ({
         ...ban.serialize(),
@@ -122,25 +123,34 @@ export default class ForumAdminController {
   async createThread({ request, auth, response, session }: HttpContext) {
     const forumCategoryId = Number(request.input('forumCategoryId'))
     const title = String(request.input('title', '')).trim()
-    const body = String(request.input('body', '')).trim()
+    const starterBody = String(request.input('starterBody', '')).trim()
     const isPinned = request.input('isPinned') === 'true' || request.input('isPinned') === true
     const isLocked = request.input('isLocked') === 'true' || request.input('isLocked') === true
 
-    if (!forumCategoryId || !title || body.length < 3) {
+    if (!forumCategoryId || !title || starterBody.length < 3) {
       session.flash('errors', { message: 'Thread invalide' })
       return response.redirect('/admin/forum')
     }
 
-    await ForumThread.create({
+    const thread = await ForumThread.create({
       forumCategoryId,
       userId: auth.user!.id,
       title,
-      body,
+      body: starterBody,
       isPinned,
       isLocked,
       replyCount: 0,
       lastPostedAt: DateTime.now(),
     })
+
+    await ForumPost.create({
+      forumThreadId: thread.id,
+      userId: auth.user!.id,
+      parentPostId: null,
+      body: starterBody,
+    })
+
+    await ForumService.syncThreadStats(thread.id)
 
     session.flash('success', `Thread "${title}" cree`)
     return response.redirect('/admin/forum')
@@ -150,18 +160,16 @@ export default class ForumAdminController {
     const thread = await ForumThread.findOrFail(params.id)
     const forumCategoryId = Number(request.input('forumCategoryId', thread.forumCategoryId))
     const title = String(request.input('title', thread.title)).trim()
-    const body = String(request.input('body', thread.body)).trim()
     const isPinned = request.input('isPinned') === 'true' || request.input('isPinned') === true
     const isLocked = request.input('isLocked') === 'true' || request.input('isLocked') === true
 
-    if (!forumCategoryId || !title || body.length < 3) {
+    if (!forumCategoryId || !title) {
       session.flash('errors', { message: 'Thread invalide' })
       return response.redirect('/admin/forum')
     }
 
     thread.forumCategoryId = forumCategoryId
     thread.title = title
-    thread.body = body
     thread.isPinned = isPinned
     thread.isLocked = isLocked
     await thread.save()

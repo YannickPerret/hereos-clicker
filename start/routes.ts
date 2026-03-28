@@ -175,7 +175,8 @@ router
     router.get('/forum', [ForumController, 'index'])
     router.get('/forum/category/:slug', [ForumController, 'category'])
     router.get('/forum/thread/:id', [ForumController, 'thread'])
-    router.post('/forum/thread/:id/reply', [ForumController, 'reply'])
+    router.post('/forum/thread/:id/posts', [ForumController, 'createPost'])
+    router.post('/forum/posts/:id/reply', [ForumController, 'replyToPost'])
 
     // World Map
     router.get('/map', [MapsController, 'index'])

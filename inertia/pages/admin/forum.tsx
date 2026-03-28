@@ -17,7 +17,6 @@ interface ThreadRecord {
   categoryId: number
   categoryName: string
   title: string
-  body: string
   isPinned: boolean
   isLocked: boolean
   replyCount: number
@@ -28,6 +27,7 @@ interface ThreadRecord {
 interface PostRecord {
   id: number
   forumThreadId: number
+  parentPostId: number | null
   threadTitle: string
   categoryName: string
   body: string
@@ -63,7 +63,7 @@ export default function ForumAdminPage({ categories, threads, recentPosts, bans 
   const [newThread, setNewThread] = useState({
     forumCategoryId: categories[0]?.id || 0,
     title: '',
-    body: '',
+    starterBody: '',
     isPinned: false,
     isLocked: false,
   })
@@ -283,9 +283,9 @@ export default function ForumAdminPage({ categories, threads, recentPosts, bans 
               />
               <textarea
                 rows={5}
-                value={newThread.body}
-                onChange={(event) => setNewThread((prev) => ({ ...prev, body: event.target.value }))}
-                placeholder="Message d ouverture"
+                value={newThread.starterBody}
+                onChange={(event) => setNewThread((prev) => ({ ...prev, starterBody: event.target.value }))}
+                placeholder="Premier post du thread"
                 className="rounded border border-gray-800 bg-cyber-black px-3 py-2 text-sm text-white focus:outline-none"
               />
               <div className="flex gap-4 text-xs text-gray-400">
@@ -333,12 +333,6 @@ export default function ForumAdminPage({ categories, threads, recentPosts, bans 
                       <input
                         value={editingThread.title}
                         onChange={(event) => setEditingThread({ ...editingThread, title: event.target.value })}
-                        className="w-full rounded border border-gray-800 bg-cyber-black px-3 py-2 text-sm text-white focus:outline-none"
-                      />
-                      <textarea
-                        rows={5}
-                        value={editingThread.body}
-                        onChange={(event) => setEditingThread({ ...editingThread, body: event.target.value })}
                         className="w-full rounded border border-gray-800 bg-cyber-black px-3 py-2 text-sm text-white focus:outline-none"
                       />
                       <div className="flex gap-4 text-xs text-gray-400">
@@ -395,7 +389,7 @@ export default function ForumAdminPage({ categories, threads, recentPosts, bans 
                         </div>
                         <div className="mt-2 text-sm font-bold text-white">{thread.title}</div>
                         <div className="mt-1 text-xs text-gray-500">
-                          {thread.authorName} • {thread.replyCount} reponses • {new Date(thread.lastPostedAt).toLocaleString()}
+                          {thread.authorName} • {thread.replyCount} posts • {new Date(thread.lastPostedAt).toLocaleString()}
                         </div>
                       </div>
                       <div className="flex gap-1">
@@ -441,6 +435,12 @@ export default function ForumAdminPage({ categories, threads, recentPosts, bans 
                     <span>{post.threadTitle}</span>
                     <span>•</span>
                     <span>{post.authorName}</span>
+                    {post.parentPostId && (
+                      <>
+                        <span>•</span>
+                        <span>reponse</span>
+                      </>
+                    )}
                   </div>
                   {editingPostId === post.id ? (
                     <div className="space-y-3">

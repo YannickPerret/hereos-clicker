@@ -50,7 +50,7 @@ export default class ForumController {
       latestThreads: latestThreads.map((thread) => ({
         id: thread.id,
         title: thread.title,
-        replyCount: thread.replyCount,
+        postCount: thread.replyCount,
         isPinned: thread.isPinned,
         isLocked: thread.isLocked,
         lastPostedAt: thread.lastPostedAt.toISO(),
@@ -103,7 +103,7 @@ export default class ForumController {
       threads: threads.map((thread) => ({
         id: thread.id,
         title: thread.title,
-        replyCount: thread.replyCount,
+        postCount: thread.replyCount,
         isPinned: thread.isPinned,
         isLocked: thread.isLocked,
         createdAt: thread.createdAt.toISO(),
@@ -136,7 +136,11 @@ export default class ForumController {
     const [posts, ban] = await Promise.all([
       ForumPost.query()
         .where('forumThreadId', thread.id)
+        .whereNull('parentPostId')
         .preload('user')
+        .preload('replies', (query) => {
+          query.preload('user').orderBy('createdAt', 'asc')
+        })
         .orderBy('createdAt', 'asc'),
       ForumService.getActiveBan(ctx.auth.user!.id),
     ])
@@ -145,10 +149,9 @@ export default class ForumController {
       thread: {
         id: thread.id,
         title: thread.title,
-        body: thread.body,
         isPinned: thread.isPinned,
         isLocked: thread.isLocked,
-        replyCount: thread.replyCount,
+        postCount: thread.replyCount,
         createdAt: thread.createdAt.toISO(),
         lastPostedAt: thread.lastPostedAt.toISO(),
         category: {
@@ -170,6 +173,16 @@ export default class ForumController {
           id: post.user.id,
           username: post.user.username,
         },
+        replies: post.replies.map((reply) => ({
+          id: reply.id,
+          body: reply.body,
+          createdAt: reply.createdAt.toISO(),
+          editedAt: reply.editedAt?.toISO() || null,
+          author: {
+            id: reply.user.id,
+            username: reply.user.username,
+          },
+        })),
       })),
       forumBan: ban
         ? {
@@ -178,11 +191,11 @@ export default class ForumController {
             expiresAt: ban.expiresAt?.toISO() || null,
           }
         : null,
-      canReply: !thread.isLocked && !ban,
+      canPost: !thread.isLocked && !ban,
     })
   }
 
-  async reply(ctx: HttpContext) {
+  async createPost(ctx: HttpContext) {
     const denied = this.ensureForumAccount(ctx)
     if (denied) return denied
 
@@ -214,17 +227,62 @@ export default class ForumController {
       return ctx.response.redirect(`/forum/thread/${thread.id}`)
     }
 
-    const post = await ForumPost.create({
+    await ForumPost.create({
       forumThreadId: thread.id,
       userId: ctx.auth.user!.id,
+      parentPostId: null,
       body: validation.body,
     })
 
-    thread.replyCount += 1
-    thread.lastPostedAt = post.createdAt
-    await thread.save()
+    await ForumService.syncThreadStats(thread.id)
+
+    ctx.session.flash('success', ctx.locale === 'en' ? 'Post published' : 'Post publie')
+    return ctx.response.redirect(`/forum/thread/${thread.id}`)
+  }
+
+  async replyToPost(ctx: HttpContext) {
+    const denied = this.ensureForumAccount(ctx)
+    if (denied) return denied
+
+    const ban = await ForumService.getActiveBan(ctx.auth.user!.id)
+    if (ban) {
+      ctx.session.flash('errors', {
+        message: ForumService.forumBannedMessage(ctx.locale, ban.reason),
+      })
+      return ctx.response.redirect().back()
+    }
+
+    const parentPost = await ForumPost.findOrFail(ctx.params.id)
+    const thread = await ForumThread.findOrFail(parentPost.forumThreadId)
+    if (thread.isLocked) {
+      ctx.session.flash('errors', {
+        message: ForumService.lockedThreadMessage(ctx.locale),
+      })
+      return ctx.response.redirect(`/forum/thread/${parentPost.forumThreadId}`)
+    }
+
+    const validation = await ForumService.validatePosting(
+      ctx.auth.user!.id,
+      parentPost.forumThreadId,
+      String(ctx.request.input('body', '')),
+      ctx.locale
+    )
+
+    if (!validation.ok) {
+      ctx.session.flash('errors', { message: validation.message })
+      return ctx.response.redirect(`/forum/thread/${parentPost.forumThreadId}`)
+    }
+
+    await ForumPost.create({
+      forumThreadId: parentPost.forumThreadId,
+      userId: ctx.auth.user!.id,
+      parentPostId: parentPost.id,
+      body: validation.body,
+    })
+
+    await ForumService.syncThreadStats(parentPost.forumThreadId)
 
     ctx.session.flash('success', ctx.locale === 'en' ? 'Reply posted' : 'Reponse postee')
-    return ctx.response.redirect(`/forum/thread/${thread.id}`)
+    return ctx.response.redirect(`/forum/thread/${parentPost.forumThreadId}`)
   }
 }

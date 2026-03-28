@@ -1,6 +1,6 @@
 import { DateTime } from 'luxon'
-import { BaseModel, belongsTo, column } from '@adonisjs/lucid/orm'
-import type { BelongsTo } from '@adonisjs/lucid/types/relations'
+import { BaseModel, belongsTo, column, hasMany } from '@adonisjs/lucid/orm'
+import type { BelongsTo, HasMany } from '@adonisjs/lucid/types/relations'
 import ForumThread from '#models/forum_thread'
 import User from '#models/user'
 
@@ -13,6 +13,9 @@ export default class ForumPost extends BaseModel {
 
   @column()
   declare userId: number
+
+  @column()
+  declare parentPostId: number | null
 
   @column()
   declare body: string
@@ -31,4 +34,14 @@ export default class ForumPost extends BaseModel {
 
   @belongsTo(() => User)
   declare user: BelongsTo<typeof User>
+
+  @belongsTo(() => ForumPost, {
+    foreignKey: 'parentPostId',
+  })
+  declare parentPost: BelongsTo<typeof ForumPost>
+
+  @hasMany(() => ForumPost, {
+    foreignKey: 'parentPostId',
+  })
+  declare replies: HasMany<typeof ForumPost>
 }
