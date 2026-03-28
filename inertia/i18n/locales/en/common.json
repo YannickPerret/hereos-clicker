@@ -50,6 +50,7 @@
     "crit": "CRIT%",
     "critDmg": "CRIT DMG",
     "credits": "Credits",
+    "clicks": "Clicks",
     "level": "Level",
     "xp": "XP"
   },
@@ -95,6 +96,7 @@
     "friendRequestAccepted": "Friend request accepted",
     "friendRemoved": "Friend removed",
     "missionClaimed": "Mission claimed",
-    "rewardClaimed": "Reward claimed"
+    "rewardClaimed": "Reward claimed",
+    "guestAccountUpgraded": "Guest account upgraded"
   }
 }

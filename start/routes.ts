@@ -25,6 +25,7 @@ const IsoAdminController = () => import('#controllers/iso_admin_controller')
 transmit.registerRoutes()
 
 // Public (no auth) routes
+router.get('/', [AuthController, 'showLanding']).use(middleware.guest())
 router.get('/terms', async ({ inertia }) => inertia.render('legal/terms'))
 router.get('/privacy', async ({ inertia }) => inertia.render('legal/privacy'))
 
@@ -35,6 +36,7 @@ router
     router.post('/login', [AuthController, 'login'])
     router.get('/register', [AuthController, 'showRegister'])
     router.post('/register', [AuthController, 'register'])
+    router.post('/guest', [AuthController, 'loginGuest'])
   })
   .use(middleware.guest())
 
@@ -42,6 +44,8 @@ router
 router
   .group(() => {
     router.post('/logout', [AuthController, 'logout'])
+    router.get('/account/upgrade', [AuthController, 'showUpgrade'])
+    router.post('/account/upgrade', [AuthController, 'upgradeGuest'])
 
     // Play / Clicker
     router.get('/play', [PlayController, 'index'])

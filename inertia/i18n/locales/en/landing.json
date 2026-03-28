@@ -1,0 +1,41 @@
+{
+  "eyebrow": "Cyberpunk Clicker You Can Start Instantly",
+  "title": "Jump into HEREOS without an account.",
+  "description": "Start a guest run in one click, build your runner, speed up your income, then push deeper with dungeons, party play, and PvP.",
+  "playGuest": "[ PLAY AS GUEST ]",
+  "createAccount": "[ CREATE ACCOUNT ]",
+  "login": "I already have an account",
+  "trust": "No email required to start. Upgrade your guest run into an account later.",
+  "primaryLoopTitle": "Core loop",
+  "primaryLoopDescription": "Clear progression within the first few minutes.",
+  "primaryLoopSteps": {
+    "click": {
+      "title": "1. Hack",
+      "description": "Click to siphon your first credits and start your run."
+    },
+    "upgrade": {
+      "title": "2. Upgrade",
+      "description": "Buy CPC/CPS boosts, unlock talents, and raise your pace."
+    },
+    "automate": {
+      "title": "3. Automate",
+      "description": "Move from manual clicks to passive income with a clear next milestone."
+    }
+  },
+  "deepLoopTitle": "Then go deeper",
+  "deepLoopDescription": "Once your base loop is solid, the wider meta takes over.",
+  "deepLoopSteps": {
+    "dungeon": {
+      "title": "Dungeon",
+      "description": "Test your build in combat and turn progression into power."
+    },
+    "party": {
+      "title": "Party",
+      "description": "Build a team, coordinate your squad, and unlock co-op content."
+    },
+    "pvp": {
+      "title": "PvP",
+      "description": "Fight other runners once your economy and loadout are online."
+    }
+  }
+}

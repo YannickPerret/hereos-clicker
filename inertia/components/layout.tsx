@@ -20,14 +20,18 @@ const REWARD_ICONS: Record<string, string> = {
   item: '📦',
 }
 
-function rewardLabel(rewardType: string, rewardValue: number, rewardItemName: string | null = null) {
+function rewardLabel(
+  rewardType: string,
+  rewardValue: number,
+  rewardItemName: string | null = null
+) {
   if (rewardType === 'item') return `${rewardValue}x ${rewardItemName || 'item'}`
   return `+${rewardValue.toLocaleString()} ${rewardType}`
 }
 
 export default function GameLayout({ children }: { children: ReactNode }) {
   const { auth, blackMarket, success, errors, dailyReward } = usePage().props as any
-  const { t } = useTranslation(['common', 'report', 'daily_reward'])
+  const { t } = useTranslation(['common', 'report', 'daily_reward', 'auth'])
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [toast, setToast] = useState<null | { type: 'success' | 'error'; message: string }>(null)
   const [reportModalOpen, setReportModalOpen] = useState(false)
@@ -40,6 +44,7 @@ export default function GameLayout({ children }: { children: ReactNode }) {
   const isStaff = auth?.user?.role === 'admin' || auth?.user?.role === 'moderator'
   const roleColor = ROLE_COLORS[auth?.user?.role] || ROLE_COLORS.user
   const roleLabel = auth?.user?.roleLabel || 'RUNNER'
+  const isGuest = Boolean(auth?.user?.isGuest)
   const blackMarketMinLevel = Number(blackMarket?.minLevel || 12)
   const hasBlackMarketAccess = Number(auth?.activeCharacterLevel || 0) >= blackMarketMinLevel
   const companionMinLevel = 10
@@ -231,6 +236,26 @@ export default function GameLayout({ children }: { children: ReactNode }) {
         </aside>
         <main className="min-w-0 flex-1 px-4 py-6 md:px-6">
           <div className="mx-auto max-w-[calc(96rem-18rem)]">
+            {isGuest && (
+              <div className="mb-6 rounded-xl border border-cyber-yellow/35 bg-cyber-yellow/10 px-4 py-4">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                  <div>
+                    <div className="text-[10px] uppercase tracking-[0.3em] text-cyber-yellow">
+                      {t('auth:guestBanner.title')}
+                    </div>
+                    <div className="mt-1 text-sm text-gray-300">
+                      {t('auth:guestBanner.description')}
+                    </div>
+                  </div>
+                  <Link
+                    href="/account/upgrade"
+                    className="rounded border border-cyber-yellow/40 bg-cyber-yellow/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-cyber-yellow transition-all hover:bg-cyber-yellow/20"
+                  >
+                    {t('auth:guestBanner.cta')}
+                  </Link>
+                </div>
+              </div>
+            )}
             {children}
           </div>
         </main>
@@ -309,8 +334,12 @@ export default function GameLayout({ children }: { children: ReactNode }) {
           <div className="relative z-[81] w-full max-w-xl rounded-2xl border border-cyber-orange/30 bg-cyber-dark p-5 shadow-2xl">
             <div className="mb-4 flex items-start justify-between gap-4">
               <div>
-                <div className="text-[10px] uppercase tracking-[0.32em] text-cyber-orange">{t('report:support')}</div>
-                <h2 className="mt-1 text-lg font-bold tracking-widest text-white">{t('report:title')}</h2>
+                <div className="text-[10px] uppercase tracking-[0.32em] text-cyber-orange">
+                  {t('report:support')}
+                </div>
+                <h2 className="mt-1 text-lg font-bold tracking-widest text-white">
+                  {t('report:title')}
+                </h2>
                 <p className="mt-1 text-xs text-gray-500">{t('report:description')}</p>
               </div>
               <button
@@ -327,7 +356,9 @@ export default function GameLayout({ children }: { children: ReactNode }) {
 
             <form onSubmit={submitBugReport} className="space-y-4">
               <div>
-                <label className="mb-2 block text-[10px] uppercase tracking-widest text-gray-500">{t('report:category')}</label>
+                <label className="mb-2 block text-[10px] uppercase tracking-widest text-gray-500">
+                  {t('report:category')}
+                </label>
                 <div className="flex flex-wrap gap-2">
                   {REPORT_CATEGORIES.map((category) => (
                     <button
@@ -347,7 +378,9 @@ export default function GameLayout({ children }: { children: ReactNode }) {
               </div>
 
               <div>
-                <label className="mb-1 block text-[10px] uppercase tracking-widest text-gray-500">{t('report:titleLabel')}</label>
+                <label className="mb-1 block text-[10px] uppercase tracking-widest text-gray-500">
+                  {t('report:titleLabel')}
+                </label>
                 <input
                   type="text"
                   maxLength={200}
@@ -360,7 +393,9 @@ export default function GameLayout({ children }: { children: ReactNode }) {
               </div>
 
               <div>
-                <label className="mb-1 block text-[10px] uppercase tracking-widest text-gray-500">{t('report:descriptionLabel')}</label>
+                <label className="mb-1 block text-[10px] uppercase tracking-widest text-gray-500">
+                  {t('report:descriptionLabel')}
+                </label>
                 <textarea
                   maxLength={2000}
                   required
@@ -411,7 +446,10 @@ export default function GameLayout({ children }: { children: ReactNode }) {
                   {t('daily_reward:day', { n: dailyReward.nextClaimStreak })}
                 </h2>
                 <div className="mt-1 text-xs text-gray-500">
-                  {t('daily_reward:streak', { current: dailyReward.currentStreak, best: dailyReward.highestStreak })}
+                  {t('daily_reward:streak', {
+                    current: dailyReward.currentStreak,
+                    best: dailyReward.highestStreak,
+                  })}
                 </div>
               </div>
               <button
@@ -427,12 +465,15 @@ export default function GameLayout({ children }: { children: ReactNode }) {
               {(dailyReward.days || []).map(
                 (day: {
                   dayNumber: number
-                  rewards: { rewardType: string; rewardValue: number; rewardItemName: string | null }[]
+                  rewards: {
+                    rewardType: string
+                    rewardValue: number
+                    rewardItemName: string | null
+                  }[]
                 }) => {
-                  const isClaimed =
-                    dailyReward.claimedToday
-                      ? day.dayNumber <= dailyReward.currentStreak
-                      : day.dayNumber < dailyReward.nextClaimStreak
+                  const isClaimed = dailyReward.claimedToday
+                    ? day.dayNumber <= dailyReward.currentStreak
+                    : day.dayNumber < dailyReward.nextClaimStreak
                   const isCurrent = day.dayNumber === dailyReward.nextClaimStreak
                   const isFuture = !isClaimed && !isCurrent
 
@@ -458,16 +499,12 @@ export default function GameLayout({ children }: { children: ReactNode }) {
                       >
                         {t('daily_reward:dayShort', { n: day.dayNumber })}
                       </div>
-                      <div className="my-1 text-base">
-                        {isClaimed ? '✅' : '🎁'}
-                      </div>
-                      <div
-                        className={`text-[9px] ${
-                          isFuture ? 'text-gray-600' : 'text-gray-400'
-                        }`}
-                      >
+                      <div className="my-1 text-base">{isClaimed ? '✅' : '🎁'}</div>
+                      <div className={`text-[9px] ${isFuture ? 'text-gray-600' : 'text-gray-400'}`}>
                         {day.rewards.map((r, i) => (
-                          <div key={i}>{rewardLabel(r.rewardType, r.rewardValue, r.rewardItemName)}</div>
+                          <div key={i}>
+                            {rewardLabel(r.rewardType, r.rewardValue, r.rewardItemName)}
+                          </div>
                         ))}
                         {day.rewards.length === 0 && <span>-</span>}
                       </div>

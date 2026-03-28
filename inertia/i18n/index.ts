@@ -20,6 +20,7 @@ import frChat from './locales/fr/chat.json'
 import frReport from './locales/fr/report.json'
 import frDailyReward from './locales/fr/daily_reward.json'
 import frProfile from './locales/fr/profile.json'
+import frLanding from './locales/fr/landing.json'
 
 import enCommon from './locales/en/common.json'
 import enAuth from './locales/en/auth.json'
@@ -39,6 +40,7 @@ import enChat from './locales/en/chat.json'
 import enReport from './locales/en/report.json'
 import enDailyReward from './locales/en/daily_reward.json'
 import enProfile from './locales/en/profile.json'
+import enLanding from './locales/en/landing.json'
 
 i18n
   .use(LanguageDetector)
@@ -64,6 +66,7 @@ i18n
         report: frReport,
         daily_reward: frDailyReward,
         profile: frProfile,
+        landing: frLanding,
       },
       en: {
         common: enCommon,
@@ -84,14 +87,31 @@ i18n
         report: enReport,
         daily_reward: enDailyReward,
         profile: enProfile,
+        landing: enLanding,
       },
     },
     fallbackLng: 'fr',
     defaultNS: 'common',
     ns: [
-      'common', 'auth', 'play', 'inventory', 'shop', 'party', 'dungeon',
-      'pvp', 'talents', 'quests', 'missions', 'friends', 'companions',
-      'leaderboard', 'chat', 'report', 'daily_reward', 'profile',
+      'common',
+      'auth',
+      'play',
+      'inventory',
+      'shop',
+      'party',
+      'dungeon',
+      'pvp',
+      'talents',
+      'quests',
+      'missions',
+      'friends',
+      'companions',
+      'leaderboard',
+      'chat',
+      'report',
+      'daily_reward',
+      'profile',
+      'landing',
     ],
     detection: {
       order: ['localStorage'],

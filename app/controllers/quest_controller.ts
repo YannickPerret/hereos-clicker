@@ -1,15 +1,12 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import Character from '#models/character'
 import QuestService from '#services/quest_service'
-import { localize } from '#services/locale_service'
 
 export default class QuestController {
   async index({ inertia, auth, locale }: HttpContext) {
-    const character = await Character.query()
-      .where('userId', auth.user!.id)
-      .firstOrFail()
+    const character = await Character.query().where('userId', auth.user!.id).firstOrFail()
 
-    const journal = await QuestService.getJournal(character)
+    const journal = await QuestService.getJournal(character, locale === 'en' ? 'en' : 'fr')
     await character.refresh()
 
     // Get flow states for all active advanced quests
@@ -25,56 +22,61 @@ export default class QuestController {
       }
     }
 
-    const localizedJournal = {
-      ...journal,
-      tracks: journal.tracks.map((track: any) => ({
-        ...track,
-        quests: track.quests.map((quest: any) => localize(quest, locale, ['title', 'summary', 'narrative'])),
-      })),
-    }
-
     return inertia.render('quests/index', {
       character: character.serialize(),
-      journal: localizedJournal,
+      journal,
       flowStates,
     })
   }
 
-  async advance({ request, response, auth, session }: HttpContext) {
-    const character = await Character.query()
-      .where('userId', auth.user!.id)
-      .firstOrFail()
+  async advance({ request, response, auth, session, locale }: HttpContext) {
+    const character = await Character.query().where('userId', auth.user!.id).firstOrFail()
 
     const questId = Number(request.param('questId'))
-    const result = await QuestService.advanceFlowStep(character, questId)
+    const result = await QuestService.advanceFlowStep(
+      character,
+      questId,
+      locale === 'en' ? 'en' : 'fr'
+    )
 
     if (result.event) {
-      session.flash('success', `Quete "${result.event.title}" terminee ! ${result.event.rewardLabel || ''}`)
+      session.flash(
+        'success',
+        locale === 'en'
+          ? `Quest "${result.event.title}" completed! ${result.event.rewardLabel || ''}`.trim()
+          : `Quete "${result.event.title}" terminee ! ${result.event.rewardLabel || ''}`.trim()
+      )
     }
 
     return response.json(result)
   }
 
-  async choose({ request, response, auth, session }: HttpContext) {
-    const character = await Character.query()
-      .where('userId', auth.user!.id)
-      .firstOrFail()
+  async choose({ request, response, auth, session, locale }: HttpContext) {
+    const character = await Character.query().where('userId', auth.user!.id).firstOrFail()
 
     const questId = Number(request.param('questId'))
     const optionIndex = Number(request.input('optionIndex', 0))
-    const result = await QuestService.makeFlowChoice(character, questId, optionIndex)
+    const result = await QuestService.makeFlowChoice(
+      character,
+      questId,
+      optionIndex,
+      locale === 'en' ? 'en' : 'fr'
+    )
 
     if (result.event) {
-      session.flash('success', `Quete "${result.event.title}" terminee ! ${result.event.rewardLabel || ''}`)
+      session.flash(
+        'success',
+        locale === 'en'
+          ? `Quest "${result.event.title}" completed! ${result.event.rewardLabel || ''}`.trim()
+          : `Quete "${result.event.title}" terminee ! ${result.event.rewardLabel || ''}`.trim()
+      )
     }
 
     return response.json(result)
   }
 
   async flowState({ request, response, auth }: HttpContext) {
-    const character = await Character.query()
-      .where('userId', auth.user!.id)
-      .firstOrFail()
+    const character = await Character.query().where('userId', auth.user!.id).firstOrFail()
 
     const questId = Number(request.param('questId'))
     const flowState = await QuestService.getFlowState(character.id, questId)

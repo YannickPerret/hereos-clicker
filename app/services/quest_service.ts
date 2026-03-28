@@ -8,6 +8,8 @@ import Season from '#models/season'
 import CompanionService from '#services/companion_service'
 import SeasonService from '#services/season_service'
 
+type SupportedLocale = 'fr' | 'en'
+
 type HackProgressPayload = {
   clicks: number
   creditsEarned: number
@@ -86,47 +88,53 @@ type QuestTrackJournal = {
 }
 
 export default class QuestService {
-  static async getPlaySummary(character: Character) {
+  static async getPlaySummary(character: Character, locale: SupportedLocale = 'fr') {
     const activeSeason = await SeasonService.getActiveSeason()
 
-    await this.ensureEligibleQuestsStarted(character.id, activeSeason)
+    await this.ensureEligibleQuestsStarted(character.id, activeSeason, undefined, locale)
     await this.advanceQuestProgress(
       character,
       { clicks: 0, creditsEarned: 0, level: character.level },
       [],
-      activeSeason
+      activeSeason,
+      locale
     )
-    await this.ensureEligibleQuestsStarted(character.id, activeSeason)
+    await this.ensureEligibleQuestsStarted(character.id, activeSeason, undefined, locale)
 
-    return this.buildSummary(character.id, activeSeason)
+    return this.buildSummary(character.id, activeSeason, locale)
   }
 
-  static async getJournal(character: Character) {
+  static async getJournal(character: Character, locale: SupportedLocale = 'fr') {
     const activeSeason = await SeasonService.getActiveSeason()
 
-    await this.ensureEligibleQuestsStarted(character.id, activeSeason)
+    await this.ensureEligibleQuestsStarted(character.id, activeSeason, undefined, locale)
     await this.advanceQuestProgress(
       character,
       { clicks: 0, creditsEarned: 0, level: character.level },
       [],
-      activeSeason
+      activeSeason,
+      locale
     )
-    await this.ensureEligibleQuestsStarted(character.id, activeSeason)
+    await this.ensureEligibleQuestsStarted(character.id, activeSeason, undefined, locale)
 
-    return this.buildJournal(character.id, activeSeason)
+    return this.buildJournal(character.id, activeSeason, locale)
   }
 
-  static async trackHackProgress(character: Character, payload: HackProgressPayload) {
+  static async trackHackProgress(
+    character: Character,
+    payload: HackProgressPayload,
+    locale: SupportedLocale = 'fr'
+  ) {
     const activeSeason = await SeasonService.getActiveSeason()
 
-    await this.ensureEligibleQuestsStarted(character.id, activeSeason)
+    await this.ensureEligibleQuestsStarted(character.id, activeSeason, undefined, locale)
 
     const events: QuestEvent[] = []
-    await this.advanceQuestProgress(character, payload, events, activeSeason)
-    await this.ensureEligibleQuestsStarted(character.id, activeSeason, events)
+    await this.advanceQuestProgress(character, payload, events, activeSeason, locale)
+    await this.ensureEligibleQuestsStarted(character.id, activeSeason, events, locale)
 
     return {
-      summary: await this.buildSummary(character.id, activeSeason),
+      summary: await this.buildSummary(character.id, activeSeason, locale),
       events,
     }
   }
@@ -139,7 +147,8 @@ export default class QuestService {
       | 'companion_activate'
       | 'pvp_match'
       | 'dungeon_floor_clear',
-    amount: number = 1
+    amount: number = 1,
+    locale: SupportedLocale = 'fr'
   ) {
     const payload: HackProgressPayload = {
       clicks: 0,
@@ -153,7 +162,7 @@ export default class QuestService {
     if (objectiveType === 'pvp_match') payload.pvpMatches = amount
     if (objectiveType === 'dungeon_floor_clear') payload.dungeonFloorClears = amount
 
-    return this.trackHackProgress(character, payload)
+    return this.trackHackProgress(character, payload, locale)
   }
 
   private static async getEligibleQuests(activeSeason: Season | null) {
@@ -179,7 +188,8 @@ export default class QuestService {
   private static async ensureEligibleQuestsStarted(
     characterId: number,
     activeSeason: Season | null,
-    events?: QuestEvent[]
+    events?: QuestEvent[],
+    locale: SupportedLocale = 'fr'
   ) {
     const quests = await this.getEligibleQuests(activeSeason)
     if (quests.length === 0) {
@@ -233,7 +243,7 @@ export default class QuestService {
       if (events) {
         events.push({
           type: 'unlocked',
-          title: quest.title,
+          title: this.localizedQuestField(quest.title, quest.titleEn, locale),
         })
       }
     }
@@ -243,7 +253,8 @@ export default class QuestService {
     character: Character,
     payload: HackProgressPayload,
     events: QuestEvent[],
-    activeSeason: Season | null
+    activeSeason: Season | null,
+    locale: SupportedLocale
   ) {
     const quests = await this.getEligibleQuests(activeSeason)
     if (quests.length === 0) {
@@ -287,7 +298,7 @@ export default class QuestService {
     }
 
     for (const state of toComplete) {
-      await this.completeQuest(character, state, events)
+      await this.completeQuest(character, state, events, locale)
     }
   }
 
@@ -346,7 +357,8 @@ export default class QuestService {
     if (objectiveType === 'reach_level') return Math.max(1, payload.level)
     if (objectiveType === 'shop_purchase') return Math.max(0, payload.shopPurchases || 0)
     if (objectiveType === 'companion_purchase') return Math.max(0, payload.companionPurchases || 0)
-    if (objectiveType === 'companion_activate') return Math.max(0, payload.companionActivations || 0)
+    if (objectiveType === 'companion_activate')
+      return Math.max(0, payload.companionActivations || 0)
     if (objectiveType === 'pvp_match') return Math.max(0, payload.pvpMatches || 0)
     if (objectiveType === 'dungeon_floor_clear') return Math.max(0, payload.dungeonFloorClears || 0)
     return 0
@@ -355,22 +367,23 @@ export default class QuestService {
   private static async completeQuest(
     character: Character,
     state: CharacterQuest,
-    events: QuestEvent[]
+    events: QuestEvent[],
+    locale: SupportedLocale
   ) {
     state.status = 'completed'
     state.progress = state.quest.targetValue
     state.completedAt = DateTime.now()
     await state.save()
 
-    const rewardLabel = await this.grantReward(character, state.quest)
+    const rewardLabel = await this.grantReward(character, state.quest, locale)
     events.push({
       type: 'completed',
-      title: state.quest.title,
+      title: this.localizedQuestField(state.quest.title, state.quest.titleEn, locale),
       rewardLabel,
     })
   }
 
-  private static async grantReward(character: Character, quest: Quest) {
+  private static async grantReward(character: Character, quest: Quest, locale: SupportedLocale) {
     const rewards = this.parseRewards(quest)
 
     for (const reward of rewards) {
@@ -414,10 +427,14 @@ export default class QuestService {
     }
 
     await character.save()
-    return this.getRewardLabel(quest)
+    return this.getRewardLabel(quest, locale)
   }
 
-  private static async buildSummary(characterId: number, activeSeason: Season | null) {
+  private static async buildSummary(
+    characterId: number,
+    activeSeason: Season | null,
+    locale: SupportedLocale
+  ) {
     const quests = await this.getEligibleQuests(activeSeason)
     const states =
       quests.length === 0
@@ -435,7 +452,8 @@ export default class QuestService {
         quests.filter((quest) => quest.questType === 'main'),
         states.filter((state) => state.quest.questType === 'main'),
         'main',
-        null
+        null,
+        locale
       ),
       seasonalTrack: activeSeason
         ? this.buildTrackSummary(
@@ -447,13 +465,18 @@ export default class QuestService {
                 state.quest.questType === 'seasonal' && state.quest.seasonId === activeSeason.id
             ),
             'seasonal',
-            activeSeason
+            activeSeason,
+            locale
           )
         : null,
     }
   }
 
-  private static async buildJournal(characterId: number, activeSeason: Season | null) {
+  private static async buildJournal(
+    characterId: number,
+    activeSeason: Season | null,
+    locale: SupportedLocale
+  ) {
     const quests = await this.getEligibleQuests(activeSeason)
     const states =
       quests.length === 0
@@ -473,7 +496,7 @@ export default class QuestService {
     const mainQuests = quests.filter((quest) => quest.questType === 'main')
     const mainStates = states.filter((state) => state.quest.questType === 'main')
     if (mainQuests.length > 0) {
-      tracks.push(this.buildTrackJournal(mainQuests, mainStates, 'main', null))
+      tracks.push(this.buildTrackJournal(mainQuests, mainStates, 'main', null, locale))
     }
 
     if (activeSeason) {
@@ -485,7 +508,7 @@ export default class QuestService {
       )
       if (seasonalQuests.length > 0) {
         tracks.push(
-          this.buildTrackJournal(seasonalQuests, seasonalStates, 'seasonal', activeSeason)
+          this.buildTrackJournal(seasonalQuests, seasonalStates, 'seasonal', activeSeason, locale)
         )
       }
     }
@@ -499,7 +522,8 @@ export default class QuestService {
     quests: Quest[],
     states: CharacterQuest[],
     questType: 'main' | 'seasonal',
-    season: Season | null
+    season: Season | null,
+    locale: SupportedLocale
   ): QuestTrackSummary {
     if (quests.length === 0) {
       return null
@@ -516,25 +540,41 @@ export default class QuestService {
       title:
         questType === 'main'
           ? quests[0].arcTitle
-          : season?.campaignTitle || season?.name || quests[0].arcTitle,
+          : this.localizedQuestField(
+              season?.campaignTitle || season?.name || quests[0].arcTitle,
+              season?.campaignTitleEn || season?.nameEn || null,
+              locale
+            ),
       subtitle:
         questType === 'main'
-          ? 'Quete principale'
-          : `Saison active${season?.name ? ` • ${season.name}` : ''}`,
+          ? locale === 'en'
+            ? 'Main quest'
+            : 'Quete principale'
+          : locale === 'en'
+            ? `Active season${season?.nameEn || season?.name ? ` • ${season?.nameEn || season?.name}` : ''}`
+            : `Saison active${season?.name ? ` • ${season.name}` : ''}`,
       completedCount: states.filter((state) => state.status === 'completed').length,
       totalCount: quests.length,
       activeQuest: activeState
         ? {
             id: activeState.id,
             key: activeState.quest.key,
-            title: activeState.quest.title,
-            summary: activeState.quest.summary,
+            title: this.localizedQuestField(
+              activeState.quest.title,
+              activeState.quest.titleEn,
+              locale
+            ),
+            summary: this.localizedQuestField(
+              activeState.quest.summary,
+              activeState.quest.summaryEn,
+              locale
+            ),
             giverName: activeState.quest.giverName,
             icon: activeState.quest.icon,
             progress: activeState.progress,
             targetValue: activeState.quest.targetValue,
-            objectiveLabel: this.getObjectiveLabel(activeState.quest),
-            rewardLabel: this.getRewardLabel(activeState.quest),
+            objectiveLabel: this.getObjectiveLabel(activeState.quest, locale),
+            rewardLabel: this.getRewardLabel(activeState.quest, locale),
           }
         : null,
     }
@@ -544,7 +584,8 @@ export default class QuestService {
     quests: Quest[],
     states: CharacterQuest[],
     questType: 'main' | 'seasonal',
-    season: Season | null
+    season: Season | null,
+    locale: SupportedLocale
   ): QuestTrackJournal {
     const stateByQuestId = new Map(states.map((state) => [state.questId, state]))
     const completedQuestIds = new Set(
@@ -569,32 +610,41 @@ export default class QuestService {
         mode: quest.mode || 'simple',
         questType: quest.questType,
         seasonId: quest.seasonId,
-        seasonName: quest.season?.name || season?.name || null,
-        title: quest.title,
-        titleEn: quest.titleEn,
-        summary: quest.summary,
-        summaryEn: quest.summaryEn,
-        narrative: quest.narrative,
-        narrativeEn: quest.narrativeEn,
+        seasonName:
+          locale === 'en'
+            ? quest.season?.nameEn || quest.season?.name || season?.nameEn || season?.name || null
+            : quest.season?.name || season?.name || null,
+        title: this.localizedQuestField(quest.title, quest.titleEn, locale),
+        summary: this.localizedQuestField(quest.summary, quest.summaryEn, locale),
+        narrative: this.localizedQuestField(quest.narrative, quest.narrativeEn, locale),
         giverName: quest.giverName,
         icon: quest.icon,
         sortOrder: quest.sortOrder,
         status,
         progress: state?.progress || 0,
         targetValue: quest.targetValue,
-        objectiveLabel: this.getObjectiveLabel(quest),
-        rewardLabel: this.getRewardLabel(quest),
-        parentQuestTitle: quest.parentQuest?.title || null,
+        objectiveLabel: this.getObjectiveLabel(quest, locale),
+        rewardLabel: this.getRewardLabel(quest, locale),
+        parentQuestTitle: quest.parentQuest
+          ? this.localizedQuestField(quest.parentQuest.title, quest.parentQuest.titleEn, locale)
+          : null,
       }
     })
 
-    const summary = this.buildTrackSummary(quests, states, questType, season)
+    const summary = this.buildTrackSummary(quests, states, questType, season, locale)
 
     return {
       questType,
       trackKey: summary?.trackKey || questType,
       title:
-        summary?.title || (questType === 'main' ? 'Quete principale' : season?.name || 'Saison'),
+        summary?.title ||
+        (questType === 'main'
+          ? locale === 'en'
+            ? 'Main quest'
+            : 'Quete principale'
+          : locale === 'en'
+            ? season?.nameEn || season?.name || 'Season'
+            : season?.name || 'Saison'),
       subtitle: summary?.subtitle || '',
       completedCount: summary?.completedCount || 0,
       totalCount: summary?.totalCount || quests.length,
@@ -603,60 +653,82 @@ export default class QuestService {
     }
   }
 
-  private static getObjectiveLabel(quest: Quest) {
+  private static getObjectiveLabel(quest: Quest, locale: SupportedLocale) {
     if (quest.objectiveType === 'hack_clicks') {
-      return `Executer ${quest.targetValue.toLocaleString('fr-FR')} hacks`
+      return locale === 'en'
+        ? `Execute ${quest.targetValue.toLocaleString('en-US')} hacks`
+        : `Executer ${quest.targetValue.toLocaleString('fr-FR')} hacks`
     }
 
     if (quest.objectiveType === 'hack_credits') {
-      return `Siphonner ${quest.targetValue.toLocaleString('fr-FR')} credits`
+      return locale === 'en'
+        ? `Siphon ${quest.targetValue.toLocaleString('en-US')} credits`
+        : `Siphonner ${quest.targetValue.toLocaleString('fr-FR')} credits`
     }
 
     if (quest.objectiveType === 'reach_level') {
-      return `Atteindre le niveau ${quest.targetValue}`
+      return locale === 'en'
+        ? `Reach level ${quest.targetValue}`
+        : `Atteindre le niveau ${quest.targetValue}`
     }
 
     if (quest.objectiveType === 'shop_purchase') {
-      return `Acheter ${quest.targetValue.toLocaleString('fr-FR')} item${quest.targetValue > 1 ? 's' : ''} au shop`
+      return locale === 'en'
+        ? `Buy ${quest.targetValue.toLocaleString('en-US')} shop item${quest.targetValue > 1 ? 's' : ''}`
+        : `Acheter ${quest.targetValue.toLocaleString('fr-FR')} item${quest.targetValue > 1 ? 's' : ''} au shop`
     }
 
     if (quest.objectiveType === 'companion_purchase') {
-      return `Acheter ${quest.targetValue.toLocaleString('fr-FR')} drone${quest.targetValue > 1 ? 's' : ''}`
+      return locale === 'en'
+        ? `Buy ${quest.targetValue.toLocaleString('en-US')} drone${quest.targetValue > 1 ? 's' : ''}`
+        : `Acheter ${quest.targetValue.toLocaleString('fr-FR')} drone${quest.targetValue > 1 ? 's' : ''}`
     }
 
     if (quest.objectiveType === 'companion_activate') {
-      return `Installer ${quest.targetValue.toLocaleString('fr-FR')} drone${quest.targetValue > 1 ? 's' : ''}`
+      return locale === 'en'
+        ? `Activate ${quest.targetValue.toLocaleString('en-US')} drone${quest.targetValue > 1 ? 's' : ''}`
+        : `Installer ${quest.targetValue.toLocaleString('fr-FR')} drone${quest.targetValue > 1 ? 's' : ''}`
     }
 
     if (quest.objectiveType === 'pvp_match') {
-      return `Terminer ${quest.targetValue.toLocaleString('fr-FR')} combat${quest.targetValue > 1 ? 's' : ''} PvP`
+      return locale === 'en'
+        ? `Finish ${quest.targetValue.toLocaleString('en-US')} PvP match${quest.targetValue > 1 ? 'es' : ''}`
+        : `Terminer ${quest.targetValue.toLocaleString('fr-FR')} combat${quest.targetValue > 1 ? 's' : ''} PvP`
     }
 
     if (quest.objectiveType === 'dungeon_floor_clear') {
-      return `Terminer ${quest.targetValue.toLocaleString('fr-FR')} floor${quest.targetValue > 1 ? 's' : ''}`
+      return locale === 'en'
+        ? `Clear ${quest.targetValue.toLocaleString('en-US')} floor${quest.targetValue > 1 ? 's' : ''}`
+        : `Terminer ${quest.targetValue.toLocaleString('fr-FR')} floor${quest.targetValue > 1 ? 's' : ''}`
     }
 
-    return `Objectif ${quest.targetValue}`
+    return locale === 'en' ? `Objective ${quest.targetValue}` : `Objectif ${quest.targetValue}`
   }
 
-  private static getRewardLabel(quest: Quest) {
+  private static getRewardLabel(quest: Quest, locale: SupportedLocale) {
     const rewards = this.parseRewards(quest)
     if (rewards.length === 0) {
-      return 'Aucune recompense'
+      return locale === 'en' ? 'No reward' : 'Aucune recompense'
     }
 
     return rewards
       .map((reward) => {
         if (reward.type === 'credits') {
-          return `+${reward.value.toLocaleString('fr-FR')} credits`
+          return locale === 'en'
+            ? `+${reward.value.toLocaleString('en-US')} credits`
+            : `+${reward.value.toLocaleString('fr-FR')} credits`
         }
 
         if (reward.type === 'xp') {
-          return `+${reward.value.toLocaleString('fr-FR')} XP`
+          return locale === 'en'
+            ? `+${reward.value.toLocaleString('en-US')} XP`
+            : `+${reward.value.toLocaleString('fr-FR')} XP`
         }
 
         if (reward.type === 'talent_points') {
-          return `+${reward.value} point${reward.value > 1 ? 's' : ''} de talent`
+          return locale === 'en'
+            ? `+${reward.value} talent point${reward.value > 1 ? 's' : ''}`
+            : `+${reward.value} point${reward.value > 1 ? 's' : ''} de talent`
         }
 
         if (reward.type === 'item') {
@@ -666,6 +738,14 @@ export default class QuestService {
         return `+${reward.value}`
       })
       .join(' • ')
+  }
+
+  private static localizedQuestField(
+    defaultValue: string | null | undefined,
+    englishValue: string | null | undefined,
+    locale: SupportedLocale
+  ) {
+    return locale === 'en' ? englishValue || defaultValue || '' : defaultValue || englishValue || ''
   }
 
   private static parseRewards(quest: Quest): QuestReward[] {
@@ -748,7 +828,11 @@ export default class QuestService {
     }
   }
 
-  static async advanceFlowStep(character: Character, questId: number): Promise<{ success: boolean; event?: QuestEvent; flowState?: any }> {
+  static async advanceFlowStep(
+    character: Character,
+    questId: number,
+    locale: SupportedLocale = 'fr'
+  ): Promise<{ success: boolean; event?: QuestEvent; flowState?: any }> {
     const state = await CharacterQuest.query()
       .where('characterId', character.id)
       .where('questId', questId)
@@ -786,10 +870,15 @@ export default class QuestService {
       // All lines read, fall through to advance to next step
     }
 
-    return this.moveToNextStep(character, state, currentStep, steps)
+    return this.moveToNextStep(character, state, currentStep, steps, locale)
   }
 
-  static async makeFlowChoice(character: Character, questId: number, optionIndex: number): Promise<{ success: boolean; event?: QuestEvent; flowState?: any }> {
+  static async makeFlowChoice(
+    character: Character,
+    questId: number,
+    optionIndex: number,
+    locale: SupportedLocale = 'fr'
+  ): Promise<{ success: boolean; event?: QuestEvent; flowState?: any }> {
     const state = await CharacterQuest.query()
       .where('characterId', character.id)
       .where('questId', questId)
@@ -828,10 +917,13 @@ export default class QuestService {
     }
 
     // No next step from choice — try sortOrder fallback or complete
-    return this.moveToNextStep(character, state, currentStep, steps)
+    return this.moveToNextStep(character, state, currentStep, steps, locale)
   }
 
-  static async checkFlowObjectiveProgress(character: Character, questId: number): Promise<{ success: boolean; event?: QuestEvent; flowState?: any }> {
+  static async checkFlowObjectiveProgress(
+    character: Character,
+    questId: number
+  ): Promise<{ success: boolean; event?: QuestEvent; flowState?: any }> {
     const state = await CharacterQuest.query()
       .where('characterId', character.id)
       .where('questId', questId)
@@ -855,13 +947,16 @@ export default class QuestService {
     const progress = stepState.progress || 0
 
     if (progress >= (content.targetValue || 1)) {
-      return this.moveToNextStep(character, state, currentStep, steps)
+      return this.moveToNextStep(character, state, currentStep, steps, 'fr')
     }
 
     return { success: false, flowState: await this.getFlowState(character.id, questId) }
   }
 
-  static async checkFlowWaitProgress(character: Character, questId: number): Promise<{ success: boolean; event?: QuestEvent; flowState?: any }> {
+  static async checkFlowWaitProgress(
+    character: Character,
+    questId: number
+  ): Promise<{ success: boolean; event?: QuestEvent; flowState?: any }> {
     const state = await CharacterQuest.query()
       .where('characterId', character.id)
       .where('questId', questId)
@@ -896,7 +991,7 @@ export default class QuestService {
     const endTime = waitStart.plus({ [unit]: duration })
 
     if (DateTime.now() >= endTime) {
-      return this.moveToNextStep(character, state, currentStep, steps)
+      return this.moveToNextStep(character, state, currentStep, steps, 'fr')
     }
 
     return { success: false, flowState: await this.getFlowState(character.id, questId) }
@@ -933,7 +1028,7 @@ export default class QuestService {
       // Auto-advance if objective completed
       if (newProgress >= (content.targetValue || 1)) {
         const steps = state.quest.flowSteps.sort((a, b) => a.sortOrder - b.sortOrder)
-        await this.moveToNextStep(character, state, currentStep, steps)
+        await this.moveToNextStep(character, state, currentStep, steps, 'fr')
       }
     }
   }
@@ -942,7 +1037,8 @@ export default class QuestService {
     character: Character,
     state: CharacterQuest,
     currentStep: QuestFlowStep,
-    steps: QuestFlowStep[]
+    steps: QuestFlowStep[],
+    locale: SupportedLocale
   ): Promise<{ success: boolean; event?: QuestEvent; flowState?: any }> {
     // Determine next step: explicit nextStepId or next by sortOrder
     let nextStep: QuestFlowStep | undefined
@@ -972,7 +1068,7 @@ export default class QuestService {
 
     // No more steps — quest complete
     const events: QuestEvent[] = []
-    await this.completeQuest(character, state, events)
+    await this.completeQuest(character, state, events, locale)
 
     return {
       success: true,

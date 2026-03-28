@@ -1,8 +1,8 @@
-import { useForm, Link } from '@inertiajs/react'
+import { Link, useForm } from '@inertiajs/react'
 import { Trans, useTranslation } from 'react-i18next'
 import LanguageSwitcher from '~/components/language_switcher'
 
-export default function Register() {
+export default function UpgradeGuest() {
   const { t } = useTranslation('auth')
   const { data, setData, post, processing, errors } = useForm({
     username: '',
@@ -14,10 +14,10 @@ export default function Register() {
   const passwordMismatch =
     data.passwordConfirmation.length > 0 && data.password !== data.passwordConfirmation
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
+  function handleSubmit(event: React.FormEvent) {
+    event.preventDefault()
     if (passwordMismatch) return
-    post('/register')
+    post('/account/upgrade')
   }
 
   return (
@@ -29,7 +29,7 @@ export default function Register() {
         className="absolute inset-0 opacity-10"
         style={{
           backgroundImage:
-            'linear-gradient(rgba(255,0,255,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(255,0,255,0.3) 1px, transparent 1px)',
+            'linear-gradient(rgba(0,240,255,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(0,240,255,0.3) 1px, transparent 1px)',
           backgroundSize: '60px 60px',
         }}
       />
@@ -41,66 +41,66 @@ export default function Register() {
           className="mx-auto mb-3 h-20 w-auto object-contain"
         />
         <p className="text-center text-gray-500 mb-6 text-sm tracking-widest uppercase">
-          {t('register.subtitle')}
+          {t('upgrade.subtitle')}
         </p>
 
-        <div className="mb-8 rounded-lg border border-cyber-pink/15 bg-cyber-dark/50 px-5 py-4 text-center backdrop-blur-sm">
-          <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.35em] text-cyber-pink">
-            {t('pitch.headline')}
+        <div className="mb-8 rounded-lg border border-cyber-blue/15 bg-cyber-dark/50 px-5 py-4 text-center backdrop-blur-sm">
+          <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.35em] text-cyber-blue">
+            {t('upgrade.headline')}
           </div>
-          <p className="text-xs leading-relaxed text-gray-400">{t('pitch.description')}</p>
+          <p className="text-xs leading-relaxed text-gray-400">{t('upgrade.description')}</p>
         </div>
 
         <form
           onSubmit={handleSubmit}
-          className="bg-cyber-dark border border-cyber-pink/30 rounded-lg p-8 neon-border-pink"
+          className="bg-cyber-dark border border-cyber-blue/30 rounded-lg p-8 neon-border"
         >
           <div className="space-y-5">
             <div>
-              <label className="block text-xs uppercase tracking-wider text-cyber-pink mb-2">
-                {t('register.username')}
+              <label className="block text-xs uppercase tracking-wider text-cyber-blue mb-2">
+                {t('upgrade.username')}
               </label>
               <input
                 type="text"
                 value={data.username}
                 onChange={(e) => setData('username', e.target.value)}
-                className="w-full bg-cyber-black border border-cyber-pink/30 rounded px-4 py-2.5 text-white focus:border-cyber-pink focus:outline-none transition-all"
-                placeholder={t('register.placeholderUsername')}
+                className="w-full bg-cyber-black border border-cyber-blue/30 rounded px-4 py-2.5 text-white focus:border-cyber-blue focus:outline-none transition-all"
+                placeholder={t('upgrade.placeholderUsername')}
               />
               {errors.username && <p className="text-cyber-red text-xs mt-1">{errors.username}</p>}
             </div>
 
             <div>
-              <label className="block text-xs uppercase tracking-wider text-cyber-pink mb-2">
-                {t('register.email')}
+              <label className="block text-xs uppercase tracking-wider text-cyber-blue mb-2">
+                {t('upgrade.email')}
               </label>
               <input
                 type="email"
                 value={data.email}
                 onChange={(e) => setData('email', e.target.value)}
-                className="w-full bg-cyber-black border border-cyber-pink/30 rounded px-4 py-2.5 text-white focus:border-cyber-pink focus:outline-none transition-all"
-                placeholder={t('register.placeholderEmail')}
+                className="w-full bg-cyber-black border border-cyber-blue/30 rounded px-4 py-2.5 text-white focus:border-cyber-blue focus:outline-none transition-all"
+                placeholder={t('upgrade.placeholderEmail')}
               />
               {errors.email && <p className="text-cyber-red text-xs mt-1">{errors.email}</p>}
             </div>
 
             <div>
-              <label className="block text-xs uppercase tracking-wider text-cyber-pink mb-2">
-                {t('register.password')}
+              <label className="block text-xs uppercase tracking-wider text-cyber-blue mb-2">
+                {t('upgrade.password')}
               </label>
               <input
                 type="password"
                 value={data.password}
                 onChange={(e) => setData('password', e.target.value)}
-                className="w-full bg-cyber-black border border-cyber-pink/30 rounded px-4 py-2.5 text-white focus:border-cyber-pink focus:outline-none transition-all"
-                placeholder={t('register.placeholderPassword')}
+                className="w-full bg-cyber-black border border-cyber-blue/30 rounded px-4 py-2.5 text-white focus:border-cyber-blue focus:outline-none transition-all"
+                placeholder={t('upgrade.placeholderPassword')}
               />
               {errors.password && <p className="text-cyber-red text-xs mt-1">{errors.password}</p>}
             </div>
 
             <div>
-              <label className="block text-xs uppercase tracking-wider text-cyber-pink mb-2">
-                {t('register.passwordConfirmation')}
+              <label className="block text-xs uppercase tracking-wider text-cyber-blue mb-2">
+                {t('upgrade.passwordConfirmation')}
               </label>
               <input
                 type="password"
@@ -109,39 +109,23 @@ export default function Register() {
                 className={`w-full bg-cyber-black border rounded px-4 py-2.5 text-white focus:outline-none transition-all ${
                   passwordMismatch
                     ? 'border-cyber-red/50 focus:border-cyber-red'
-                    : 'border-cyber-pink/30 focus:border-cyber-pink'
+                    : 'border-cyber-blue/30 focus:border-cyber-blue'
                 }`}
-                placeholder={t('register.placeholderPasswordConfirmation')}
+                placeholder={t('upgrade.placeholderPasswordConfirmation')}
               />
               {passwordMismatch && (
-                <p className="text-cyber-red text-xs mt-1">{t('register.passwordMismatch')}</p>
+                <p className="text-cyber-red text-xs mt-1">{t('upgrade.passwordMismatch')}</p>
               )}
             </div>
 
             <button
               type="submit"
               disabled={processing || passwordMismatch || !data.passwordConfirmation}
-              className="w-full py-3 bg-cyber-pink/20 border border-cyber-pink text-cyber-pink font-bold uppercase tracking-widest rounded hover:bg-cyber-pink/30 transition-all disabled:opacity-50 neon-border-pink"
+              className="w-full py-3 bg-cyber-blue/20 border border-cyber-blue text-cyber-blue font-bold uppercase tracking-widest rounded hover:bg-cyber-blue/30 transition-all disabled:opacity-50 neon-border"
             >
-              {processing ? t('register.submitting') : t('register.submit')}
+              {processing ? t('upgrade.submitting') : t('upgrade.submit')}
             </button>
-
-            <Link
-              href="/guest"
-              method="post"
-              as="button"
-              className="w-full py-3 bg-cyber-blue/10 border border-cyber-blue/40 text-cyber-blue font-bold uppercase tracking-widest rounded hover:bg-cyber-blue/20 transition-all"
-            >
-              {t('register.guest')}
-            </Link>
           </div>
-
-          <p className="text-center text-gray-500 text-sm mt-6">
-            {t('register.alreadyRegistered')}{' '}
-            <Link href="/login" className="text-cyber-blue hover:underline">
-              {t('register.login')}
-            </Link>
-          </p>
         </form>
       </div>
 
@@ -154,9 +138,6 @@ export default function Register() {
               privacy: <Link href="/privacy" className="text-cyber-pink hover:underline" />,
             }}
           />
-        </p>
-        <p className="text-[10px] uppercase tracking-[0.3em] text-gray-700">
-          HEREOS &copy; 2025 - All rights reserved
         </p>
       </footer>
     </div>

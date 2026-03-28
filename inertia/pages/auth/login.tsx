@@ -20,10 +20,12 @@ export default function Login() {
         <LanguageSwitcher />
       </div>
       {/* Grid background */}
-      <div className="absolute inset-0 opacity-10"
+      <div
+        className="absolute inset-0 opacity-10"
         style={{
-          backgroundImage: 'linear-gradient(rgba(0,240,255,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(0,240,255,0.3) 1px, transparent 1px)',
-          backgroundSize: '60px 60px'
+          backgroundImage:
+            'linear-gradient(rgba(0,240,255,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(0,240,255,0.3) 1px, transparent 1px)',
+          backgroundSize: '60px 60px',
         }}
       />
 
@@ -41,15 +43,18 @@ export default function Login() {
           <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.35em] text-cyber-blue">
             {t('pitch.headline')}
           </div>
-          <p className="text-xs leading-relaxed text-gray-400">
-            {t('pitch.description')}
-          </p>
+          <p className="text-xs leading-relaxed text-gray-400">{t('pitch.description')}</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-cyber-dark border border-cyber-blue/30 rounded-lg p-8 neon-border">
+        <form
+          onSubmit={handleSubmit}
+          className="bg-cyber-dark border border-cyber-blue/30 rounded-lg p-8 neon-border"
+        >
           <div className="space-y-5">
             <div>
-              <label className="block text-xs uppercase tracking-wider text-cyber-blue mb-2">{t('login.email')}</label>
+              <label className="block text-xs uppercase tracking-wider text-cyber-blue mb-2">
+                {t('login.email')}
+              </label>
               <input
                 type="email"
                 value={data.email}
@@ -61,7 +66,9 @@ export default function Login() {
             </div>
 
             <div>
-              <label className="block text-xs uppercase tracking-wider text-cyber-blue mb-2">{t('login.password')}</label>
+              <label className="block text-xs uppercase tracking-wider text-cyber-blue mb-2">
+                {t('login.password')}
+              </label>
               <input
                 type="password"
                 value={data.password}
@@ -83,6 +90,15 @@ export default function Login() {
             >
               {processing ? t('login.submitting') : t('login.submit')}
             </button>
+
+            <Link
+              href="/guest"
+              method="post"
+              as="button"
+              className="w-full py-3 bg-cyber-pink/10 border border-cyber-pink/40 text-cyber-pink font-bold uppercase tracking-widest rounded hover:bg-cyber-pink/20 transition-all"
+            >
+              {t('login.guest')}
+            </Link>
           </div>
 
           <p className="text-center text-gray-500 text-sm mt-6">
@@ -96,13 +112,16 @@ export default function Login() {
 
       <footer className="relative z-10 mt-auto pb-6 pt-8 text-center text-gray-600 space-y-2">
         <p className="text-[11px]">
-          <Trans i18nKey="auth:legal.notice" components={{
-            terms: <Link href="/terms" className="text-cyber-blue hover:underline" />,
-            privacy: <Link href="/privacy" className="text-cyber-pink hover:underline" />,
-          }} />
+          <Trans
+            i18nKey="auth:legal.notice"
+            components={{
+              terms: <Link href="/terms" className="text-cyber-blue hover:underline" />,
+              privacy: <Link href="/privacy" className="text-cyber-pink hover:underline" />,
+            }}
+          />
         </p>
         <p className="text-[10px] uppercase tracking-[0.3em] text-gray-700">
-          HEREOS &copy; 2025 &mdash; All rights reserved
+          HEREOS &copy; 2025 - All rights reserved
         </p>
       </footer>
     </div>

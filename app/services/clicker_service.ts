@@ -32,11 +32,14 @@ const HUMAN_BATCH_TOLERANCE = 160
 const BOT_TIMING_STDDEV_THRESHOLD = 8
 const BOT_INTERVAL_THRESHOLD = 300
 
+type ClickerLocale = 'fr' | 'en'
+
 export default class ClickerService {
   /** Anti-cheat: check if user is rate-limited or showing bot patterns */
   static checkAntiCheat(
     userId: number,
-    clickCount: number
+    clickCount: number,
+    locale: ClickerLocale = 'fr'
   ): { allowed: boolean; reason?: string; penaltySeconds?: number } {
     const now = Date.now()
 
@@ -50,7 +53,7 @@ export default class ClickerService {
       const remaining = Math.ceil((record.penaltyUntil - now) / 1000)
       return {
         allowed: false,
-        reason: 'Activite suspecte detectee. Attends avant de continuer.',
+        reason: this.message('suspiciousActivity', locale),
         penaltySeconds: remaining,
       }
     }
@@ -74,11 +77,11 @@ export default class ClickerService {
         record.warnings = 0
         return {
           allowed: false,
-          reason: 'Trop de requetes de clic. Petite pause imposee.',
+          reason: this.message('tooManyClickRequests', locale),
           penaltySeconds: Math.ceil(PENALTY_DURATION / 1000),
         }
       }
-      return { allowed: false, reason: 'Trop rapide. Ralentis un peu.' }
+      return { allowed: false, reason: this.message('tooFastSlowDown', locale) }
     }
 
     // Pattern detection:
@@ -112,11 +115,11 @@ export default class ClickerService {
             record.warnings = 0
             return {
               allowed: false,
-              reason: 'Pattern automatise detecte. Petite pause imposee.',
+              reason: this.message('automatedPattern', locale),
               penaltySeconds: Math.ceil(PENALTY_DURATION / 1000),
             }
           }
-          return { allowed: false, reason: 'Pattern suspect detecte.' }
+          return { allowed: false, reason: this.message('suspiciousPattern', locale) }
         }
       }
     }
@@ -133,7 +136,38 @@ export default class ClickerService {
     return { allowed: true }
   }
 
-  static async processClicks(character: Character, clickCount: number) {
+  private static message(key: string, locale: ClickerLocale) {
+    const messages: Record<string, Record<ClickerLocale, string>> = {
+      suspiciousActivity: {
+        fr: 'Activite suspecte detectee. Attends avant de continuer.',
+        en: 'Suspicious activity detected. Wait a moment before continuing.',
+      },
+      tooManyClickRequests: {
+        fr: 'Trop de requetes de clic. Petite pause imposee.',
+        en: 'Too many click requests. Short cooldown applied.',
+      },
+      tooFastSlowDown: {
+        fr: 'Trop rapide. Ralentis un peu.',
+        en: 'Too fast. Slow down a bit.',
+      },
+      automatedPattern: {
+        fr: 'Pattern automatise detecte. Petite pause imposee.',
+        en: 'Automated pattern detected. Short cooldown applied.',
+      },
+      suspiciousPattern: {
+        fr: 'Pattern suspect detecte.',
+        en: 'Suspicious pattern detected.',
+      },
+    }
+
+    return messages[key]?.[locale] || messages[key]?.fr || key
+  }
+
+  static async processClicks(
+    character: Character,
+    clickCount: number,
+    locale: ClickerLocale = 'fr'
+  ) {
     const validClicks = Math.min(Math.max(1, Math.floor(clickCount)), MAX_CLICKS_PER_BATCH)
 
     const equipBonuses = await this.calculateEquipBonuses(character)
@@ -168,11 +202,15 @@ export default class ClickerService {
     DailyMissionService.trackProgress(character.id, 'click', validClicks).catch(() => {})
     DailyMissionService.trackProgress(character.id, 'earn_credits', creditsEarned).catch(() => {})
 
-    const questUpdate = await QuestService.trackHackProgress(character, {
-      clicks: validClicks,
-      creditsEarned,
-      level: character.level,
-    })
+    const questUpdate = await QuestService.trackHackProgress(
+      character,
+      {
+        clicks: validClicks,
+        creditsEarned,
+        level: character.level,
+      },
+      locale
+    )
 
     transmit.broadcast('game/leaderboard', {
       characterId: character.id,

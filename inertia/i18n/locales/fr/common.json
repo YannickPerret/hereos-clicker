@@ -50,6 +50,7 @@
     "crit": "CRIT%",
     "critDmg": "CRIT DMG",
     "credits": "Credits",
+    "clicks": "Clicks",
     "level": "Niveau",
     "xp": "XP"
   },
@@ -95,6 +96,7 @@
     "friendRequestAccepted": "Demande d'ami acceptee",
     "friendRemoved": "Ami retire",
     "missionClaimed": "Mission reclamee",
-    "rewardClaimed": "Recompense reclamee"
+    "rewardClaimed": "Recompense reclamee",
+    "guestAccountUpgraded": "Compte invite converti"
   }
 }

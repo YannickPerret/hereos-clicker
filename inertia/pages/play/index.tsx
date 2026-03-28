@@ -100,7 +100,6 @@ interface Props {
   } | null
 }
 
-
 const RARITY_TEXT: Record<string, string> = {
   common: 'text-gray-400',
   uncommon: 'text-cyber-green',
@@ -108,7 +107,6 @@ const RARITY_TEXT: Record<string, string> = {
   epic: 'text-cyber-purple',
   legendary: 'text-cyber-yellow',
 }
-
 
 const SPEC_STYLE: Record<string, { color: string; border: string }> = {
   hacker: { color: 'text-cyber-green', border: 'border-cyber-green/30' },
@@ -160,7 +158,9 @@ function QuestTrackCard({
           <div className={`text-[10px] uppercase tracking-[0.28em] ${accentClasses.text}`}>
             {track.subtitle}
           </div>
-          <h3 className="text-sm font-bold uppercase tracking-widest text-white mt-1">{track.title}</h3>
+          <h3 className="text-sm font-bold uppercase tracking-widest text-white mt-1">
+            {track.title}
+          </h3>
         </div>
         <button
           type="button"
@@ -177,10 +177,14 @@ function QuestTrackCard({
 
       {track.activeQuest ? (
         <div className={`rounded-lg border bg-cyber-black/40 p-3 ${accentClasses.inner}`}>
-          <div className="text-[10px] uppercase tracking-[0.24em] text-gray-500 mb-1">{t('play:active')}</div>
+          <div className="text-[10px] uppercase tracking-[0.24em] text-gray-500 mb-1">
+            {t('play:active')}
+          </div>
           <div className={`text-sm font-bold ${accentClasses.text}`}>{track.activeQuest.title}</div>
           <div className="text-xs text-gray-400 mt-1">{track.activeQuest.summary}</div>
-          <div className="text-[11px] text-cyber-yellow mt-3">{track.activeQuest.objectiveLabel}</div>
+          <div className="text-[11px] text-cyber-yellow mt-3">
+            {track.activeQuest.objectiveLabel}
+          </div>
           <div className="mt-2 flex justify-between text-[10px] text-gray-500">
             <span>{track.activeQuest.rewardLabel}</span>
             <span>
@@ -220,9 +224,9 @@ export default function Play({
   const [char, setChar] = useState(activeCharacter)
   const [liveLeaderboard, setLiveLeaderboard] = useState(leaderboard)
   const [questSummary, setQuestSummary] = useState(initialQuestSummary)
-  const [questEvents, setQuestEvents] = useState<{ type: string; title: string; rewardLabel?: string }[]>(
-    []
-  )
+  const [questEvents, setQuestEvents] = useState<
+    { type: string; title: string; rewardLabel?: string }[]
+  >([])
   const [particles, setParticles] = useState<{ id: number; x: number; y: number; value: number }[]>(
     []
   )
@@ -401,7 +405,7 @@ export default function Play({
         <div className="flex items-center justify-center min-h-[70vh]">
           <div className="bg-cyber-dark border border-cyber-blue/30 rounded-lg p-8 max-w-md w-full neon-border">
             <h2 className="text-2xl font-bold text-cyber-blue neon-text mb-6 text-center tracking-widest">
-              CREER TON RUNNER
+              {t('play:createRunnerTitle')}
             </h2>
             <form
               onSubmit={(e) => {
@@ -413,7 +417,7 @@ export default function Play({
                 type="text"
                 value={createForm.data.name}
                 onChange={(e) => createForm.setData('name', e.target.value)}
-                placeholder="Nom du personnage..."
+                placeholder={t('play:createRunnerPlaceholder')}
                 className="w-full bg-cyber-black border border-cyber-blue/30 rounded px-4 py-3 text-white focus:border-cyber-blue focus:outline-none mb-4"
                 maxLength={50}
                 required
@@ -423,7 +427,7 @@ export default function Play({
                 disabled={createForm.processing}
                 className="w-full py-3 bg-cyber-blue/20 border border-cyber-blue text-cyber-blue font-bold uppercase tracking-widest rounded hover:bg-cyber-blue/30 transition-all neon-border"
               >
-                [ INITIALISER ]
+                {t('play:createRunnerSubmit')}
               </button>
             </form>
           </div>
@@ -445,15 +449,19 @@ export default function Play({
                 value: formatCredits(char?.credits || 0),
                 color: 'text-cyber-yellow',
               },
-              { label: t('common:stats.level'), value: `LVL ${char?.level || 1}`, color: 'text-cyber-green' },
+              {
+                label: t('common:stats.level'),
+                value: `LVL ${char?.level || 1}`,
+                color: 'text-cyber-green',
+              },
               { label: t('common:stats.cpc'), value: `${effectiveCpc}`, color: 'text-cyber-blue' },
               {
                 label: t('common:stats.cps'),
-                value: effectiveCps > 0 ? `${effectiveCps}/s` : 'OFF',
+                value: effectiveCps > 0 ? `${effectiveCps}/s` : t('play:off'),
                 color: effectiveCps > 0 ? 'text-cyber-purple' : 'text-gray-600',
               },
               {
-                label: 'CLICKS',
+                label: t('common:stats.clicks'),
                 value: formatCredits(char?.totalClicks || 0),
                 color: 'text-cyber-pink',
               },
@@ -478,7 +486,7 @@ export default function Play({
                   XP{' '}
                   {char.talentPoints > 0 && (
                     <span className="text-cyber-purple ml-2">
-                      {char.talentPoints} pts talent dispo
+                      {t('play:talentPointsAvailable', { count: char.talentPoints })}
                     </span>
                   )}
                 </span>
@@ -513,7 +521,10 @@ export default function Play({
                     +{formatCredits(pendingOfflineCredits)}
                   </div>
                   <div className="mt-1 text-xs text-gray-500">
-                    {t('play:offlineMessage', { credits: formatCredits(pendingOfflineCredits), hours: 4 })}
+                    {t('play:offlineMessage', {
+                      credits: formatCredits(pendingOfflineCredits),
+                      hours: 4,
+                    })}
                   </div>
                 </div>
                 <button
@@ -550,7 +561,7 @@ export default function Play({
                   }}
                   className="rounded border border-cyber-yellow/40 bg-cyber-yellow/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-cyber-yellow transition-all hover:bg-cyber-yellow/20 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {collectingOffline ? '...' : t('play:collectOffline')}
+                  {collectingOffline ? t('play:pending') : t('play:collectOffline')}
                 </button>
               </div>
             </div>
@@ -568,12 +579,15 @@ export default function Play({
                   }`}
                 >
                   <div className="text-[10px] uppercase tracking-[0.25em] text-gray-500 mb-1">
-                    {event.type === 'completed' ? 'Quete terminee' : 'Nouvelle quete'}
+                    {event.type === 'completed'
+                      ? t('play:questCompleted')
+                      : t('play:questUnlocked')}
                   </div>
                   <div className="font-bold text-white">{event.title}</div>
                   {event.rewardLabel && (
                     <div className="text-xs mt-1">
-                      Recompense: <span className="text-cyber-yellow">{event.rewardLabel}</span>
+                      {t('play:reward')}:{' '}
+                      <span className="text-cyber-yellow">{event.rewardLabel}</span>
                     </div>
                   )}
                 </div>
@@ -633,7 +647,7 @@ export default function Play({
             <div className="space-y-6">
               <div className="max-w-md mx-auto">
                 <div className="flex justify-between text-xs text-gray-500 mb-1">
-                  <span>HP</span>
+                  <span>{t('common:stats.hp')}</span>
                   <span>
                     {char.hpCurrent} / {char.hpMax}
                   </span>
@@ -651,7 +665,7 @@ export default function Play({
                   <div className="flex items-start justify-between gap-3 mb-4">
                     <div>
                       <div className="text-[10px] uppercase tracking-widest text-gray-500">
-                        Personnage
+                        {t('play:characterLabel')}
                       </div>
                       <h3 className="text-lg uppercase tracking-widest text-cyber-green font-bold mt-1">
                         {char.name}
@@ -670,10 +684,10 @@ export default function Play({
                   <div className="mb-4">
                     <div>
                       <div className="text-[10px] uppercase tracking-widest text-gray-500">
-                        Personnalisation
+                        {t('play:customizationLabel')}
                       </div>
                       <h3 className="text-lg uppercase tracking-widest text-cyber-purple font-bold mt-1">
-                        Garde-robe cyberpunk
+                        {t('play:customizationTitle')}
                       </h3>
                     </div>
                   </div>
@@ -730,7 +744,7 @@ export default function Play({
         <div className="lg:col-span-1">
           <div className="bg-cyber-dark border border-cyber-pink/30 rounded-lg p-4">
             <h3 className="text-sm uppercase tracking-widest text-cyber-pink neon-text-pink mb-4 text-center">
-              Top Runners
+              {t('play:topRunners')}
             </h3>
             <div className="space-y-2">
               {liveLeaderboard.map((player, i) => (
@@ -754,13 +768,17 @@ export default function Play({
                 </div>
               ))}
               {liveLeaderboard.length === 0 && (
-                <p className="text-gray-600 text-xs text-center">Aucun joueur</p>
+                <p className="text-gray-600 text-xs text-center">{t('play:noPlayers')}</p>
               )}
             </div>
           </div>
 
-          {questSummary?.mainTrack && <QuestTrackCard track={questSummary.mainTrack} accent="blue" />}
-          {questSummary?.seasonalTrack && <QuestTrackCard track={questSummary.seasonalTrack} accent="yellow" />}
+          {questSummary?.mainTrack && (
+            <QuestTrackCard track={questSummary.mainTrack} accent="blue" />
+          )}
+          {questSummary?.seasonalTrack && (
+            <QuestTrackCard track={questSummary.seasonalTrack} accent="yellow" />
+          )}
 
           {char && (
             <div className="bg-cyber-dark border border-cyber-green/30 rounded-lg p-4 mt-4">
@@ -769,14 +787,26 @@ export default function Play({
               </h3>
               <div className="space-y-1 text-xs">
                 {[
-                  { label: t('common:stats.atk'), value: `${char.attack}`, color: 'text-cyber-red' },
-                  { label: t('common:stats.def'), value: `${char.defense}`, color: 'text-cyber-blue' },
+                  {
+                    label: t('common:stats.atk'),
+                    value: `${char.attack}`,
+                    color: 'text-cyber-red',
+                  },
+                  {
+                    label: t('common:stats.def'),
+                    value: `${char.defense}`,
+                    color: 'text-cyber-blue',
+                  },
                   {
                     label: t('common:stats.hp'),
                     value: `${char.hpCurrent}/${char.hpMax}`,
                     color: 'text-cyber-green',
                   },
-                  { label: t('common:stats.crit'), value: `${char.critChance ?? 5}%`, color: 'text-cyber-yellow' },
+                  {
+                    label: t('common:stats.crit'),
+                    value: `${char.critChance ?? 5}%`,
+                    color: 'text-cyber-yellow',
+                  },
                   {
                     label: t('common:stats.critDmg'),
                     value: `${char.critDamage ?? 150}%`,
@@ -815,8 +845,10 @@ export default function Play({
                             </div>
                             {entry.item.effectType && entry.item.effectValue !== null && (
                               <div className="text-[10px] text-cyber-green mt-0.5">
-                                {t(`common:effects.${entry.item.effectType}`, { defaultValue: entry.item.effectType })}: +
-                                {entry.item.effectValue}
+                                {t(`common:effects.${entry.item.effectType}`, {
+                                  defaultValue: entry.item.effectType,
+                                })}
+                                : +{entry.item.effectValue}
                               </div>
                             )}
                           </>
@@ -835,7 +867,9 @@ export default function Play({
           {party && (
             <div className="bg-cyber-dark border border-cyber-purple/30 rounded-lg p-4 mt-4">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm uppercase tracking-widest text-cyber-purple">Groupe</h3>
+                <h3 className="text-sm uppercase tracking-widest text-cyber-purple">
+                  {t('play:partyTitle')}
+                </h3>
                 <span
                   className={`text-[10px] px-2 py-0.5 rounded-full border ${
                     party.status === 'in_dungeon'
@@ -843,7 +877,9 @@ export default function Play({
                       : 'bg-cyber-green/10 border-cyber-green/30 text-cyber-green'
                   }`}
                 >
-                  {party.status === 'in_dungeon' ? t('play:partyInDungeon') : t('play:partyWaiting')}
+                  {party.status === 'in_dungeon'
+                    ? t('play:partyInDungeon')
+                    : t('play:partyWaiting')}
                 </span>
               </div>
               <div className="text-[10px] text-gray-600 mb-2 truncate">{party.name}</div>
@@ -865,7 +901,7 @@ export default function Play({
                     <span
                       className={`text-[10px] ${m.isReady ? 'text-cyber-green' : 'text-gray-600'}`}
                     >
-                      {m.isReady ? t('play:partyReady') : '...'}
+                      {m.isReady ? t('play:partyReady') : t('play:pending')}
                     </span>
                   </div>
                 ))}

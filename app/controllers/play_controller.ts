@@ -59,7 +59,10 @@ export default class PlayController {
 
     if (activeCharacter) {
       offlineCredits = await TalentService.syncOfflineCredits(activeCharacter)
-      questSummary = await QuestService.getPlaySummary(activeCharacter)
+      questSummary = await QuestService.getPlaySummary(
+        activeCharacter,
+        locale === 'en' ? 'en' : 'fr'
+      )
       await activeCharacter.refresh()
 
       bonuses = await ClickerService.calculateEquipBonuses(activeCharacter)
@@ -173,12 +176,16 @@ export default class PlayController {
     return response.redirect('/play')
   }
 
-  async click({ request, auth, response }: HttpContext) {
+  async click({ request, auth, response, locale }: HttpContext) {
     const characterId = request.input('characterId')
     const clicks = request.input('clicks', 1)
 
     // Anti-cheat check
-    const antiCheat = ClickerService.checkAntiCheat(auth.user!.id, clicks)
+    const antiCheat = ClickerService.checkAntiCheat(
+      auth.user!.id,
+      clicks,
+      locale === 'en' ? 'en' : 'fr'
+    )
     if (!antiCheat.allowed) {
       return response.status(429).json({
         error: antiCheat.reason,
@@ -192,7 +199,11 @@ export default class PlayController {
       .where('userId', auth.user!.id)
       .firstOrFail()
 
-    const result = await ClickerService.processClicks(character, clicks)
+    const result = await ClickerService.processClicks(
+      character,
+      clicks,
+      locale === 'en' ? 'en' : 'fr'
+    )
     return response.json(result)
   }
 
@@ -292,7 +303,8 @@ export default class PlayController {
         item: localize(entry.item.serialize(), locale, ['name', 'description']),
       })),
       talents: unlockedTalents.map((entry) => {
-        const talentName = locale === 'en' && entry.talent.nameEn ? entry.talent.nameEn : entry.talent.name
+        const talentName =
+          locale === 'en' && entry.talent.nameEn ? entry.talent.nameEn : entry.talent.name
         return {
           id: entry.talent.id,
           name: talentName,
@@ -303,8 +315,12 @@ export default class PlayController {
         }
       }),
       companions: companions.map((entry) => {
-        const companionName = locale === 'en' && entry.companion.nameEn ? entry.companion.nameEn : entry.companion.name
-        const companionDescription = locale === 'en' && entry.companion.descriptionEn ? entry.companion.descriptionEn : entry.companion.description
+        const companionName =
+          locale === 'en' && entry.companion.nameEn ? entry.companion.nameEn : entry.companion.name
+        const companionDescription =
+          locale === 'en' && entry.companion.descriptionEn
+            ? entry.companion.descriptionEn
+            : entry.companion.description
         return {
           id: entry.id,
           companionId: entry.companion.id,

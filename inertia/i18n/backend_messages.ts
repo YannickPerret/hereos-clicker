@@ -22,6 +22,7 @@ const BACKEND_MESSAGE_MAP: Record<string, string> = {
   'Ami retire': 'backendMsg.friendRemoved',
   'Mission reclamee': 'backendMsg.missionClaimed',
   'Recompense reclamee': 'backendMsg.rewardClaimed',
+  'Guest account upgraded': 'backendMsg.guestAccountUpgraded',
 }
 
 export function translateBackendMessage(message: string, t: TFunction): string {

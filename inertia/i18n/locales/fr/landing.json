@@ -1,0 +1,41 @@
+{
+  "eyebrow": "Clicker Cyberpunk Jouable Tout De Suite",
+  "title": "Entre dans HEREOS sans compte.",
+  "description": "Lance une partie invitee en un clic, monte ton runner, accelere ton income, puis pousse plus loin avec les donjons, le jeu en groupe et le PvP.",
+  "playGuest": "[ JOUER EN INVITE ]",
+  "createAccount": "[ CREER UN COMPTE ]",
+  "login": "J'ai deja un compte",
+  "trust": "Pas d'email requis pour commencer. Convertis ton invite en compte plus tard.",
+  "primaryLoopTitle": "Boucle principale",
+  "primaryLoopDescription": "Une progression lisible des les premieres minutes.",
+  "primaryLoopSteps": {
+    "click": {
+      "title": "1. Hack",
+      "description": "Clique pour siphonner tes premiers credits et lancer ton run."
+    },
+    "upgrade": {
+      "title": "2. Upgrade",
+      "description": "Achete des boosts CPC/CPS, debloque tes talents et fais grimper ton rythme."
+    },
+    "automate": {
+      "title": "3. Automate",
+      "description": "Passe du clic manuel aux revenus passifs et garde un prochain palier visible."
+    }
+  },
+  "deepLoopTitle": "Ensuite, pousse plus loin",
+  "deepLoopDescription": "Quand ta base tient debout, le meta du jeu prend le relais.",
+  "deepLoopSteps": {
+    "dungeon": {
+      "title": "Dungeon",
+      "description": "Teste ton build en combat et convertis ta progression en puissance."
+    },
+    "party": {
+      "title": "Party",
+      "description": "Monte un groupe, coordonne ton equipe et ouvre le contenu cooperatif."
+    },
+    "pvp": {
+      "title": "PvP",
+      "description": "Affronte d'autres runners une fois ton economie et ton kit en place."
+    }
+  }
+}
