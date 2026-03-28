@@ -1,12 +1,12 @@
 {
-  "eyebrow": "Cyberpunk Clicker You Can Start Instantly",
-  "title": "Jump into HEREOS without an account.",
-  "description": "Start a guest run in one click, build your runner, speed up your income, then push deeper with dungeons, party play, and PvP.",
+  "eyebrow": "System: Initializing Guest Session",
+  "titlePrefix": "Jump Into",
+  "description": "Cyberpunk clicker you can start instantly. Start a guest run in one click, build your runner, speed up income, then push deeper.",
   "playGuest": "[ PLAY AS GUEST ]",
   "createAccount": "[ CREATE ACCOUNT ]",
-  "login": "I already have an account",
+  "login": "Already have an account? Sign-in",
   "trust": "No email required to start. Upgrade your guest run into an account later.",
-  "primaryLoopTitle": "Core loop",
+  "primaryLoopTitle": "Core Loop",
   "primaryLoopDescription": "Clear progression within the first few minutes.",
   "primaryLoopSteps": {
     "click": {
@@ -37,5 +37,66 @@
       "title": "PvP",
       "description": "Fight other runners once your economy and loadout are online."
     }
+  },
+  "patchNotes": {
+    "title": "Patch_Notes",
+    "version": "v2.0.4",
+    "entries": {
+      "stability": {
+        "date": "[2024-05-12]",
+        "body": "Dungeon stability improved by 45% in District 09.",
+        "tone": "highlight"
+      },
+      "phantom": {
+        "date": "[2024-05-11]",
+        "body": "Added 'Phantom' series equipment to the credit marketplace. Fixed neural-sync lag during party runs.",
+        "tone": "default"
+      },
+      "warning": {
+        "date": "WARNING:",
+        "body": "Corporate ICE protocols have been updated. Stealth rating requirements increased for high-tier vaults.",
+        "tone": "warning"
+      },
+      "mobile": {
+        "date": "[2024-05-09]",
+        "body": "UI optimization for mobile neural links. Improved feedback on critical click strikes.",
+        "tone": "default"
+      },
+      "event": {
+        "date": "[2024-05-08]",
+        "body": "Global event: 'The Neon Siphon' is now live. Triple credits in the industrial sector.",
+        "tone": "highlight"
+      }
+    }
+  },
+  "stats": {
+    "runs": {
+      "value": "2.4M+",
+      "label": "Total Runs"
+    },
+    "runners": {
+      "value": "48K",
+      "label": "Active Runners"
+    },
+    "uptime": {
+      "value": "99.9%",
+      "label": "Uptime"
+    }
+  },
+  "terminal": {
+    "title": "Runner_Console_v2.0",
+    "boot": "BOOTING_CORE_PROTOCOL...",
+    "link": "ANALYZING NEURAL LINK:",
+    "status": "STABLE",
+    "cpcLabel": "CREDITS_PER_CLICK:",
+    "cpcValue": "142.00",
+    "target": "TARGET_IDENTIFIED: CORPORATE_VAULT_04",
+    "danger": "DANGER LEVEL: HIGH"
+  },
+  "footer": {
+    "copyright": "© 2024 HEREOS TERMINAL. ALL RIGHTS RESERVED.",
+    "terms": "Terms of Service",
+    "privacy": "Privacy Policy",
+    "status": "System Status: ONLINE"
   }
 }

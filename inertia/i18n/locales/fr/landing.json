@@ -1,12 +1,12 @@
 {
-  "eyebrow": "Clicker Cyberpunk Jouable Tout De Suite",
-  "title": "Entre dans HEREOS sans compte.",
-  "description": "Lance une partie invitee en un clic, monte ton runner, accelere ton income, puis pousse plus loin avec les donjons, le jeu en groupe et le PvP.",
+  "eyebrow": "Systeme: Initialisation Session Invite",
+  "titlePrefix": "Entre Dans",
+  "description": "Clicker cyberpunk jouable instantanement. Lance une session invitee en un clic, monte ton runner, accelere ton income, puis pousse plus loin.",
   "playGuest": "[ JOUER EN INVITE ]",
   "createAccount": "[ CREER UN COMPTE ]",
-  "login": "J'ai deja un compte",
+  "login": "J'ai deja un compte ? Connexion",
   "trust": "Pas d'email requis pour commencer. Convertis ton invite en compte plus tard.",
-  "primaryLoopTitle": "Boucle principale",
+  "primaryLoopTitle": "Boucle Principale",
   "primaryLoopDescription": "Une progression lisible des les premieres minutes.",
   "primaryLoopSteps": {
     "click": {
@@ -37,5 +37,66 @@
       "title": "PvP",
       "description": "Affronte d'autres runners une fois ton economie et ton kit en place."
     }
+  },
+  "patchNotes": {
+    "title": "Patch_Notes",
+    "version": "v2.0.4",
+    "entries": {
+      "stability": {
+        "date": "[2024-05-12]",
+        "body": "La stabilite des donjons a ete amelioree de 45 % dans le District 09.",
+        "tone": "highlight"
+      },
+      "phantom": {
+        "date": "[2024-05-11]",
+        "body": "Ajout de la serie d'equipements 'Phantom' au marche de credits. Correction du lag de neural-sync pendant les runs de groupe.",
+        "tone": "default"
+      },
+      "warning": {
+        "date": "ALERTE :",
+        "body": "Les protocoles ICE corporates ont ete mis a jour. Les exigences de furtivite augmentent pour les vaults haut niveau.",
+        "tone": "warning"
+      },
+      "mobile": {
+        "date": "[2024-05-09]",
+        "body": "Optimisation de l'interface pour mobile. Meilleur feedback sur les critical click strikes.",
+        "tone": "default"
+      },
+      "event": {
+        "date": "[2024-05-08]",
+        "body": "Evenement global : 'The Neon Siphon' est en ligne. Credits x3 dans le secteur industriel.",
+        "tone": "highlight"
+      }
+    }
+  },
+  "stats": {
+    "runs": {
+      "value": "2.4M+",
+      "label": "Runs Totaux"
+    },
+    "runners": {
+      "value": "48K",
+      "label": "Runners Actifs"
+    },
+    "uptime": {
+      "value": "99.9%",
+      "label": "Uptime"
+    }
+  },
+  "terminal": {
+    "title": "Runner_Console_v2.0",
+    "boot": "BOOTING_CORE_PROTOCOL...",
+    "link": "ANALYSE DU LIEN NEURAL:",
+    "status": "STABLE",
+    "cpcLabel": "CREDITS_PAR_CLIC:",
+    "cpcValue": "142.00",
+    "target": "CIBLE IDENTIFIEE: CORPORATE_VAULT_04",
+    "danger": "NIVEAU DE DANGER: ELEVE"
+  },
+  "footer": {
+    "copyright": "© 2024 HEREOS TERMINAL. TOUS DROITS RESERVES.",
+    "terms": "Conditions d'utilisation",
+    "privacy": "Politique de confidentialite",
+    "status": "Statut Systeme: ONLINE"
   }
 }
