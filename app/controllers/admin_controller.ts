@@ -1542,16 +1542,41 @@ export default class AdminController {
     }
 
     const parentQuest = payload.parentQuestId ? await Quest.find(payload.parentQuestId) : null
+    const nextSeasonId = payload.questType === 'seasonal' ? payload.seasonId : null
+    const nextRewardsJson = JSON.stringify(rewards)
+    const nextRewardType = rewards[0]?.type || 'credits'
+    const nextRewardValue = rewards[0]?.value || 0
+    const nextRequiredQuestKey = parentQuest?.key || null
 
-    quest.merge({
-      ...payload,
-      seasonId: payload.questType === 'seasonal' ? payload.seasonId : null,
-      rewardsJson: JSON.stringify(rewards),
-      rewardType: rewards[0]?.type || 'credits',
-      rewardValue: rewards[0]?.value || 0,
-      requiredQuestKey: parentQuest?.key || null,
-    })
-    await quest.save()
+    await db
+      .from('quests')
+      .where('id', quest.id)
+      .update({
+        key: payload.key,
+        mode: payload.mode,
+        quest_type: payload.questType,
+        season_id: nextSeasonId,
+        parent_quest_id: payload.parentQuestId,
+        arc_key: payload.arcKey,
+        arc_title: payload.arcTitle,
+        quest_arc_id: payload.questArcId,
+        giver_name: payload.giverName,
+        title: payload.title,
+        summary: payload.summary,
+        narrative: payload.narrative,
+        title_en: payload.titleEn,
+        summary_en: payload.summaryEn,
+        narrative_en: payload.narrativeEn,
+        objective_type: payload.objectiveType,
+        target_value: payload.targetValue,
+        reward_type: nextRewardType,
+        reward_value: nextRewardValue,
+        rewards_json: nextRewardsJson,
+        icon: payload.icon,
+        sort_order: payload.sortOrder,
+        required_quest_key: nextRequiredQuestKey,
+        updated_at: DateTime.now().toSQL(),
+      })
 
     // Sync flow steps from form (replace all existing)
     const rawSteps = request.input('flowSteps', null)
@@ -1584,7 +1609,7 @@ export default class AdminController {
       }
     }
 
-    session.flash('success', `Quete ${quest.title} mise a jour`)
+    session.flash('success', `Quete ${payload.title} mise a jour`)
     return response.redirect('/admin/quests')
   }
 
