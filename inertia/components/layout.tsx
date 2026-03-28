@@ -224,7 +224,11 @@ export default function GameLayout({ children }: { children: ReactNode }) {
   }
 
   const handleLockedNavigation = (event: React.MouseEvent, href: string) => {
-    if (!activeActivity || !ACTIVITY_LOCKED_NAVS.has(href)) return
+    if (!activeActivity) return
+
+    const isBlockedSection = ACTIVITY_LOCKED_NAVS.has(href)
+    const isLeavingActiveRunFromMenu = isOnActiveActivity && href !== activeActivity.returnPath
+    if (!isBlockedSection && !isLeavingActiveRunFromMenu) return
 
     event.preventDefault()
 
@@ -233,7 +237,7 @@ export default function GameLayout({ children }: { children: ReactNode }) {
         ? t('activityBanner.pvpMessage')
         : t('activityBanner.dungeonMessage')
 
-    if (!isOnActiveActivity) {
+    if (!isOnActiveActivity && isBlockedSection) {
       router.visit(activeActivity.returnPath)
       return
     }
@@ -457,7 +461,12 @@ export default function GameLayout({ children }: { children: ReactNode }) {
                 <Link
                   key={link.href}
                   href={link.href}
-                  onClick={() => setMobileMenuOpen(false)}
+                  onClick={(event) => {
+                    handleLockedNavigation(event, link.href)
+                    if (!event.defaultPrevented) {
+                      setMobileMenuOpen(false)
+                    }
+                  }}
                   className="rounded border border-cyber-blue/20 px-3 py-2.5 text-left text-xs uppercase tracking-[0.22em] text-gray-300 transition-all hover:border-cyber-blue/40 hover:bg-cyber-blue/10 hover:text-cyber-blue"
                 >
                   {link.label}
