@@ -226,9 +226,8 @@ export default function GameLayout({ children }: { children: ReactNode }) {
   const handleLockedNavigation = (event: React.MouseEvent, href: string) => {
     if (!activeActivity) return
 
-    const isBlockedSection = ACTIVITY_LOCKED_NAVS.has(href)
-    const isLeavingActiveRunFromMenu = isOnActiveActivity && href !== activeActivity.returnPath
-    if (!isBlockedSection && !isLeavingActiveRunFromMenu) return
+    const isProtectedTarget = href !== activeActivity.returnPath && href !== '/logout'
+    if (!isProtectedTarget) return
 
     event.preventDefault()
 
@@ -237,7 +236,7 @@ export default function GameLayout({ children }: { children: ReactNode }) {
         ? t('activityBanner.pvpMessage')
         : t('activityBanner.dungeonMessage')
 
-    if (!isOnActiveActivity && isBlockedSection) {
+    if (!isOnActiveActivity) {
       router.visit(activeActivity.returnPath)
       return
     }
@@ -315,7 +314,11 @@ export default function GameLayout({ children }: { children: ReactNode }) {
               </span>
             </button>
 
-            <Link href="/play" className="flex items-center">
+            <Link
+              href="/play"
+              onClick={(event) => handleLockedNavigation(event, '/play')}
+              className="flex items-center"
+            >
               <img
                 src="/images/hereos_logo.webp"
                 alt="HEREOS"
@@ -331,6 +334,7 @@ export default function GameLayout({ children }: { children: ReactNode }) {
                 <div className="text-right hidden sm:block">
                   <Link
                     href={publicProfileHref}
+                    onClick={(event) => handleLockedNavigation(event, publicProfileHref)}
                     className="block text-xs text-cyber-green transition hover:text-cyber-blue"
                   >
                     {auth.user.username}
@@ -379,6 +383,7 @@ export default function GameLayout({ children }: { children: ReactNode }) {
             {isStaff && (
               <Link
                 href="/admin"
+                onClick={(event) => handleLockedNavigation(event, '/admin')}
                 className="rounded border border-cyber-red/20 px-3 py-2.5 text-xs uppercase tracking-[0.22em] text-cyber-red transition-all hover:border-cyber-red/40 hover:bg-cyber-red/10"
               >
                 {t('nav.admin')}
@@ -386,6 +391,7 @@ export default function GameLayout({ children }: { children: ReactNode }) {
             )}
             <Link
               href="/reports"
+              onClick={(event) => handleLockedNavigation(event, '/reports')}
               className="rounded border border-cyber-orange/20 px-3 py-2.5 text-xs uppercase tracking-[0.22em] text-cyber-orange transition-all hover:border-cyber-orange/40 hover:bg-cyber-orange/10"
             >
               {t('nav.myReports')}
@@ -475,7 +481,12 @@ export default function GameLayout({ children }: { children: ReactNode }) {
               {isStaff && (
                 <Link
                   href="/admin"
-                  onClick={() => setMobileMenuOpen(false)}
+                  onClick={(event) => {
+                    handleLockedNavigation(event, '/admin')
+                    if (!event.defaultPrevented) {
+                      setMobileMenuOpen(false)
+                    }
+                  }}
                   className="rounded border border-cyber-red/20 px-3 py-2.5 text-left text-xs uppercase tracking-[0.22em] text-cyber-red transition-all hover:border-cyber-red/40 hover:bg-cyber-red/10"
                 >
                   {t('nav.admin')}
@@ -493,7 +504,12 @@ export default function GameLayout({ children }: { children: ReactNode }) {
               </button>
               <Link
                 href="/reports"
-                onClick={() => setMobileMenuOpen(false)}
+                onClick={(event) => {
+                  handleLockedNavigation(event, '/reports')
+                  if (!event.defaultPrevented) {
+                    setMobileMenuOpen(false)
+                  }
+                }}
                 className="rounded border border-cyber-orange/20 px-3 py-2.5 text-left text-xs uppercase tracking-[0.22em] text-cyber-orange transition-all hover:border-cyber-orange/40 hover:bg-cyber-orange/10"
               >
                 {t('nav.myReports')}
@@ -601,7 +617,12 @@ export default function GameLayout({ children }: { children: ReactNode }) {
               <div className="flex items-center justify-between gap-3">
                 <Link
                   href="/reports"
-                  onClick={() => setReportModalOpen(false)}
+                  onClick={(event) => {
+                    handleLockedNavigation(event, '/reports')
+                    if (!event.defaultPrevented) {
+                      setReportModalOpen(false)
+                    }
+                  }}
                   className="text-[11px] uppercase tracking-widest text-gray-500 transition hover:text-cyber-orange"
                 >
                   {t('report:viewReports')}
