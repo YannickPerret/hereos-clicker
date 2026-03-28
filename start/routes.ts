@@ -20,6 +20,8 @@ const BugReportController = () => import('#controllers/bug_report_controller')
 const MapsController = () => import('#controllers/maps_controller')
 const IsoDungeonController = () => import('#controllers/iso_dungeon_controller')
 const IsoAdminController = () => import('#controllers/iso_admin_controller')
+const ForumController = () => import('#controllers/forum_controller')
+const ForumAdminController = () => import('#controllers/forum_admin_controller')
 
 // Transmit SSE routes
 transmit.registerRoutes()
@@ -169,6 +171,12 @@ router
     router.post('/report', [BugReportController, 'create'])
     router.get('/reports', [BugReportController, 'myReports'])
 
+    // Forum
+    router.get('/forum', [ForumController, 'index'])
+    router.get('/forum/category/:slug', [ForumController, 'category'])
+    router.get('/forum/thread/:id', [ForumController, 'thread'])
+    router.post('/forum/thread/:id/reply', [ForumController, 'reply'])
+
     // World Map
     router.get('/map', [MapsController, 'index'])
     router.post('/map/move', [MapsController, 'move'])
@@ -245,6 +253,19 @@ router
     router.post('/admin/enemies/:id/add-loot', [AdminController, 'addLootEntry'])
     router.post('/admin/loot/:id/update', [AdminController, 'updateLootEntry'])
     router.post('/admin/loot/:id/delete', [AdminController, 'deleteLootEntry'])
+
+    // Forum
+    router.get('/admin/forum', [ForumAdminController, 'index'])
+    router.post('/admin/forum/categories/create', [ForumAdminController, 'createCategory'])
+    router.post('/admin/forum/categories/:id/update', [ForumAdminController, 'updateCategory'])
+    router.post('/admin/forum/categories/:id/delete', [ForumAdminController, 'deleteCategory'])
+    router.post('/admin/forum/threads/create', [ForumAdminController, 'createThread'])
+    router.post('/admin/forum/threads/:id/update', [ForumAdminController, 'updateThread'])
+    router.post('/admin/forum/threads/:id/delete', [ForumAdminController, 'deleteThread'])
+    router.post('/admin/forum/posts/:id/update', [ForumAdminController, 'updatePost'])
+    router.post('/admin/forum/posts/:id/delete', [ForumAdminController, 'deletePost'])
+    router.post('/admin/forum/bans/create', [ForumAdminController, 'createBan'])
+    router.post('/admin/forum/bans/:id/delete', [ForumAdminController, 'deleteBan'])
 
     // System Messages (auto-chat)
     router.get('/admin/system-messages', [AdminController, 'systemMessages'])

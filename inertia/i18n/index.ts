@@ -21,6 +21,7 @@ import frReport from './locales/fr/report.json'
 import frDailyReward from './locales/fr/daily_reward.json'
 import frProfile from './locales/fr/profile.json'
 import frLanding from './locales/fr/landing.json'
+import frForum from './locales/fr/forum.json'
 
 import enCommon from './locales/en/common.json'
 import enAuth from './locales/en/auth.json'
@@ -41,6 +42,7 @@ import enReport from './locales/en/report.json'
 import enDailyReward from './locales/en/daily_reward.json'
 import enProfile from './locales/en/profile.json'
 import enLanding from './locales/en/landing.json'
+import enForum from './locales/en/forum.json'
 
 i18n
   .use(LanguageDetector)
@@ -67,6 +69,7 @@ i18n
         daily_reward: frDailyReward,
         profile: frProfile,
         landing: frLanding,
+        forum: frForum,
       },
       en: {
         common: enCommon,
@@ -88,6 +91,7 @@ i18n
         daily_reward: enDailyReward,
         profile: enProfile,
         landing: enLanding,
+        forum: enForum,
       },
     },
     fallbackLng: 'fr',
@@ -112,6 +116,7 @@ i18n
       'daily_reward',
       'profile',
       'landing',
+      'forum',
     ],
     detection: {
       order: ['localStorage'],

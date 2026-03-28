@@ -86,6 +86,7 @@ export default function GameLayout({ children }: { children: ReactNode }) {
     { href: '/dungeon', label: t('nav.dungeon') },
     { href: '/iso-dungeon', label: t('nav.dungeon25d') },
     { href: '/pvp', label: t('nav.pvp') },
+    { href: '/forum', label: t('nav.forum') },
     { href: '/quests', label: t('nav.quests') },
     { href: '/missions', label: t('nav.missions') },
     { href: '/friends', label: t('nav.friends') },

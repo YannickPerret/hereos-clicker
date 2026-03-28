@@ -106,6 +106,13 @@ export default function AdminDashboard({ currentUser, stats, topCredits, activeS
             <p className="text-xs text-gray-600">Messages automatiques dans le chat</p>
           </Link>
           <Link
+            href="/admin/forum"
+            className="bg-cyber-dark border border-cyber-orange/30 rounded-lg p-6 hover:border-cyber-orange/60 hover:bg-cyber-orange/5 transition-all"
+          >
+            <h3 className="text-sm font-bold text-cyber-orange tracking-widest mb-1">FORUM</h3>
+            <p className="text-xs text-gray-600">Categories, threads, posts, bans forum</p>
+          </Link>
+          <Link
             href="/admin/daily-rewards"
             className="bg-cyber-dark border border-cyber-yellow/30 rounded-lg p-6 hover:border-cyber-yellow/60 hover:bg-cyber-yellow/5 transition-all"
           >
