@@ -1,0 +1,19 @@
+{
+  "dailyReward": "Daily Reward",
+  "streak": "Streak {{n}}",
+  "bestStreak": "Best streak: {{n}}",
+  "claimedToday": "Claimed today",
+  "nextClaim": "Next claim: {{n}}",
+  "noRewards": "No rewards",
+  "dayLabel": "Day {{n}}",
+  "claimDayReward": "[ CLAIM TODAY'S REWARD ]",
+  "comeBackTomorrow": "Come back after the daily reset to continue your streak.",
+  "title": "DAILY MISSIONS",
+  "completionCount": "{{done}}/{{total}} completed",
+  "allDone": "All daily missions completed!",
+  "newMissionsTomorrow": "Come back tomorrow for new missions.",
+  "progression": "Progression",
+  "reward": "Reward",
+  "claimBtn": "[ CLAIM ]",
+  "claimed": "Claimed ✓"
+}

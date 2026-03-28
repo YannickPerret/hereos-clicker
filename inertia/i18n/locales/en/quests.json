@@ -1,0 +1,21 @@
+{
+  "status": {
+    "active": "ACTIVE",
+    "completed": "COMPLETED",
+    "locked": "LOCKED",
+    "available": "AVAILABLE"
+  },
+  "journalLabel": "Quest Journal",
+  "title": "Journal",
+  "description": "Permanent main quests and active season storyline in the same journal.",
+  "backToClicker": "Back to clicker",
+  "progression": "Progression",
+  "step": "Step {{n}}",
+  "objective": "Objective: {{label}}",
+  "parent": "Parent: {{name}}",
+  "parentNone": "None",
+  "openFlow": "Open narrative flow",
+  "activeQuest": "Active Quest",
+  "liveProgress": "Live progress",
+  "trackDone": "This entire track is completed."
+}

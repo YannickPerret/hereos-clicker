@@ -1,0 +1,21 @@
+{
+  "title": "DRONES & COMPANIONS",
+  "active": "ACTIVE",
+  "nextTier": "Next tier: +{{value}} for {{price}}c",
+  "yourCompanions": "Your companions ({{count}})",
+  "noCompanions": "You don't have any companions. Buy one in the shop!",
+  "nextLevel": "Next level: +{{value}} • Cost {{price}}c",
+  "deactivate": "DEACTIVATE",
+  "activate": "ACTIVATE",
+  "upgrade": "UPGRADE {{price}}c",
+  "shopSection": "Companion shop ({{count}})",
+  "bonusTypes": {
+    "cpc": "Credits/Click",
+    "cps": "Credits/Sec",
+    "attack": "Attack",
+    "defense": "Defense",
+    "critChance": "Crit%",
+    "maxHp": "Max HP",
+    "lootBonus": "Loot Bonus"
+  }
+}

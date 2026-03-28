@@ -1,0 +1,21 @@
+{
+  "status": {
+    "active": "ACTIVE",
+    "completed": "TERMINEE",
+    "locked": "VERROUILLEE",
+    "available": "DISPONIBLE"
+  },
+  "journalLabel": "Journal des Quetes",
+  "title": "Journal",
+  "description": "Quetes principales permanentes et suite de saison active dans le meme journal.",
+  "backToClicker": "Retour clicker",
+  "progression": "Progression",
+  "step": "Etape {{n}}",
+  "objective": "Objectif: {{label}}",
+  "parent": "Parent: {{name}}",
+  "parentNone": "Aucun",
+  "openFlow": "Ouvrir le flow narratif",
+  "activeQuest": "Quete Active",
+  "liveProgress": "Progression live",
+  "trackDone": "Tout ce track est termine."
+}

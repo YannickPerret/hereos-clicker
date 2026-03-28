@@ -1,5 +1,6 @@
 import { router, usePage } from '@inertiajs/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import CombatSkillTooltip from '~/components/combat_skill_tooltip'
 import GameLayout from '~/components/layout'
 
@@ -90,34 +91,34 @@ const formatEta = (seconds: number) => {
   return `~${minutes} min`
 }
 
-const queueLabel: Record<MatchState['queueMode'], string> = {
-  solo: 'SoloQ',
-  duo: 'DuoQ',
-  trio: 'TrioQ',
+const queueLabelKey: Record<MatchState['queueMode'], string> = {
+  solo: 'pvp:soloQ',
+  duo: 'pvp:duoQ',
+  trio: 'pvp:trioQ',
 }
 
-function effectLabel(effect: ActiveEffect) {
+function effectLabel(effect: ActiveEffect, t: (key: string, opts?: Record<string, unknown>) => string) {
   switch (effect.type) {
     case 'debuff_def':
-      return `DEF -${effect.value}%`
+      return t('pvp:effects.debuffDef', { value: effect.value })
     case 'debuff_atk':
-      return `ATK -${effect.value}%`
+      return t('pvp:effects.debuffAtk', { value: effect.value })
     case 'dot':
-      return `DOT ${effect.value}/tour`
+      return t('pvp:effects.dot', { value: effect.value })
     case 'turret':
-      return `Tourelle ${effect.value}/tour`
+      return t('pvp:effects.turret', { value: effect.value })
     case 'stun':
-      return 'Stun'
+      return t('pvp:effects.stun')
     case 'shield':
-      return 'Bouclier'
+      return t('pvp:effects.shield')
     case 'guaranteed_crit':
-      return 'Crit garanti'
+      return t('pvp:effects.critGuaranteed')
     case 'buff_atk':
-      return `ATK +${effect.value}%`
+      return t('pvp:effects.buffAtk', { value: effect.value })
     case 'buff_def':
-      return `DEF +${effect.value}%`
+      return t('pvp:effects.buffDef', { value: effect.value })
     case 'buff_all':
-      return `ATK/DEF +${effect.value}%`
+      return t('pvp:effects.buffAll', { value: effect.value })
     default:
       return effect.type
   }
@@ -178,7 +179,8 @@ function useAutoFollowLog(entryCount: number) {
   }
 }
 
-function LogLine({ entry, myId }: { entry: LogEntry; myId: number }) {
+function LogLine({ entry, myId }: { entry: LogEntry; myId: number; }) {
+  const { t } = useTranslation(['pvp'])
   const actorClass = entry.attackerId === myId ? 'text-cyber-blue' : 'text-cyber-red'
 
   switch (entry.action) {
@@ -188,7 +190,7 @@ function LogLine({ entry, myId }: { entry: LogEntry; myId: number }) {
           <span className={actorClass}>{entry.attackerName}</span>
           <span className="ml-1 font-bold text-cyber-purple">[{entry.skillName}]</span>
           {entry.blocked ? (
-            <span className="ml-1 font-bold text-cyber-blue">BLOQUE</span>
+            <span className="ml-1 font-bold text-cyber-blue">{t('pvp:blocked')}</span>
           ) : entry.damage ? (
             <span className="ml-1 font-bold text-white">-{entry.damage}</span>
           ) : null}
@@ -208,7 +210,7 @@ function LogLine({ entry, myId }: { entry: LogEntry; myId: number }) {
         <div className="rounded border border-cyber-orange/20 bg-cyber-orange/10 p-2 text-xs">
           <span className={actorClass}>{entry.attackerName}</span>
           <span className="ml-1 text-cyber-orange">{entry.message}</span>
-          {entry.blocked ? <span className="ml-1 text-cyber-blue">BLOQUE</span> : null}
+          {entry.blocked ? <span className="ml-1 text-cyber-blue">{t('pvp:blocked')}</span> : null}
         </div>
       )
     case 'stunned':
@@ -221,7 +223,7 @@ function LogLine({ entry, myId }: { entry: LogEntry; myId: number }) {
       return (
         <div className="rounded border border-cyber-red/30 bg-cyber-red/10 p-2 text-xs">
           <span className={actorClass}>{entry.attackerName}</span>
-          <span className="ml-1 text-gray-400">abandonne le match</span>
+          <span className="ml-1 text-gray-400">{t('pvp:forfeitMatch')}</span>
         </div>
       )
     case 'player_attack':
@@ -240,12 +242,12 @@ function LogLine({ entry, myId }: { entry: LogEntry; myId: number }) {
         >
           <span className={actorClass}>{entry.attackerName}</span>
           {entry.forfeit ? (
-            <span className="ml-1 text-gray-500">a abandonne</span>
+            <span className="ml-1 text-gray-500">{t('pvp:forfeit')}</span>
           ) : entry.blocked ? (
-            <span className="ml-1 font-bold text-cyber-blue">attaque bloquee</span>
+            <span className="ml-1 font-bold text-cyber-blue">{t('pvp:attackBlocked')}</span>
           ) : (
             <>
-              <span className="ml-1 text-gray-500">frappe</span>
+              <span className="ml-1 text-gray-500">{t('pvp:strikes')}</span>
               <span className="ml-1 font-bold text-white">-{entry.damage}</span>
               {entry.isCrit ? (
                 <span className="ml-1 font-bold text-cyber-yellow">CRIT!</span>
@@ -272,6 +274,7 @@ function FighterCard({
   effects: ActiveEffect[]
   onSelect?: () => void
 }) {
+  const { t } = useTranslation(['pvp', 'common'])
   const border = fighter.isEliminated
     ? 'border-gray-800 opacity-50'
     : isCurrentTurn
@@ -292,7 +295,7 @@ function FighterCard({
       <div className="mb-2 flex items-center justify-between gap-2">
         <div>
           <div className="text-sm font-bold text-white">
-            {fighter.name} {isMe ? '(TOI)' : ''}
+            {fighter.name} {isMe ? t('pvp:you') : ''}
           </div>
           <div className="text-[10px] uppercase tracking-widest text-gray-600">
             LVL {fighter.level} {fighter.isLeader ? '• Leader' : ''}
@@ -300,14 +303,14 @@ function FighterCard({
         </div>
         {fighter.isEliminated && (
           <div className="rounded border border-cyber-red/30 bg-cyber-red/10 px-2 py-1 text-[10px] uppercase tracking-widest text-cyber-red">
-            KO
+            {t('pvp:ko')}
           </div>
         )}
       </div>
 
       <div className="mb-2">
         <div className="mb-1 flex justify-between text-[10px] text-gray-500">
-          <span>HP</span>
+          <span>{t('common:stats.hp')}</span>
           <span>
             {fighter.currentHp}/{fighter.hpMax}
           </span>
@@ -329,7 +332,7 @@ function FighterCard({
               key={`${effect.type}-${index}`}
               className="rounded border border-cyber-purple/20 bg-cyber-purple/5 px-2 py-1 text-[10px] text-cyber-purple"
             >
-              {effectLabel(effect)} <span className="text-gray-600">({effect.turnsLeft}t)</span>
+              {effectLabel(effect, t)} <span className="text-gray-600">({effect.turnsLeft}t)</span>
             </div>
           ))}
         </div>
@@ -337,19 +340,19 @@ function FighterCard({
 
       <div className="grid grid-cols-2 gap-1 text-[10px]">
         <div>
-          <span className="text-gray-600">ATK</span>{' '}
+          <span className="text-gray-600">{t('common:stats.atk')}</span>{' '}
           <span className="ml-1 font-bold text-cyber-red">{fighter.attack}</span>
         </div>
         <div>
-          <span className="text-gray-600">DEF</span>{' '}
+          <span className="text-gray-600">{t('common:stats.def')}</span>{' '}
           <span className="ml-1 font-bold text-cyber-blue">{fighter.defense}</span>
         </div>
         <div>
-          <span className="text-gray-600">CRIT%</span>{' '}
+          <span className="text-gray-600">{t('common:stats.crit')}</span>{' '}
           <span className="ml-1 font-bold text-cyber-yellow">{fighter.critChance}%</span>
         </div>
         <div>
-          <span className="text-gray-600">ELO</span>{' '}
+          <span className="text-gray-600">{t('pvp:elo')}</span>{' '}
           <span className="ml-1 font-bold text-cyber-yellow">{fighter.pvpRating}</span>
         </div>
       </div>
@@ -364,6 +367,7 @@ export default function PvpMatch({
   skills: initialSkills,
   activeEffects: initialEffects,
 }: Props) {
+  const { t } = useTranslation(['pvp', 'common'])
   const [match, setMatch] = useState(initialMatch)
   const [teams, setTeams] = useState(initialTeams)
   const [skills, setSkills] = useState(initialSkills)
@@ -463,7 +467,7 @@ export default function PvpMatch({
   }
 
   const handleForfeit = () => {
-    if (confirm('Abandonner le combat ? Toute ton equipe perdra ce match.')) {
+    if (confirm(t('pvp:forfeitConfirm'))) {
       router.post(`/pvp/match/${match.id}/forfeit`)
     }
   }
@@ -484,18 +488,18 @@ export default function PvpMatch({
         <div className="mb-4 flex items-center justify-between">
           <div>
             <div className="text-[10px] uppercase tracking-[0.35em] text-gray-600">
-              {queueLabel[match.queueMode]} • {match.teamSize}v{match.teamSize}
+              {t(queueLabelKey[match.queueMode])} • {t('pvp:teamSize', { n: match.teamSize })}
             </div>
-            <h1 className="mt-1 text-xl font-bold tracking-widest text-cyber-red">MATCH PVP</h1>
+            <h1 className="mt-1 text-xl font-bold tracking-widest text-cyber-red">{t('pvp:matchTitle')}</h1>
           </div>
           {!isOver && (
             <div className="text-right text-xs text-gray-500">
               <div>
-                Mode: <span className="text-cyber-yellow">{queueLabel[match.queueMode]}</span>
+                {t('pvp:mode')}: <span className="text-cyber-yellow">{t(queueLabelKey[match.queueMode])}</span>
               </div>
               {!isWaiting && match.currentTurnId && (
                 <div>
-                  Tour:{' '}
+                  {t('pvp:turn')}:{' '}
                   <span className="text-white">
                     {teams
                       .flatMap((team) => team.members)
@@ -511,14 +515,14 @@ export default function PvpMatch({
           <div className="py-12 text-center">
             <div className="mb-6 text-6xl animate-pulse">⚔️</div>
             <h2 className="mb-4 text-xl font-bold tracking-widest text-cyber-yellow">
-              EN ATTENTE D&apos;ADVERSAIRE...
+              {t('pvp:waitingOpponent')}
             </h2>
             <div className="mb-2 text-sm text-gray-400">
-              {queueLabel[match.queueMode]} • Estimation {formatEta(match.queueEstimateSeconds)}
+              {t(queueLabelKey[match.queueMode])} • {t('pvp:estimate')} {formatEta(match.queueEstimateSeconds)}
             </div>
             <div className="mx-auto mt-6 max-w-xl rounded-lg border border-gray-800 bg-cyber-dark p-4 text-left">
               <div className="mb-3 text-[10px] uppercase tracking-widest text-gray-600">
-                Ton equipe
+                {t('pvp:yourTeam')}
               </div>
               <div className="grid gap-2 md:grid-cols-2">
                 {myTeam.members.map((fighter) => (
@@ -537,7 +541,7 @@ export default function PvpMatch({
               onClick={() => router.post('/pvp/leave-queue')}
               className="mt-6 rounded border border-gray-700 px-6 py-2 text-xs text-gray-500 transition-all hover:border-gray-500 hover:text-gray-300"
             >
-              ANNULER LA FILE
+              {t('pvp:cancelQueue')}
             </button>
           </div>
         )}
@@ -553,8 +557,8 @@ export default function PvpMatch({
                 }`}
               >
                 {isMyTurn
-                  ? 'TON TOUR'
-                  : `Tour de ${teams.flatMap((team) => team.members).find((member) => member.id === match.currentTurnId)?.name || '...'}`}
+                  ? t('pvp:yourTurn')
+                  : t('pvp:turnOf', { name: teams.flatMap((team) => team.members).find((member) => member.id === match.currentTurnId)?.name || '...' })}
               </span>
             </div>
 
@@ -564,10 +568,10 @@ export default function PvpMatch({
                   <div className="rounded-lg border border-cyber-blue/30 bg-cyber-dark p-4">
                     <div className="mb-3 flex items-center justify-between">
                       <h3 className="text-sm font-bold uppercase tracking-widest text-cyber-blue">
-                        Equipe Alpha
+                        {t('pvp:teamAlpha')}
                       </h3>
                       <div className="text-[10px] text-gray-500">
-                        ELO moy. {myTeam.averageRating}
+                        {t('pvp:avgElo')} {myTeam.averageRating}
                       </div>
                     </div>
                     <div className="space-y-2">
@@ -588,14 +592,14 @@ export default function PvpMatch({
 
                   <div className="flex flex-col gap-4">
                     <div className="text-center text-4xl font-bold tracking-widest text-cyber-pink neon-text-pink">
-                      VS
+                      {t('pvp:vs').toUpperCase()}
                     </div>
 
                     {isSoloQueue && (
                       <>
                         <div className="rounded-lg border border-gray-800 bg-cyber-dark p-4">
                           <div className="mb-3 text-[10px] uppercase tracking-widest text-gray-600">
-                            Ordre de tour
+                            {t('pvp:turnOrder')}
                           </div>
                           <div className="space-y-1">
                             {turnOrder.map((fighter) => (
@@ -620,7 +624,7 @@ export default function PvpMatch({
                         {opponentAlive.length > 0 && (
                           <div className="rounded-lg border border-gray-800 bg-cyber-dark p-4">
                             <div className="mb-2 text-[10px] uppercase tracking-widest text-gray-600">
-                              Cible
+                              {t('pvp:target')}
                             </div>
                             <div className="flex flex-wrap gap-2">
                               {opponentAlive.map((fighter) => (
@@ -653,13 +657,13 @@ export default function PvpMatch({
                             : 'cursor-not-allowed border-gray-800 bg-gray-900 text-gray-700'
                         }`}
                       >
-                        {isSubmitting ? 'ACTION...' : isMyTurn ? '[ ATTAQUER ]' : 'EN ATTENTE...'}
+                        {isSubmitting ? t('pvp:action') : isMyTurn ? t('pvp:attack') : t('pvp:waitingTurn')}
                       </button>
 
                       {skills.length > 0 && (
                         <div className="space-y-1">
                           <div className="text-center text-[9px] uppercase tracking-widest text-cyber-purple">
-                            Competences Speciales
+                            {t('pvp:specialSkills')}
                           </div>
                           {skills.map((skill) => {
                             const onCooldown = skill.currentCooldown > 0
@@ -704,7 +708,7 @@ export default function PvpMatch({
                         onClick={handleForfeit}
                         className="w-full py-2 text-[10px] text-gray-700 transition-colors hover:text-cyber-red"
                       >
-                        ABANDONNER
+                        {t('pvp:surrender')}
                       </button>
                     </div>
                   </div>
@@ -712,10 +716,10 @@ export default function PvpMatch({
                   <div className="rounded-lg border border-cyber-red/30 bg-cyber-dark p-4">
                     <div className="mb-3 flex items-center justify-between">
                       <h3 className="text-sm font-bold uppercase tracking-widest text-cyber-red">
-                        Equipe Omega
+                        {t('pvp:teamOmega')}
                       </h3>
                       <div className="text-[10px] text-gray-500">
-                        ELO moy. {opponentTeam.averageRating}
+                        {t('pvp:avgElo')} {opponentTeam.averageRating}
                       </div>
                     </div>
                     <div className="space-y-2">
@@ -740,7 +744,7 @@ export default function PvpMatch({
                   <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
                     <div className="rounded-lg border border-gray-800 bg-cyber-dark p-4">
                       <div className="mb-3 text-[10px] uppercase tracking-widest text-gray-600">
-                        Ordre de tour
+                        {t('pvp:turnOrder')}
                       </div>
                       <div className="space-y-1">
                         {turnOrder.map((fighter) => (
@@ -765,7 +769,7 @@ export default function PvpMatch({
                     {opponentAlive.length > 0 && (
                       <div className="rounded-lg border border-gray-800 bg-cyber-dark p-4">
                         <div className="mb-2 text-[10px] uppercase tracking-widest text-gray-600">
-                          Cible
+                          {t('pvp:target')}
                         </div>
                         <div className="flex flex-wrap gap-2">
                           {opponentAlive.map((fighter) => (
@@ -791,7 +795,7 @@ export default function PvpMatch({
 
               <div className="relative rounded-lg border border-gray-800 bg-cyber-dark p-4 xl:sticky xl:top-24">
                 <h3 className="mb-2 text-[10px] uppercase tracking-widest text-gray-600">
-                  Combat Log
+                  {t('pvp:combatLog')}
                 </h3>
                 <div
                   ref={logScroll.containerRef}
@@ -808,7 +812,7 @@ export default function PvpMatch({
                     onClick={() => logScroll.scrollToLatest()}
                     className="absolute bottom-4 right-4 rounded border border-cyber-blue/40 bg-cyber-blue/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-cyber-blue transition hover:bg-cyber-blue/20"
                   >
-                    Derniere action
+                    {t('pvp:latestAction')}
                   </button>
                 )}
               </div>
@@ -821,7 +825,7 @@ export default function PvpMatch({
             <h2
               className={`mb-4 text-3xl font-bold tracking-widest ${match.winnerTeam === myTeam.team ? 'text-cyber-green' : 'text-cyber-red'}`}
             >
-              {match.winnerTeam === myTeam.team ? 'VICTOIRE!' : 'DEFAITE'}
+              {match.winnerTeam === myTeam.team ? t('pvp:victory') : t('pvp:defeat')}
             </h2>
             <div
               className={`mb-6 text-lg font-bold ${match.winnerTeam === myTeam.team ? 'text-cyber-green' : 'text-cyber-red'}`}
@@ -832,7 +836,7 @@ export default function PvpMatch({
 
             {match.log.length > 0 && (
               <div className="mx-auto mb-6 max-w-xl rounded-lg border border-gray-800 bg-cyber-dark p-4 text-left">
-                <h3 className="mb-2 text-[10px] uppercase tracking-widest text-gray-600">Replay</h3>
+                <h3 className="mb-2 text-[10px] uppercase tracking-widest text-gray-600">{t('pvp:replay')}</h3>
                 <div className="max-h-56 space-y-1 overflow-y-auto">
                   {match.log.map((entry, index) => (
                     <LogLine key={index} entry={entry} myId={myId} />
@@ -845,7 +849,7 @@ export default function PvpMatch({
               onClick={() => router.visit('/pvp')}
               className="rounded border border-cyber-blue bg-cyber-blue/20 px-8 py-3 font-bold uppercase tracking-widest text-cyber-blue transition-all hover:bg-cyber-blue/30"
             >
-              [ RETOUR A L&apos;ARENE ]
+              {t('pvp:backToArena')}
             </button>
           </div>
         )}

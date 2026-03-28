@@ -1,4 +1,5 @@
 import { router, usePage } from '@inertiajs/react'
+import { useTranslation } from 'react-i18next'
 import GameLayout from '~/components/layout'
 
 interface MissionData {
@@ -66,6 +67,7 @@ function rewardLabel(rewardType: string, rewardValue: number, rewardItemName: st
 }
 
 export default function Missions({ character, missions, dailyReward }: Props) {
+  const { t } = useTranslation(['missions', 'common'])
   const { props } = usePage<{ errors?: { message?: string }; success?: string }>()
   const allClaimed = missions.every((m) => m.claimed)
   const completedCount = missions.filter((m) => m.completed).length
@@ -89,19 +91,19 @@ export default function Missions({ character, missions, dailyReward }: Props) {
             <div className="flex items-start justify-between gap-4 mb-4">
               <div>
                 <div className="text-[10px] uppercase tracking-[0.3em] text-cyber-yellow mb-1">
-                  Recompense Journaliere
+                  {t('missions:dailyReward')}
                 </div>
                 <div className="text-2xl font-bold text-white">
-                  Streak {dailyReward.currentStreak}
+                  {t('missions:streak', { n: dailyReward.currentStreak })}
                 </div>
                 <div className="text-xs text-gray-500">
-                  Meilleur streak: {dailyReward.highestStreak}
+                  {t('missions:bestStreak', { n: dailyReward.highestStreak })}
                 </div>
               </div>
 
               <div className="text-right">
                 <div className="text-[10px] uppercase tracking-widest text-gray-500 mb-1">
-                  {dailyReward.claimedToday ? 'Reclamee aujourd hui' : `Prochain claim: ${dailyReward.nextClaimStreak}`}
+                  {dailyReward.claimedToday ? t('missions:claimedToday') : t('missions:nextClaim', { n: dailyReward.nextClaimStreak })}
                 </div>
                 <div className="text-sm font-bold text-cyber-yellow">
                   {dailyReward.nextRewards.length > 0
@@ -111,7 +113,7 @@ export default function Missions({ character, missions, dailyReward }: Props) {
                           {rewardLabel(r.rewardType, r.rewardValue, r.rewardItemName)}
                         </span>
                       ))
-                    : 'Aucune recompense'}
+                    : t('missions:noRewards')}
                 </div>
               </div>
             </div>
@@ -132,7 +134,7 @@ export default function Missions({ character, missions, dailyReward }: Props) {
                           : 'border-gray-800 bg-cyber-black/40'
                     }`}
                   >
-                    <div className="text-[10px] uppercase tracking-widest text-gray-500 mb-1">Jour {day.dayNumber}</div>
+                    <div className="text-[10px] uppercase tracking-widest text-gray-500 mb-1">{t('missions:dayLabel', { n: day.dayNumber })}</div>
                     {day.rewards.map((r, i) => (
                       <div key={i} className={`text-xs font-bold ${isCurrent ? 'text-cyber-yellow' : isReached ? 'text-cyber-green' : 'text-gray-400'}`}>
                         {rewardLabel(r.rewardType, r.rewardValue, r.rewardItemName)}
@@ -151,25 +153,25 @@ export default function Missions({ character, missions, dailyReward }: Props) {
                 onClick={() => router.post('/missions/daily-reward/claim')}
                 className="w-full py-2 bg-cyber-yellow/20 border border-cyber-yellow text-cyber-yellow text-xs font-bold uppercase tracking-widest rounded hover:bg-cyber-yellow/30 transition-all"
               >
-                [ RECLAMER LA RECOMPENSE DU JOUR ]
+                {t('missions:claimDayReward')}
               </button>
             ) : (
               <div className="text-center text-xs text-gray-500">
-                Reviens apres le reset quotidien pour continuer ton streak.
+                {t('missions:comeBackTomorrow')}
               </div>
             )}
           </div>
         )}
 
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-cyber-purple tracking-widest">MISSIONS QUOTIDIENNES</h1>
-          <span className="text-xs text-gray-600">{completedCount}/{missions.length} terminees</span>
+          <h1 className="text-2xl font-bold text-cyber-purple tracking-widest">{t('missions:title')}</h1>
+          <span className="text-xs text-gray-600">{t('missions:completionCount', { done: completedCount, total: missions.length })}</span>
         </div>
 
         {allClaimed && missions.length > 0 && (
           <div className="bg-cyber-green/5 border border-cyber-green/30 rounded-lg p-4 mb-6 text-center">
-            <div className="text-cyber-green font-bold text-sm">Toutes les missions du jour sont terminees!</div>
-            <div className="text-xs text-gray-600 mt-1">Reviens demain pour de nouvelles missions.</div>
+            <div className="text-cyber-green font-bold text-sm">{t('missions:allDone')}</div>
+            <div className="text-xs text-gray-600 mt-1">{t('missions:newMissionsTomorrow')}</div>
           </div>
         )}
 
@@ -187,7 +189,7 @@ export default function Missions({ character, missions, dailyReward }: Props) {
                     <p className="text-[10px] text-gray-600">{m.mission.description}</p>
                   </div>
                   <div className="text-right shrink-0 ml-4">
-                    <div className="text-[10px] text-gray-500">Recompense</div>
+                    <div className="text-[10px] text-gray-500">{t('missions:reward')}</div>
                     <div className="text-xs font-bold text-cyber-yellow">
                       {REWARD_ICONS[m.mission.rewardType]} +{m.mission.rewardValue.toLocaleString()} {m.mission.rewardType}
                     </div>
@@ -197,7 +199,7 @@ export default function Missions({ character, missions, dailyReward }: Props) {
                 {/* Progress bar */}
                 <div className="mb-2">
                   <div className="flex justify-between text-[10px] text-gray-600 mb-1">
-                    <span>Progression</span>
+                    <span>{t('missions:progression')}</span>
                     <span>{m.progress} / {m.mission.targetValue}</span>
                   </div>
                   <div className="h-2 bg-cyber-black rounded-full overflow-hidden border border-gray-800">
@@ -214,11 +216,11 @@ export default function Missions({ character, missions, dailyReward }: Props) {
                     onClick={() => router.post(`/missions/${m.id}/claim`)}
                     className="w-full py-2 bg-cyber-green/20 border border-cyber-green text-cyber-green text-xs font-bold uppercase tracking-widest rounded hover:bg-cyber-green/30 transition-all"
                   >
-                    [ RECLAMER ]
+                    {t('missions:claimBtn')}
                   </button>
                 )}
                 {m.claimed && (
-                  <div className="text-center text-[10px] text-gray-700 uppercase">Reclamee ✓</div>
+                  <div className="text-center text-[10px] text-gray-700 uppercase">{t('missions:claimed')}</div>
                 )}
               </div>
             )

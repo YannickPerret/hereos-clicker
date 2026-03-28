@@ -1,4 +1,5 @@
 import { router } from '@inertiajs/react'
+import { useTranslation } from 'react-i18next'
 import GameLayout from '~/components/layout'
 
 interface Floor {
@@ -17,18 +18,20 @@ interface Props {
 }
 
 export default function DungeonIndex({ character, floors, activeRun }: Props) {
+  const { t } = useTranslation(['dungeon', 'common'])
+
   if (activeRun) {
     return (
       <GameLayout>
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="bg-cyber-dark border border-cyber-red/30 rounded-lg p-8 text-center max-w-md">
-            <h2 className="text-xl text-cyber-red font-bold mb-4 tracking-widest">RUN EN COURS</h2>
-            <p className="text-gray-500 text-sm mb-6">Tu as un donjon en cours. Termine-le ou fuis.</p>
+            <h2 className="text-xl text-cyber-red font-bold mb-4 tracking-widest">{t('dungeon:activeRun')}</h2>
+            <p className="text-gray-500 text-sm mb-6">{t('dungeon:activeRunMessage')}</p>
             <button
               onClick={() => router.visit(`/dungeon/run/${activeRun.id}`)}
               className="px-6 py-3 bg-cyber-red/20 border border-cyber-red text-cyber-red font-bold uppercase tracking-widest rounded hover:bg-cyber-red/30 transition-all"
             >
-              [ REPRENDRE ]
+              {t('dungeon:resume')}
             </button>
           </div>
         </div>
@@ -39,7 +42,7 @@ export default function DungeonIndex({ character, floors, activeRun }: Props) {
   return (
     <GameLayout>
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-cyber-red tracking-widest">DONJONS</h1>
+        <h1 className="text-2xl font-bold text-cyber-red tracking-widest">{t('dungeon:title')}</h1>
         <div className="flex items-center gap-4 text-xs">
           <span className="text-gray-500">
             LVL <span className="text-cyber-green font-bold">{character.level}</span>
@@ -70,7 +73,7 @@ export default function DungeonIndex({ character, floors, activeRun }: Props) {
                 </h3>
                 {floor.bossEnemyId && (
                   <span className="text-[10px] bg-cyber-yellow/20 text-cyber-yellow px-2 py-0.5 rounded uppercase">
-                    Boss
+                    {t('dungeon:boss')}
                   </span>
                 )}
               </div>
@@ -79,7 +82,7 @@ export default function DungeonIndex({ character, floors, activeRun }: Props) {
 
               <div className="flex justify-between items-center">
                 <span className={`text-xs ${locked ? 'text-cyber-red' : 'text-gray-600'}`}>
-                  Niveau requis: {floor.minLevel}
+                  {t('dungeon:levelReq', { n: floor.minLevel })}
                 </span>
 
                 <button
@@ -91,13 +94,13 @@ export default function DungeonIndex({ character, floors, activeRun }: Props) {
                       : 'bg-cyber-red/10 border border-cyber-red/50 text-cyber-red hover:bg-cyber-red/20'
                   }`}
                 >
-                  {locked ? '[ VERROUILLE ]' : '[ ENTRER ]'}
+                  {locked ? t('dungeon:locked') : t('dungeon:enter')}
                 </button>
               </div>
 
               {lowHp && !locked && (
                 <div className="mt-2 text-[10px] text-cyber-orange">
-                  Attention: HP faibles. Utilisez un Stim Pack.
+                  {t('dungeon:lowHpWarning')}
                 </div>
               )}
             </div>

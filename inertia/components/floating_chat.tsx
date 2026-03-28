@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { router, usePage } from '@inertiajs/react'
+import { useTranslation } from 'react-i18next'
 
 interface Message {
   id: number
@@ -96,6 +97,8 @@ function ChatWidget({
   activeCharacterName: string | null
   partyChannel: string | null
 }) {
+  const { t } = useTranslation('chat')
+
   const [isOpen, setIsOpen] = useState(() => {
     if (typeof window === 'undefined') return false
     return window.localStorage.getItem(getChatOpenStorageKey(username)) === '1'
@@ -250,7 +253,7 @@ function ChatWidget({
     if (!partyChannel) return
     setChannels((prev) => {
       if (prev.find((c) => c.name === partyChannel)) return prev
-      return [...prev, { id: -1, name: partyChannel, label: 'GROUPE', isPublic: false }]
+      return [...prev, { id: -1, name: partyChannel, label: t('partyChannel'), isPublic: false }]
     })
   }, [partyChannel])
 
@@ -530,12 +533,12 @@ function ChatWidget({
       const data = await res.json().catch(() => ({}))
       setFeedback({
         type: res.ok ? 'success' : 'error',
-        message: data.message || data.error || 'Invitation impossible.',
+        message: data.message || data.error || t('actionFailed'),
       })
     } catch {
       setFeedback({
         type: 'error',
-        message: 'Erreur reseau pendant lenvoi de linvitation.',
+        message: t('networkError'),
       })
     }
 
@@ -669,7 +672,7 @@ function ChatWidget({
                     : 'border-gray-800 text-gray-500 hover:text-cyber-green hover:border-cyber-green/30'
                 }`}
               >
-                {activeChannel === partyChannel ? '👥 GROUPE' : `#${activeChannel}`}
+                {activeChannel === partyChannel ? '👥 ' + t('partyChannel') : `#${activeChannel}`}
               </button>
               <button
                 onClick={closeChat}
@@ -698,7 +701,7 @@ function ChatWidget({
                       : 'text-gray-500 hover:text-white hover:bg-gray-800'
                   }`}
                 >
-                  {ch.name === partyChannel ? '👥 GROUPE' : `#${ch.name}`}
+                  {ch.name === partyChannel ? '👥 ' + t('partyChannel') : `#${ch.name}`}
                   {!ch.isPublic && ch.name !== partyChannel && (
                     <span className="text-cyber-yellow ml-1">🔒</span>
                   )}
@@ -733,14 +736,14 @@ function ChatWidget({
               onSubmit={handleCreateChannel}
               className="bg-cyber-dark border-b border-gray-800 p-2 space-y-1.5 shrink-0"
             >
-              <div className="text-[9px] text-gray-500 uppercase">Creer un salon</div>
+              <div className="text-[9px] text-gray-500 uppercase">{t('createChannel')}</div>
               <input
                 type="text"
                 value={newChannelName}
                 onChange={(e) =>
                   setNewChannelName(e.target.value.toLowerCase().replace(/[^a-z0-9-_]/g, ''))
                 }
-                placeholder="nom-du-salon"
+                placeholder={t('channelPlaceholder')}
                 maxLength={30}
                 className="w-full bg-cyber-black border border-gray-800 rounded px-2 py-1 text-[10px] text-white focus:border-cyber-green/50 focus:outline-none"
               />
@@ -786,12 +789,12 @@ function ChatWidget({
               onSubmit={handleJoinChannel}
               className="bg-cyber-dark border-b border-gray-800 p-2 space-y-1.5 shrink-0"
             >
-              <div className="text-[9px] text-gray-500 uppercase">Rejoindre un salon prive</div>
+              <div className="text-[9px] text-gray-500 uppercase">{t('joinPrivate')}</div>
               <input
                 type="text"
                 value={joinName}
                 onChange={(e) => setJoinName(e.target.value)}
-                placeholder="nom-du-salon"
+                placeholder={t('channelPlaceholder')}
                 className="w-full bg-cyber-black border border-gray-800 rounded px-2 py-1 text-[10px] text-white focus:outline-none"
               />
               <input
@@ -963,14 +966,14 @@ function ChatWidget({
             onClick={() => handleAddFriend(userMenu.characterName)}
             className="flex w-full items-center justify-between rounded px-2 py-1.5 text-left text-[11px] text-gray-300 transition hover:bg-cyber-green/10 hover:text-white"
           >
-            <span>Ajouter en ami</span>
+            <span>{t('addFriend')}</span>
           </button>
           <button
             type="button"
             onClick={() => handleUnavailableAction('Message prive')}
             className="flex w-full items-center justify-between rounded px-2 py-1.5 text-left text-[11px] text-gray-300 transition hover:bg-cyber-green/10 hover:text-white"
           >
-            <span>Envoyer un message prive</span>
+            <span>{t('sendPrivateMsg')}</span>
             <span className="text-[9px] uppercase text-gray-600">Bientot</span>
           </button>
           <button
@@ -985,14 +988,14 @@ function ChatWidget({
             onClick={() => toggleBlockedUser(userMenu.characterName)}
             className="flex w-full items-center justify-between rounded px-2 py-1.5 text-left text-[11px] text-gray-300 transition hover:bg-cyber-red/10 hover:text-cyber-red"
           >
-            <span>{blockedUsers.includes(userMenu.characterName) ? 'Debloquer' : 'Bloquer'}</span>
+            <span>{blockedUsers.includes(userMenu.characterName) ? t('unblock') : t('block')}</span>
           </button>
           <button
             type="button"
             onClick={() => handleInviteToParty(userMenu.characterName)}
             className="flex w-full items-center justify-between rounded px-2 py-1.5 text-left text-[11px] text-gray-300 transition hover:bg-cyber-purple/10 hover:text-cyber-purple"
           >
-            <span>Inviter dans le groupe</span>
+            <span>{t('inviteToGroup')}</span>
           </button>
         </div>
       )}

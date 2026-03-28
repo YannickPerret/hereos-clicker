@@ -1,0 +1,15 @@
+{
+  "publicProfile": "Public Profile",
+  "addFriend": "Add friend",
+  "incomingRequest": "Incoming request",
+  "sentRequest": "Request sent",
+  "alreadyFriend": "Already friend",
+  "back": "Back",
+  "specialization": "Specialization",
+  "none": "None",
+  "equipment": "Equipment",
+  "emptySlot": "[ Empty ]",
+  "unlockedTalents": "Unlocked Talents",
+  "noTalents": "No talents unlocked.",
+  "dronesCompanions": "Drones & Companions"
+}

@@ -1,0 +1,100 @@
+{
+  "nav": {
+    "home": "HOME",
+    "inventory": "INVENTORY",
+    "drones": "DRONES",
+    "talents": "TALENTS",
+    "shop": "SHOP",
+    "blackMarket": "BLACK MARKET",
+    "party": "PARTY",
+    "dungeon": "DUNGEON",
+    "dungeon25d": "DUNGEON 2.5D",
+    "pvp": "PVP",
+    "quests": "QUESTS",
+    "missions": "MISSIONS",
+    "friends": "FRIENDS",
+    "leaderboard": "LEADERBOARD",
+    "admin": "ADMIN",
+    "myReports": "MY REPORTS"
+  },
+  "toast": {
+    "success": "Success",
+    "error": "Error",
+    "close": "CLOSE"
+  },
+  "logout": "LOGOUT",
+  "reportBug": "REPORT BUG",
+  "types": {
+    "weapon": "WEAPON",
+    "armor": "ARMOR",
+    "implant": "IMPLANT",
+    "clothes_hair": "HAIR",
+    "clothes_face": "FACE",
+    "clothes_outer": "TOP",
+    "clothes_legs": "BOTTOM",
+    "consumable": "CONSUMABLE",
+    "upgrade": "UPGRADE"
+  },
+  "specs": {
+    "hacker": "HACKER",
+    "netrunner": "NETRUNNER",
+    "samurai": "STREET SAMURAI",
+    "chrome_dealer": "CHROME DEALER"
+  },
+  "stats": {
+    "atk": "ATK",
+    "def": "DEF",
+    "hp": "HP",
+    "cpc": "CPC",
+    "cps": "CPS",
+    "crit": "CRIT%",
+    "critDmg": "CRIT DMG",
+    "credits": "Credits",
+    "level": "Level",
+    "xp": "XP"
+  },
+  "effects": {
+    "attack_boost": "ATK",
+    "defense_boost": "DEF",
+    "click_multiplier": "CPC",
+    "permanent_click": "CPC",
+    "hp_boost": "HP",
+    "temp_click_boost": "BOOST",
+    "xp_boost": "XP"
+  },
+  "buttons": {
+    "close": "CLOSE",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "send": "SEND",
+    "back": "Back",
+    "loading": "Loading..."
+  },
+  "aria": {
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "closeWindow": "Close window",
+    "close": "Close"
+  },
+  "backendMsg": {
+    "notEnoughCredits": "Not enough credits",
+    "outOfStock": "Out of stock",
+    "alreadyInParty": "Already in a party",
+    "partyNotFoundOrInDungeon": "Party not found or already in dungeon",
+    "partyFull": "Party full",
+    "alreadyInThisParty": "Already in this party",
+    "reportSent": "Report sent. Thanks, Netrunner.",
+    "itemEquipped": "Item equipped",
+    "itemUnequipped": "Item unequipped",
+    "itemUsed": "Item used",
+    "itemDiscarded": "Item discarded",
+    "companionActivated": "Companion activated",
+    "companionDeactivated": "Companion deactivated",
+    "companionUpgraded": "Companion upgraded",
+    "friendRequestSent": "Friend request sent",
+    "friendRequestAccepted": "Friend request accepted",
+    "friendRemoved": "Friend removed",
+    "missionClaimed": "Mission claimed",
+    "rewardClaimed": "Reward claimed"
+  }
+}

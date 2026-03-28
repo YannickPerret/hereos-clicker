@@ -1,0 +1,14 @@
+{
+  "equipped": "EQUIPE",
+  "stats": "Stats",
+  "emptySlot": "[ Vide ]",
+  "unequip": "Retirer",
+  "discard": "Jeter",
+  "equip": "Equiper",
+  "use": "Utiliser",
+  "title": "INVENTAIRE ({{count}} objets)",
+  "empty": "Inventaire vide. Visitez le Shop ou explorez les Donjons.",
+  "discardConfirm": "Confirmation",
+  "discardMessage": "Choisis la quantite a jeter. Cette action est irreversible.",
+  "discardStock": "Stock actuel: {{stock}} • Jeter x{{quantity}}"
+}

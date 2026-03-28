@@ -1,6 +1,8 @@
 import { useForm, Link } from '@inertiajs/react'
+import { useTranslation } from 'react-i18next'
 
 export default function Login() {
+  const { t } = useTranslation('auth')
   const { data, setData, post, processing, errors } = useForm({
     email: '',
     password: '',
@@ -28,25 +30,25 @@ export default function Login() {
           className="mx-auto mb-3 h-20 w-auto object-contain"
         />
         <p className="text-center text-gray-500 mb-8 text-sm tracking-widest uppercase">
-          Cyberpunk Clicker // Connexion
+          {t('login.subtitle')}
         </p>
 
         <form onSubmit={handleSubmit} className="bg-cyber-dark border border-cyber-blue/30 rounded-lg p-8 neon-border">
           <div className="space-y-5">
             <div>
-              <label className="block text-xs uppercase tracking-wider text-cyber-blue mb-2">Email</label>
+              <label className="block text-xs uppercase tracking-wider text-cyber-blue mb-2">{t('login.email')}</label>
               <input
                 type="email"
                 value={data.email}
                 onChange={(e) => setData('email', e.target.value)}
                 className="w-full bg-cyber-black border border-cyber-blue/30 rounded px-4 py-2.5 text-white focus:border-cyber-blue focus:outline-none focus:ring-1 focus:ring-cyber-blue/50 transition-all"
-                placeholder="runner@neo-city.net"
+                placeholder={t('login.placeholder')}
               />
               {errors.email && <p className="text-cyber-red text-xs mt-1">{errors.email}</p>}
             </div>
 
             <div>
-              <label className="block text-xs uppercase tracking-wider text-cyber-blue mb-2">Mot de passe</label>
+              <label className="block text-xs uppercase tracking-wider text-cyber-blue mb-2">{t('login.password')}</label>
               <input
                 type="password"
                 value={data.password}
@@ -58,7 +60,7 @@ export default function Login() {
             </div>
 
             {(errors as any).E_INVALID_CREDENTIALS && (
-              <p className="text-cyber-red text-xs">Identifiants invalides</p>
+              <p className="text-cyber-red text-xs">{t('login.invalidCredentials')}</p>
             )}
 
             <button
@@ -66,14 +68,14 @@ export default function Login() {
               disabled={processing}
               className="w-full py-3 bg-cyber-blue/20 border border-cyber-blue text-cyber-blue font-bold uppercase tracking-widest rounded hover:bg-cyber-blue/30 transition-all disabled:opacity-50 neon-border"
             >
-              {processing ? '[ CONNEXION... ]' : '[ SE CONNECTER ]'}
+              {processing ? t('login.submitting') : t('login.submit')}
             </button>
           </div>
 
           <p className="text-center text-gray-500 text-sm mt-6">
-            Pas de compte ?{' '}
+            {t('login.noAccount')}{' '}
             <Link href="/register" className="text-cyber-pink hover:underline">
-              S'inscrire
+              {t('login.register')}
             </Link>
           </p>
         </form>

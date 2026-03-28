@@ -1,0 +1,33 @@
+{
+  "support": "Support",
+  "title": "REPORT BUG",
+  "description": "Report a bug, exploit or suggestion without leaving the page.",
+  "category": "Category",
+  "titleLabel": "Title",
+  "titlePlaceholder": "Short summary of the issue",
+  "descriptionLabel": "Description",
+  "descriptionPlaceholder": "Steps, context, screen, expected behavior, actual behavior...",
+  "viewReports": "View my reports",
+  "submitting": "SENDING...",
+  "submit": "SEND",
+  "pageTitle": "REPORTS",
+  "newReport": "+ NEW REPORT",
+  "cancelReport": "CANCEL",
+  "problemPlaceholder": "Summary of the issue...",
+  "describePlaceholder": "Describe the bug in detail...",
+  "sendReport": "SEND REPORT",
+  "noReports": "No reports. The system is working... for now.",
+  "status": {
+    "open": "OPEN",
+    "in_progress": "IN PROGRESS",
+    "resolved": "RESOLVED",
+    "closed": "CLOSED"
+  },
+  "categories": {
+    "bug": "bug",
+    "exploit": "exploit",
+    "player": "player",
+    "suggestion": "suggestion",
+    "other": "other"
+  }
+}

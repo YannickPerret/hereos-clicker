@@ -1,0 +1,28 @@
+{
+  "title": "LEADERBOARDS",
+  "seasonRanking": "Season ranking",
+  "freeDate": "open date",
+  "noEnd": "no end",
+  "features": {
+    "pvpLadder": "PvP Ladder",
+    "worldBoss": "World boss",
+    "playerMarket": "Player market"
+  },
+  "globalRanking": "Global Ranking",
+  "globalInfo": "Credits • Level • Clicks",
+  "playersLoaded": "{{count}} player(s) loaded",
+  "headers": {
+    "rank": "Rank",
+    "runner": "Runner",
+    "level": "Level",
+    "clicks": "Clicks",
+    "credits": "Credits"
+  },
+  "noRunners": "No registered runners",
+  "loading": "Loading...",
+  "scrollToLoad": "Scroll to load more",
+  "endOfRanking": "End of ranking",
+  "pvpRanking": "PvP Ranking",
+  "pvpInfo": "Elo • Wins / Losses",
+  "noPvpRanking": "No PvP ranking available"
+}

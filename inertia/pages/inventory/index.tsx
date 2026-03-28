@@ -1,5 +1,6 @@
 import { router, usePage } from '@inertiajs/react'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import CyberpunkAvatar from '~/components/cyberpunk_avatar'
 import GameLayout from '~/components/layout'
 
@@ -57,18 +58,6 @@ const RARITY_TEXT: Record<string, string> = {
   legendary: 'text-cyber-yellow',
 }
 
-const TYPE_LABELS: Record<string, string> = {
-  weapon: 'ARME',
-  armor: 'ARMURE',
-  implant: 'IMPLANT',
-  clothes_hair: 'CHEVEUX',
-  clothes_face: 'VISAGE',
-  clothes_outer: 'HAUT',
-  clothes_legs: 'BAS',
-  consumable: 'CONSO',
-  upgrade: 'UPGRADE',
-}
-
 const TYPE_ORDER = [
   'weapon',
   'armor',
@@ -81,17 +70,8 @@ const TYPE_ORDER = [
   'upgrade',
 ] as const
 
-const EFFECT_LABELS: Record<string, string> = {
-  attack_boost: 'ATK',
-  defense_boost: 'DEF',
-  click_multiplier: 'CPC',
-  permanent_click: 'CPC',
-  hp_restore: 'HP',
-  temp_click_boost: 'BOOST',
-  xp_boost: 'XP',
-}
-
 export default function Inventory({ character, inventory, equipBonuses, talentBonuses }: Props) {
+  const { t } = useTranslation(['inventory', 'common'])
   const { props } = usePage<{ errors?: { message?: string }; success?: string }>()
   const [discardTarget, setDiscardTarget] = useState<InventoryEntry | null>(null)
   const [discardQuantity, setDiscardQuantity] = useState('1')
@@ -112,10 +92,10 @@ export default function Inventory({ character, inventory, equipBonuses, talentBo
   const formatEffect = (entry: InventoryEntry) => {
     if (!entry.item.effectType || entry.item.effectValue === null) return null
     if (entry.item.effectType === 'permanent_click') {
-      return `CPC: +${entry.item.effectValue}%`
+      return `${t(`common:effects.${entry.item.effectType}`)}: +${entry.item.effectValue}%`
     }
 
-    return `${EFFECT_LABELS[entry.item.effectType]}: +${entry.item.effectValue}`
+    return `${t(`common:effects.${entry.item.effectType}`)}: +${entry.item.effectValue}`
   }
 
   const openDiscardModal = (entry: InventoryEntry) => {
@@ -176,7 +156,7 @@ export default function Inventory({ character, inventory, equipBonuses, talentBo
         <div className="lg:col-span-1">
           <div className="bg-cyber-dark border border-cyber-blue/30 rounded-lg p-4">
             <h2 className="text-sm uppercase tracking-widest text-cyber-blue neon-text mb-4 text-center">
-              EQUIPE
+              {t('inventory:equipped')}
             </h2>
             <div className="mb-4">
               <CyberpunkAvatar
@@ -202,7 +182,7 @@ export default function Inventory({ character, inventory, equipBonuses, talentBo
                     className={`border rounded-lg p-3 ${item ? RARITY_COLORS[item.item.rarity] : 'border-gray-800 bg-cyber-black/50'}`}
                   >
                     <div className="text-[10px] uppercase tracking-wider text-gray-600 mb-1">
-                      {TYPE_LABELS[type]}
+                      {t(`common:types.${type}`)}
                     </div>
                     {item ? (
                       <div>
@@ -219,18 +199,18 @@ export default function Inventory({ character, inventory, equipBonuses, talentBo
                             }
                             className="text-[10px] text-cyber-red hover:underline uppercase"
                           >
-                            Retirer
+                            {t('inventory:unequip')}
                           </button>
                           <button
                             onClick={() => openDiscardModal(item)}
                             className="text-[10px] text-cyber-orange hover:underline uppercase"
                           >
-                            Jeter
+                            {t('inventory:discard')}
                           </button>
                         </div>
                       </div>
                     ) : (
-                      <div className="text-xs text-gray-700">[ Vide ]</div>
+                      <div className="text-xs text-gray-700">{t('inventory:emptySlot')}</div>
                     )}
                   </div>
                 )
@@ -240,7 +220,7 @@ export default function Inventory({ character, inventory, equipBonuses, talentBo
             {/* Character Stats */}
             <div className="mt-6 space-y-1 text-xs">
               <h3 className="text-sm uppercase tracking-widest text-cyber-green mb-2 text-center">
-                Stats
+                {t('inventory:stats')}
               </h3>
               {(() => {
                 const totalAtk = character.attack + equipBonuses.attackBonus + talentBonuses.atkFlat
@@ -255,25 +235,25 @@ export default function Inventory({ character, inventory, equipBonuses, talentBo
 
                 return [
                   {
-                    label: 'Credits',
+                    label: t('common:stats.credits'),
                     value: character.credits.toLocaleString(),
                     bonus: '',
                     color: 'text-cyber-yellow',
                   },
                   {
-                    label: 'ATK',
+                    label: t('common:stats.atk'),
                     value: totalAtk,
                     bonus: atkBonus > 0 ? `+${atkBonus}` : '',
                     color: 'text-cyber-red',
                   },
                   {
-                    label: 'DEF',
+                    label: t('common:stats.def'),
                     value: totalDef,
                     bonus: defBonus > 0 ? `+${defBonus}` : '',
                     color: 'text-cyber-blue',
                   },
                   {
-                    label: 'HP',
+                    label: t('common:stats.hp'),
                     value: `${character.hpCurrent}/${character.hpMax}`,
                     bonus: '',
                     color: 'text-cyber-green',
@@ -303,13 +283,13 @@ export default function Inventory({ character, inventory, equipBonuses, talentBo
         {/* Inventory Grid */}
         <div className="lg:col-span-3">
           <h2 className="text-sm uppercase tracking-widest text-cyber-pink neon-text-pink mb-4">
-            INVENTAIRE ({backpack.length} objets)
+            {t('inventory:title', { count: backpack.length })}
           </h2>
 
           {backpack.length === 0 ? (
             <div className="bg-cyber-dark border border-gray-800 rounded-lg p-12 text-center">
               <p className="text-gray-600 text-sm">
-                Inventaire vide. Visitez le Shop ou explorez les Donjons.
+                {t('inventory:empty')}
               </p>
             </div>
           ) : (
@@ -318,7 +298,7 @@ export default function Inventory({ character, inventory, equipBonuses, talentBo
                 <div key={group.type}>
                   <div className="mb-3 flex items-center justify-between border-b border-gray-800 pb-2">
                     <h3 className="text-xs uppercase tracking-widest text-gray-500">
-                      {TYPE_LABELS[group.type]}
+                      {t(`common:types.${group.type}`)}
                     </h3>
                     <span className="text-[10px] text-gray-700">
                       {group.entries.length} objet{group.entries.length > 1 ? 's' : ''}
@@ -347,7 +327,7 @@ export default function Inventory({ character, inventory, equipBonuses, talentBo
                           </p>
                           <div className="flex justify-between items-center text-[10px]">
                             <span className="uppercase text-gray-600">
-                              {TYPE_LABELS[entry.item.type]}
+                              {t(`common:types.${entry.item.type}`)}
                             </span>
                             {formatEffect(entry) && (
                               <span className="text-cyber-green">{formatEffect(entry)}</span>
@@ -362,7 +342,7 @@ export default function Inventory({ character, inventory, equipBonuses, talentBo
                                 }
                                 className="flex-1 text-[10px] py-1 bg-cyber-blue/10 border border-cyber-blue/30 text-cyber-blue rounded hover:bg-cyber-blue/20 transition-all uppercase"
                               >
-                                Equiper
+                                {t('inventory:equip')}
                               </button>
                             )}
                             {(entry.item.type === 'consumable' ||
@@ -373,14 +353,14 @@ export default function Inventory({ character, inventory, equipBonuses, talentBo
                                 }
                                 className="flex-1 text-[10px] py-1 bg-cyber-green/10 border border-cyber-green/30 text-cyber-green rounded hover:bg-cyber-green/20 transition-all uppercase"
                               >
-                                Utiliser
+                                {t('inventory:use')}
                               </button>
                             )}
                             <button
                               onClick={() => openDiscardModal(entry)}
                               className="flex-1 text-[10px] py-1 bg-cyber-orange/10 border border-cyber-orange/30 text-cyber-orange rounded hover:bg-cyber-orange/20 transition-all uppercase"
                             >
-                              Jeter
+                              {t('inventory:discard')}
                             </button>
                           </div>
                         </div>
@@ -404,11 +384,11 @@ export default function Inventory({ character, inventory, equipBonuses, talentBo
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-2 text-[10px] uppercase tracking-[0.35em] text-gray-600">
-              Confirmation
+              {t('inventory:discardConfirm')}
             </div>
             <h3 className="text-lg font-bold text-cyber-orange">{discardTarget.item.name}</h3>
             <p className="mt-2 text-sm text-gray-400">
-              Choisis la quantite a jeter. Cette action est irreversible.
+              {t('inventory:discardMessage')}
             </p>
 
             <div className="mt-4 flex items-center gap-2">
@@ -440,7 +420,7 @@ export default function Inventory({ character, inventory, equipBonuses, talentBo
             </div>
 
             <div className="mt-2 text-[10px] uppercase tracking-widest text-gray-600">
-              Stock actuel: {discardTarget.quantity} • Jeter x{getDiscardQuantity()}
+              {t('inventory:discardStock', { stock: discardTarget.quantity, quantity: getDiscardQuantity() })}
             </div>
 
             <div className="mt-5 flex gap-2">
@@ -449,14 +429,14 @@ export default function Inventory({ character, inventory, equipBonuses, talentBo
                 onClick={closeDiscardModal}
                 className="flex-1 rounded border border-gray-700 px-3 py-2 text-xs uppercase tracking-widest text-gray-400 transition hover:border-gray-500 hover:text-white"
               >
-                Annuler
+                {t('common:buttons.cancel')}
               </button>
               <button
                 type="button"
                 onClick={submitDiscard}
                 className="flex-1 rounded border border-cyber-orange/40 bg-cyber-orange/10 px-3 py-2 text-xs uppercase tracking-widest text-cyber-orange transition hover:bg-cyber-orange/20"
               >
-                Confirmer
+                {t('common:buttons.confirm')}
               </button>
             </div>
           </div>

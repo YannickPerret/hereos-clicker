@@ -1,0 +1,33 @@
+{
+  "support": "Support",
+  "title": "REPORT BUG",
+  "description": "Signale un bug, un exploit ou une suggestion sans quitter la page.",
+  "category": "Categorie",
+  "titleLabel": "Titre",
+  "titlePlaceholder": "Resume court du probleme",
+  "descriptionLabel": "Description",
+  "descriptionPlaceholder": "Etapes, contexte, ecran, comportement attendu, comportement observe...",
+  "viewReports": "Voir mes reports",
+  "submitting": "ENVOI...",
+  "submit": "ENVOYER",
+  "pageTitle": "REPORTS",
+  "newReport": "+ NOUVEAU REPORT",
+  "cancelReport": "ANNULER",
+  "problemPlaceholder": "Resume du probleme...",
+  "describePlaceholder": "Decris le bug en detail...",
+  "sendReport": "ENVOYER LE REPORT",
+  "noReports": "Aucun report. Le systeme fonctionne... pour l'instant.",
+  "status": {
+    "open": "OUVERT",
+    "in_progress": "EN COURS",
+    "resolved": "RESOLU",
+    "closed": "FERME"
+  },
+  "categories": {
+    "bug": "bug",
+    "exploit": "exploit",
+    "player": "player",
+    "suggestion": "suggestion",
+    "other": "other"
+  }
+}

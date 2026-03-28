@@ -1,0 +1,10 @@
+{
+  "title": "Recompense Journaliere",
+  "day": "JOUR {{n}}",
+  "dayShort": "J{{n}}",
+  "streak": "Streak actuel: {{current}} | Meilleur: {{best}}",
+  "todayRewards": "Recompenses du jour:",
+  "claiming": "RECUPERATION...",
+  "claim": "[ RECUPERER LA RECOMPENSE ]",
+  "alreadyClaimed": "Recompense deja recuperee aujourd'hui. Reviens demain !"
+}

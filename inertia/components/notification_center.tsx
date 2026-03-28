@@ -1,5 +1,6 @@
 import { router, usePage } from '@inertiajs/react'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 interface InviteNotification {
   id: number
@@ -46,6 +47,7 @@ function getCsrfToken() {
 
 export default function NotificationCenter() {
   const { auth } = usePage().props as any
+  const { t } = useTranslation('chat')
   const [isOpen, setIsOpen] = useState(false)
   const [invites, setInvites] = useState<InviteNotification[]>([])
   const [friendRequests, setFriendRequests] = useState<FriendRequestNotification[]>([])
@@ -160,7 +162,7 @@ export default function NotificationCenter() {
 
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        setError(data.error || 'Action impossible.')
+        setError(data.error || t('actionFailed'))
         return
       }
 
@@ -170,7 +172,7 @@ export default function NotificationCenter() {
         router.visit(data.redirectTo || '/party')
       }
     } catch {
-      setError('Erreur reseau.')
+      setError(t('networkError'))
     } finally {
       setBusyInviteId(null)
     }
@@ -192,13 +194,13 @@ export default function NotificationCenter() {
 
         const data = await res.json().catch(() => ({}))
         if (!res.ok) {
-          setError(data.error || 'Action impossible.')
+          setError(data.error || t('actionFailed'))
           return
         }
 
         removeFriendRequestEverywhere(requestId)
       } catch {
-        setError('Erreur reseau.')
+        setError(t('networkError'))
       } finally {
         setBusyFriendRequestId(null)
       }
@@ -218,7 +220,7 @@ export default function NotificationCenter() {
           onClick={() => setIsOpen(true)}
           className="fixed bottom-20 left-4 z-50 inline-flex items-center gap-2 rounded-full border border-cyber-orange/40 bg-cyber-dark/95 px-3 py-2 text-xs uppercase tracking-widest text-cyber-orange shadow-lg hover:bg-cyber-orange/10 transition-all"
         >
-          <span>NOTIFS</span>
+          <span>{t('notifs')}</span>
           {totalNotifications > 0 && (
             <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-cyber-red px-1.5 py-0.5 text-[10px] font-bold text-white">
               {totalNotifications}
@@ -231,8 +233,8 @@ export default function NotificationCenter() {
         <div className="fixed bottom-20 left-4 z-50 w-[22rem] max-w-[calc(100vw-2rem)] overflow-hidden rounded-lg border border-cyber-orange/30 bg-cyber-black/95 shadow-2xl backdrop-blur-sm">
           <div className="flex items-center justify-between border-b border-cyber-orange/20 bg-cyber-dark px-3 py-2">
             <div>
-              <div className="text-[10px] uppercase tracking-[0.3em] text-cyber-orange">Notification Center</div>
-              <div className="text-[10px] text-gray-500">{totalNotifications} notification(s) active(s)</div>
+              <div className="text-[10px] uppercase tracking-[0.3em] text-cyber-orange">{t('notifCenter')}</div>
+              <div className="text-[10px] text-gray-500">{t('activeNotifs', { count: totalNotifications })}</div>
             </div>
             <button
               type="button"
@@ -252,17 +254,17 @@ export default function NotificationCenter() {
 
             {totalNotifications === 0 ? (
               <div className="rounded border border-gray-800 bg-cyber-dark/40 px-3 py-4 text-center text-xs text-gray-500">
-                Aucune notification en attente.
+                {t('noNotifs')}
               </div>
             ) : (
               <div className="space-y-3">
                 {friendRequests.map((request) => (
                   <div key={request.id} className="rounded-lg border border-cyber-green/20 bg-cyber-dark/50 p-3">
                     <div className="mb-1 text-xs font-bold uppercase tracking-widest text-cyber-green">
-                      Demande d&apos;ami
+                      {t('friendRequest')}
                     </div>
                     <div className="text-xs text-gray-300">
-                      {request.name} veut t&apos;ajouter a sa liste d&apos;amis.
+                      {t('friendRequestMsg', { name: request.name })}
                     </div>
                     <div className="mt-1 text-[10px] uppercase tracking-wider text-gray-500">
                       LVL {request.level} • ELO {request.pvpRating}
@@ -274,7 +276,7 @@ export default function NotificationCenter() {
                         onClick={() => respondToFriendRequest(request.id, 'accept')}
                         className="flex-1 rounded border border-cyber-green/30 bg-cyber-green/10 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-cyber-green transition-all hover:bg-cyber-green/20 disabled:opacity-50"
                       >
-                        Accepter
+                        {t('accept')}
                       </button>
                       <button
                         type="button"
@@ -282,7 +284,7 @@ export default function NotificationCenter() {
                         onClick={() => respondToFriendRequest(request.id, 'decline')}
                         className="flex-1 rounded border border-cyber-red/30 bg-cyber-red/10 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-cyber-red transition-all hover:bg-cyber-red/20 disabled:opacity-50"
                       >
-                        Refuser
+                        {t('decline')}
                       </button>
                     </div>
                     <button
@@ -290,7 +292,7 @@ export default function NotificationCenter() {
                       onClick={() => router.visit('/friends')}
                       className="mt-3 text-[10px] uppercase tracking-widest text-gray-500 transition-colors hover:text-cyber-green"
                     >
-                      Voir mes amis
+                      {t('viewFriends')}
                     </button>
                   </div>
                 ))}
@@ -301,10 +303,10 @@ export default function NotificationCenter() {
                       {invite.partyName}
                     </div>
                     <div className="text-xs text-gray-300">
-                      {invite.invitedByName} t&apos;invite dans son groupe.
+                      {t('partyInviteMsg', { name: invite.invitedByName })}
                     </div>
                     <div className="mt-1 text-[10px] uppercase tracking-wider text-gray-500">
-                      Code {invite.partyCode} • {invite.memberCount}/{invite.maxSize} joueurs
+                      {t('partyInfo', { code: invite.partyCode, current: invite.memberCount, max: invite.maxSize })}
                     </div>
                     <div className="mt-3 flex gap-2">
                       <button
@@ -313,7 +315,7 @@ export default function NotificationCenter() {
                         onClick={() => respondToInvite(invite.id, 'accept')}
                         className="flex-1 rounded border border-cyber-green/30 bg-cyber-green/10 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-cyber-green transition-all hover:bg-cyber-green/20 disabled:opacity-50"
                       >
-                        Accepter
+                        {t('accept')}
                       </button>
                       <button
                         type="button"
@@ -321,7 +323,7 @@ export default function NotificationCenter() {
                         onClick={() => respondToInvite(invite.id, 'decline')}
                         className="flex-1 rounded border border-cyber-red/30 bg-cyber-red/10 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-cyber-red transition-all hover:bg-cyber-red/20 disabled:opacity-50"
                       >
-                        Refuser
+                        {t('decline')}
                       </button>
                     </div>
                   </div>
@@ -338,13 +340,13 @@ export default function NotificationCenter() {
             key={invite.id}
             className="pointer-events-auto rounded-lg border border-cyber-orange/40 bg-cyber-dark/95 p-4 shadow-2xl backdrop-blur-sm"
           >
-            <div className="text-[10px] uppercase tracking-[0.3em] text-cyber-orange">Invitation Groupe</div>
+            <div className="text-[10px] uppercase tracking-[0.3em] text-cyber-orange">{t('partyInvite')}</div>
             <div className="mt-2 text-sm font-bold text-white">{invite.partyName}</div>
             <div className="mt-1 text-xs text-gray-300">
-              {invite.invitedByName} veut te faire rejoindre son groupe.
+              {t('partyInviteToast', { name: invite.invitedByName })}
             </div>
             <div className="mt-1 text-[10px] uppercase tracking-wider text-gray-500">
-              {invite.memberCount}/{invite.maxSize} joueurs
+              {t('partyInfo', { code: invite.partyCode, current: invite.memberCount, max: invite.maxSize })}
             </div>
             <div className="mt-3 flex gap-2">
               <button
@@ -369,7 +371,7 @@ export default function NotificationCenter() {
               onClick={() => setToasts((prev) => prev.filter((toast) => toast.id !== invite.id))}
               className="mt-3 text-[10px] uppercase tracking-widest text-gray-500 transition-colors hover:text-white"
             >
-              Masquer
+              {t('hide')}
             </button>
           </div>
         ))}
@@ -379,10 +381,10 @@ export default function NotificationCenter() {
             key={request.id}
             className="pointer-events-auto rounded-lg border border-cyber-green/40 bg-cyber-dark/95 p-4 shadow-2xl backdrop-blur-sm"
           >
-            <div className="text-[10px] uppercase tracking-[0.3em] text-cyber-green">Demande d&apos;ami</div>
+            <div className="text-[10px] uppercase tracking-[0.3em] text-cyber-green">{t('friendRequest')}</div>
             <div className="mt-2 text-sm font-bold text-white">{request.name}</div>
             <div className="mt-1 text-xs text-gray-300">
-              veut t&apos;ajouter a sa liste d&apos;amis.
+              {t('friendRequestMsg', { name: request.name })}
             </div>
             <div className="mt-1 text-[10px] uppercase tracking-wider text-gray-500">
               LVL {request.level} • ELO {request.pvpRating}
@@ -410,7 +412,7 @@ export default function NotificationCenter() {
               onClick={() => setFriendToasts((prev) => prev.filter((toast) => toast.id !== request.id))}
               className="mt-3 text-[10px] uppercase tracking-widest text-gray-500 transition-colors hover:text-white"
             >
-              Masquer
+              {t('hide')}
             </button>
           </div>
         ))}

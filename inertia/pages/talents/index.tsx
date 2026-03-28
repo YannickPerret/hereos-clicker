@@ -1,5 +1,6 @@
 import { router } from '@inertiajs/react'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import GameLayout from '~/components/layout'
 
 interface TalentNode {
@@ -31,38 +32,30 @@ interface Props {
   hasRespecChip: { inventoryItemId: number } | null
 }
 
-const SPEC_CONFIG: Record<string, { label: string; color: string; border: string; bg: string; glow: string; desc: string }> = {
+const SPEC_STYLES: Record<string, { color: string; border: string; bg: string; glow: string }> = {
   hacker: {
-    label: 'HACKER',
     color: 'text-cyber-green',
     border: 'border-cyber-green',
     bg: 'bg-cyber-green',
     glow: 'shadow-[0_0_20px_rgba(0,255,65,0.15)]',
-    desc: 'Puissance de clic brute. Chaque frappe compte.',
   },
   netrunner: {
-    label: 'NETRUNNER',
     color: 'text-cyber-blue',
     border: 'border-cyber-blue',
     bg: 'bg-cyber-blue',
     glow: 'shadow-[0_0_20px_rgba(0,240,255,0.15)]',
-    desc: 'Revenus passifs. Tes daemons minent pendant que tu dors.',
   },
   samurai: {
-    label: 'STREET SAMURAI',
     color: 'text-cyber-red',
     border: 'border-cyber-red',
     bg: 'bg-cyber-red',
     glow: 'shadow-[0_0_20px_rgba(255,0,64,0.15)]',
-    desc: 'Combat. Plus fort, plus resistant, plus mortel.',
   },
   chrome_dealer: {
-    label: 'CHROME DEALER',
     color: 'text-cyber-yellow',
     border: 'border-cyber-yellow',
     bg: 'bg-cyber-yellow',
     glow: 'shadow-[0_0_20px_rgba(255,255,0,0.15)]',
-    desc: 'Economie et loot. Le vrai pouvoir, c\'est l\'argent.',
   },
 }
 
@@ -71,11 +64,13 @@ function TalentCard({
   config,
   characterLevel,
   onClick,
+  t,
 }: {
   talent: TalentNode
-  config: (typeof SPEC_CONFIG)[string]
+  config: (typeof SPEC_STYLES)[string]
   characterLevel: number
   onClick: () => void
+  t: (key: string) => string
 }) {
   const isUnlocked = talent.unlocked
   const canUnlock = talent.canUnlock
@@ -102,7 +97,7 @@ function TalentCard({
         </span>
         {isUnlocked && (
           <span className={`text-[9px] ${config.bg}/20 ${config.color} px-1.5 py-0.5 rounded uppercase font-bold`}>
-            actif
+            {t('talents:active')}
           </span>
         )}
       </div>
@@ -120,6 +115,7 @@ function TalentCard({
 }
 
 export default function Talents(props: Props) {
+  const { t } = useTranslation(['talents', 'common'])
   const { character } = props
   const { tree, bonuses, hasRespecChip } = props
   const [showRespecConfirm, setShowRespecConfirm] = useState(false)
@@ -131,24 +127,23 @@ export default function Talents(props: Props) {
       {showRespecConfirm && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50" onClick={() => setShowRespecConfirm(false)}>
           <div className="bg-cyber-dark border border-cyber-red rounded-lg p-6 max-w-sm text-center" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-bold text-cyber-red tracking-widest mb-3">NEURAL RESPEC</h3>
+            <h3 className="text-lg font-bold text-cyber-red tracking-widest mb-3">{t('talents:respecTitle')}</h3>
             <p className="text-xs text-gray-400 mb-4">
-              Tous tes talents seront effaces et tes points recuperes.
-              Ta specialisation sera debloquee. Le Neural Respec Chip sera consomme.
+              {t('talents:respecMessage')}
             </p>
-            <p className="text-cyber-yellow text-sm font-bold mb-4">Cette action est irreversible.</p>
+            <p className="text-cyber-yellow text-sm font-bold mb-4">{t('talents:respecWarning')}</p>
             <div className="flex gap-2">
               <button
                 onClick={() => setShowRespecConfirm(false)}
                 className="flex-1 py-2 text-xs border border-gray-700 text-gray-500 rounded hover:bg-gray-900 transition-all uppercase"
               >
-                Annuler
+                {t('common:cancel')}
               </button>
               <button
                 onClick={() => { router.post('/talents/respec'); setShowRespecConfirm(false) }}
                 className="flex-1 py-2 text-xs bg-cyber-red/20 border border-cyber-red text-cyber-red rounded hover:bg-cyber-red/30 transition-all uppercase font-bold"
               >
-                Confirmer
+                {t('common:confirm')}
               </button>
             </div>
           </div>
@@ -158,11 +153,11 @@ export default function Talents(props: Props) {
       {/* Header */}
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-cyber-purple tracking-widest">ARBRE DES TALENTS</h1>
+          <h1 className="text-2xl font-bold text-cyber-purple tracking-widest">{t('talents:title')}</h1>
           <p className="text-xs text-gray-600 mt-1">
             {character.chosenSpec
-              ? <>Specialisation: <span className={SPEC_CONFIG[character.chosenSpec]?.color}>{SPEC_CONFIG[character.chosenSpec]?.label}</span> — 20 tiers, 2 choix par tier</>
-              : 'Choisis ta voie. Une seule spec a la fois. 2 choix par tier.'}
+              ? <>{ t('talents:specInfo', { spec: t(`talents:specs.${character.chosenSpec}.label`) }) }</>
+              : t('talents:intro')}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -171,15 +166,15 @@ export default function Talents(props: Props) {
               onClick={() => setShowRespecConfirm(true)}
               className="px-3 py-2 text-[10px] bg-cyber-red/10 border border-cyber-red/40 text-cyber-red rounded hover:bg-cyber-red/20 transition-all uppercase tracking-wider"
             >
-              RESPEC
+              {t('talents:respec')}
             </button>
           )}
           <div className="bg-cyber-dark border border-cyber-purple/30 rounded-lg px-4 py-2 text-center">
-            <div className="text-[10px] text-gray-600 uppercase">Points</div>
+            <div className="text-[10px] text-gray-600 uppercase">{t('talents:points')}</div>
             <div className="text-xl font-bold text-cyber-purple">{character.talentPoints}</div>
           </div>
           <div className="bg-cyber-dark border border-cyber-green/30 rounded-lg px-4 py-2 text-center">
-            <div className="text-[10px] text-gray-600 uppercase">Niveau</div>
+            <div className="text-[10px] text-gray-600 uppercase">{t('talents:level')}</div>
             <div className="text-xl font-bold text-cyber-green">{character.level}</div>
           </div>
         </div>
@@ -188,10 +183,10 @@ export default function Talents(props: Props) {
       {/* Active bonuses */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-6">
         {[
-          { label: 'CPC Bonus', value: `+${bonuses.cpcFlat} (+${bonuses.cpcPercent}%)`, color: 'text-cyber-green' },
-          { label: 'CPS Bonus', value: `+${bonuses.cpsFlat} (+${bonuses.cpsPercent}%)`, color: 'text-cyber-blue' },
-          { label: 'Combat', value: `ATK+${bonuses.atkFlat} DEF+${bonuses.defFlat} HP+${bonuses.hpFlat} (+${bonuses.combatPercent}%)`, color: 'text-cyber-red' },
-          { label: 'Economie', value: `-${bonuses.shopDiscount}% prix, +${bonuses.lootBonus}% loot, +${bonuses.dungeonCredits}% donjon`, color: 'text-cyber-yellow' },
+          { label: t('talents:cpcBonus'), value: `+${bonuses.cpcFlat} (+${bonuses.cpcPercent}%)`, color: 'text-cyber-green' },
+          { label: t('talents:cpsBonus'), value: `+${bonuses.cpsFlat} (+${bonuses.cpsPercent}%)`, color: 'text-cyber-blue' },
+          { label: t('talents:combat'), value: `ATK+${bonuses.atkFlat} DEF+${bonuses.defFlat} HP+${bonuses.hpFlat} (+${bonuses.combatPercent}%)`, color: 'text-cyber-red' },
+          { label: t('talents:economy'), value: `-${bonuses.shopDiscount}% prix, +${bonuses.lootBonus}% loot, +${bonuses.dungeonCredits}% donjon`, color: 'text-cyber-yellow' },
         ].map((b) => (
           <div key={b.label} className="bg-cyber-dark/50 border border-gray-800 rounded px-3 py-2">
             <div className="text-[11px] text-gray-400 uppercase tracking-wider">{b.label}</div>
@@ -202,7 +197,7 @@ export default function Talents(props: Props) {
 
       {/* Spec selector */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-        {Object.entries(SPEC_CONFIG).map(([spec, config]) => {
+        {Object.entries(SPEC_STYLES).map(([spec, config]) => {
           const talents = tree[spec] || []
           const unlockedCount = talents.filter((t) => t.unlocked).length
           const totalTiers = 20
@@ -226,14 +221,14 @@ export default function Talents(props: Props) {
               }`}
             >
               <div className="flex items-center justify-between mb-1">
-                <span className={`text-sm font-bold ${config.color} tracking-widest`}>{config.label}</span>
+                <span className={`text-sm font-bold ${config.color} tracking-widest`}>{t(`talents:specs.${spec}.label`)}</span>
                 {isChosenSpec && (
                   <span className={`text-[9px] ${config.bg}/20 ${config.color} px-2 py-0.5 rounded-full uppercase font-bold`}>
-                    ta spec
+                    {t('talents:yourSpec')}
                   </span>
                 )}
               </div>
-              <p className="text-[11px] text-gray-400 mb-2">{config.desc}</p>
+              <p className="text-[11px] text-gray-400 mb-2">{t(`talents:specs.${spec}.description`)}</p>
               <div className="flex items-center justify-between">
                 <div className="flex-1 h-1.5 bg-cyber-black rounded-full overflow-hidden mr-2">
                   <div
@@ -250,7 +245,7 @@ export default function Talents(props: Props) {
 
       {/* Expanded talent tree */}
       {expandedSpec && tree[expandedSpec] && (() => {
-        const config = SPEC_CONFIG[expandedSpec]
+        const config = SPEC_STYLES[expandedSpec]
         const talents = tree[expandedSpec]
         const isLockedSpec = character.chosenSpec !== null && character.chosenSpec !== expandedSpec
 
@@ -267,11 +262,11 @@ export default function Talents(props: Props) {
           <div className={`bg-cyber-dark border rounded-lg p-5 ${config.border}/30 ${config.glow}`}>
             <div className="flex items-center justify-between mb-5">
               <h2 className={`text-base font-bold ${config.color} tracking-widest`}>
-                {config.label} — ARBRE DE TALENTS
+                {t('talents:specTreeTitle', { spec: t(`talents:specs.${expandedSpec}.label`) })}
               </h2>
               {isLockedSpec && (
                 <span className="text-[9px] bg-gray-800 text-gray-600 px-2 py-0.5 rounded-full uppercase">
-                  verrouille
+                  {t('talents:locked')}
                 </span>
               )}
             </div>
@@ -300,7 +295,7 @@ export default function Talents(props: Props) {
                           ? `${config.border}/60 ${config.color} ${config.bg}/10`
                           : 'border-gray-700 text-gray-500'
                       }`}>
-                        T{tier}
+                        {t('talents:tier', { n: tier })}
                       </div>
 
                       {/* Choice A */}
@@ -311,6 +306,7 @@ export default function Talents(props: Props) {
                             config={config}
                             characterLevel={character.level}
                             onClick={() => router.post('/talents/unlock', { talentId: choiceA.id })}
+                            t={t}
                           />
                         )}
                       </div>
@@ -321,7 +317,7 @@ export default function Talents(props: Props) {
                           <div className="w-px h-3 bg-gray-700" />
                           <span className={`text-[10px] font-bold uppercase ${
                             tierTalents.some((t) => t.canUnlock) ? 'text-gray-400' : 'text-gray-600'
-                          }`}>ou</span>
+                          }`}>{t('talents:or')}</span>
                           <div className="w-px h-3 bg-gray-700" />
                         </div>
                       </div>
@@ -334,6 +330,7 @@ export default function Talents(props: Props) {
                             config={config}
                             characterLevel={character.level}
                             onClick={() => router.post('/talents/unlock', { talentId: choiceB.id })}
+                            t={t}
                           />
                         )}
                       </div>
@@ -350,7 +347,7 @@ export default function Talents(props: Props) {
       {character.chosenSpec && !hasRespecChip && (
         <div className="mt-6 text-center">
           <p className="text-[10px] text-gray-700">
-            Pour changer de specialisation, achete un <span className="text-cyber-yellow">Neural Respec Chip</span> au shop (50 000 credits).
+            {t('talents:respecHint')}
           </p>
         </div>
       )}

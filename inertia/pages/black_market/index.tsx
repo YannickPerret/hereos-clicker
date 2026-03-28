@@ -1,5 +1,6 @@
 import { router } from '@inertiajs/react'
 import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import GameLayout from '~/components/layout'
 
 interface Item {
@@ -86,18 +87,6 @@ const RARITY_TEXT: Record<string, string> = {
   legendary: 'text-cyber-yellow',
 }
 
-const TYPE_LABELS: Record<string, string> = {
-  weapon: 'ARME',
-  armor: 'ARMURE',
-  implant: 'IMPLANT',
-  clothes_hair: 'CHEVEUX',
-  clothes_face: 'VISAGE',
-  clothes_outer: 'HAUT',
-  clothes_legs: 'BAS',
-  consumable: 'CONSOMMABLE',
-  upgrade: 'UPGRADE',
-}
-
 const EFFECT_LABELS: Record<string, string> = {
   click_multiplier: 'CPC',
   permanent_click: 'CPC permanent',
@@ -124,6 +113,7 @@ function formatTimeRemaining(target: number) {
 }
 
 export default function BlackMarket({ character, profile, vendors, cleaners, nightMarketLive }: Props) {
+  const { t } = useTranslation(['shop', 'common'])
   const [quantities, setQuantities] = useState<Record<number, string>>({})
   const [timeLeft, setTimeLeft] = useState(() => formatTimeRemaining(profile.refreshAt))
 
@@ -165,38 +155,38 @@ export default function BlackMarket({ character, profile, vendors, cleaners, nig
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <div className="mb-2 flex items-center gap-2 text-[11px] uppercase tracking-[0.35em] text-cyber-red">
-              <span>Night City Blackline</span>
+              <span>{t('shop:blackMarket.header')}</span>
               {nightMarketLive && (
                 <span className="rounded-full border border-cyber-yellow/40 bg-cyber-yellow/10 px-2 py-0.5 text-cyber-yellow">
-                  Night Market Live
+                  {t('shop:blackMarket.live')}
                 </span>
               )}
             </div>
             <h1 className="text-3xl font-black uppercase tracking-[0.28em] text-white">
-              Marche Noir
+              {t('shop:blackMarket.title')}
             </h1>
             <p className="mt-3 max-w-2xl text-sm text-gray-400">
-              Fixers, chrome vole, vetements de contrebande et offres qui tournent toutes les {profile.rotationHours} heures.
+              {t('shop:blackMarket.description', { hours: profile.rotationHours })}
             </p>
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div className="rounded-xl border border-cyber-yellow/20 bg-cyber-black/60 px-4 py-3">
-              <div className="text-[10px] uppercase tracking-[0.28em] text-gray-500">Credits</div>
+              <div className="text-[10px] uppercase tracking-[0.28em] text-gray-500">{t('shop:blackMarket.credits')}</div>
               <div className="mt-1 text-2xl font-bold text-cyber-yellow">
                 {character.credits.toLocaleString()}c
               </div>
             </div>
             <div className={`rounded-xl border px-4 py-3 ${HEAT_STYLES[profile.heatLabel] || HEAT_STYLES.FROIDE}`}>
-              <div className="text-[10px] uppercase tracking-[0.28em] opacity-80">Chaleur</div>
+              <div className="text-[10px] uppercase tracking-[0.28em] opacity-80">{t('shop:blackMarket.heat')}</div>
               <div className="mt-1 text-2xl font-bold">{profile.heat}</div>
               <div className="text-xs opacity-80">
                 {profile.heatLabel}
-                {profile.heatMarkupPercent > 0 ? ` • +${profile.heatMarkupPercent}% prix` : ' • aucun surcout'}
+                {profile.heatMarkupPercent > 0 ? ` • +${profile.heatMarkupPercent}% prix` : ` • ${t('shop:blackMarket.noMarkup')}`}
               </div>
             </div>
             <div className="rounded-xl border border-cyber-blue/20 bg-cyber-black/60 px-4 py-3">
-              <div className="text-[10px] uppercase tracking-[0.28em] text-gray-500">Refresh</div>
+              <div className="text-[10px] uppercase tracking-[0.28em] text-gray-500">{t('shop:blackMarket.refresh')}</div>
               <div className="mt-1 text-2xl font-bold text-cyber-blue">{timeLeft}</div>
             </div>
           </div>
@@ -207,14 +197,14 @@ export default function BlackMarket({ character, profile, vendors, cleaners, nig
         <div className="rounded-2xl border border-cyber-blue/20 bg-cyber-dark/70 p-5">
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-bold uppercase tracking-[0.18em] text-cyber-blue">Protocoles Cleaners</h2>
+              <h2 className="text-lg font-bold uppercase tracking-[0.18em] text-cyber-blue">{t(‘shop:blackMarket.cleaners’)}</h2>
               <p className="mt-1 text-xs text-gray-500">
-                Fais tomber la chaleur avant qu’un fixer commence a te surtaxer.
+                {t(‘shop:blackMarket.cleanersDesc’)}
               </p>
             </div>
             <div className="text-right text-xs text-gray-500">
-              <div>Spec active: <span className="text-white">{character.chosenSpec || 'Aucune'}</span></div>
-              <div>Les talents shop reduisent aussi une partie des prix ici.</div>
+              <div>{t('shop:blackMarket.activeSpec', { spec: character.chosenSpec || t('shop:blackMarket.noSpec') })}</div>
+              <div>{t('shop:blackMarket.talentDiscount')}</div>
             </div>
           </div>
 
@@ -232,7 +222,7 @@ export default function BlackMarket({ character, profile, vendors, cleaners, nig
                 </div>
 
                 <div className="mt-4 flex items-center justify-between text-xs">
-                  <span className="text-gray-500">Tarif</span>
+                  <span className="text-gray-500">{t('shop:blackMarket.price')}</span>
                   <span className="font-bold text-cyber-yellow">{cleaner.price.toLocaleString()}c</span>
                 </div>
 
@@ -248,7 +238,7 @@ export default function BlackMarket({ character, profile, vendors, cleaners, nig
                         : 'cursor-not-allowed border-cyber-red/20 bg-cyber-red/5 text-cyber-red/40'
                   }`}
                 >
-                  {cleaner.disabled ? '[ AUCUNE CHALEUR ]' : '[ EFFACER LES TRACES ]'}
+                  {cleaner.disabled ? `[ ${t('shop:blackMarket.noHeat')} ]` : `[ ${t('shop:blackMarket.cleanTraces')} ]`}
                 </button>
               </div>
             ))}
@@ -256,12 +246,12 @@ export default function BlackMarket({ character, profile, vendors, cleaners, nig
         </div>
 
         <div className="rounded-2xl border border-cyber-yellow/20 bg-cyber-dark/70 p-5">
-          <h2 className="text-lg font-bold uppercase tracking-[0.18em] text-cyber-yellow">Regles Du Reseau</h2>
+          <h2 className="text-lg font-bold uppercase tracking-[0.18em] text-cyber-yellow">{t('shop:blackMarket.rules')}</h2>
           <div className="mt-4 space-y-3 text-sm text-gray-400">
-            <p>Chaque achat augmente la chaleur. Plus tu chauffes la ville, plus les prix montent.</p>
-            <p>Chaque fixer a sa propre reputation. Les grosses pieces demandent du cred reel, pas juste des credits.</p>
-            <p>Certains lots sont reserves a une specialisation. Le marche noir aime les profils utiles.</p>
-            <p>Le stock repart a zero a chaque rotation. Si tu rates la fenetre, le deal disparait.</p>
+            <p>{t('shop:blackMarket.rule1')}</p>
+            <p>{t('shop:blackMarket.rule2')}</p>
+            <p>{t('shop:blackMarket.rule3')}</p>
+            <p>{t('shop:blackMarket.rule4')}</p>
           </div>
         </div>
       </div>
@@ -274,7 +264,7 @@ export default function BlackMarket({ character, profile, vendors, cleaners, nig
                 <div className="mb-2 flex items-center gap-2 text-[10px] uppercase tracking-[0.28em] text-cyber-blue">
                   <span>{vendor.tagline}</span>
                   <span className="rounded-full border border-cyber-blue/30 px-2 py-0.5 text-cyber-blue">
-                    REP {vendor.reputation}
+                    {t('shop:blackMarket.rep', { n: vendor.reputation })}
                   </span>
                 </div>
                 <h2 className="text-2xl font-black uppercase tracking-[0.18em] text-white">{vendor.name}</h2>
@@ -283,10 +273,12 @@ export default function BlackMarket({ character, profile, vendors, cleaners, nig
 
               <div className="grid gap-2 text-xs text-gray-400">
                 <div>
-                  Specialites: <span className="text-white">{vendor.specialties.join(' • ')}</span>
+                  {t('shop:blackMarket.specialties', { list: vendor.specialties.join(' • ') })}
                 </div>
                 <div>
-                  Prochain palier: <span className="text-cyber-yellow">{vendor.nextMilestone ? `REP ${vendor.nextMilestone}` : 'max'}</span>
+                  {vendor.nextMilestone
+                    ? t('shop:blackMarket.nextMilestone', { milestone: vendor.nextMilestone })
+                    : t('shop:blackMarket.nextMilestoneMax')}
                 </div>
               </div>
             </div>
@@ -305,13 +297,13 @@ export default function BlackMarket({ character, profile, vendors, cleaners, nig
                   >
                     {deal.featured && (
                       <div className="absolute right-3 top-3 rounded-full border border-cyber-yellow/30 bg-cyber-yellow/10 px-2 py-1 text-[10px] uppercase tracking-[0.22em] text-cyber-yellow">
-                        Featured
+                        {t('shop:blackMarket.featured')}
                       </div>
                     )}
 
                     <div className="mb-3">
                       <div className="text-[10px] uppercase tracking-[0.28em] text-gray-600">
-                        Slot {deal.slot} • {TYPE_LABELS[deal.item.type] || deal.item.type}
+                        {t('shop:blackMarket.slot', { n: deal.slot, type: t(`common:types.${deal.item.type}`) })}
                       </div>
                       <h3 className={`mt-2 text-lg font-bold ${RARITY_TEXT[deal.item.rarity] || 'text-white'}`}>
                         {deal.item.name}
@@ -331,36 +323,36 @@ export default function BlackMarket({ character, profile, vendors, cleaners, nig
 
                     <div className="mt-4 space-y-2 text-xs">
                       <div className="flex items-center justify-between text-gray-500">
-                        <span>Base</span>
+                        <span>{t('shop:blackMarket.basePrice')}</span>
                         <span>{deal.basePrice.toLocaleString()}c</span>
                       </div>
                       <div className="flex items-center justify-between text-gray-500">
-                        <span>Prix reel</span>
+                        <span>{t('shop:blackMarket.realPrice')}</span>
                         <span className="font-bold text-cyber-yellow">{deal.price.toLocaleString()}c</span>
                       </div>
                       <div className="flex items-center justify-between text-gray-500">
-                        <span>Stock</span>
+                        <span>{t('shop:blackMarket.stockLabel')}</span>
                         <span>{deal.stock}</span>
                       </div>
                       <div className="flex items-center justify-between text-gray-500">
-                        <span>Chaleur</span>
+                        <span>{t('shop:blackMarket.heatLabel')}</span>
                         <span className="text-cyber-red">+{deal.heatValue}</span>
                       </div>
                       <div className="flex items-center justify-between text-gray-500">
-                        <span>Rep requise</span>
+                        <span>{t('shop:blackMarket.reqRep')}</span>
                         <span>{deal.reputationRequired}</span>
                       </div>
                       {deal.requiredSpecLabel && (
                         <div className="flex items-center justify-between text-gray-500">
-                          <span>Spec</span>
+                          <span>{t('shop:blackMarket.specLabel')}</span>
                           <span>{deal.requiredSpecLabel}</span>
                         </div>
                       )}
                       {(deal.heatMarkup > 0 || deal.reputationDiscount > 0 || deal.talentDiscount > 0) && (
                         <div className="rounded-lg border border-gray-800 bg-cyber-dark/60 px-3 py-2 text-[11px] text-gray-500">
-                          <div>Heat: +{deal.heatMarkup}%</div>
-                          <div>Fixer rep: -{deal.reputationDiscount}%</div>
-                          <div>Talents: -{deal.talentDiscount}%</div>
+                          <div>{t('shop:blackMarket.heatMarkup', { n: deal.heatMarkup })}</div>
+                          <div>{t('shop:blackMarket.fixerDiscount', { n: deal.reputationDiscount })}</div>
+                          <div>{t('shop:blackMarket.talentDiscountLabel', { n: deal.talentDiscount })}</div>
                         </div>
                       )}
                     </div>
@@ -393,8 +385,8 @@ export default function BlackMarket({ character, profile, vendors, cleaners, nig
                         </button>
                       </div>
                       <div className="mt-2 flex items-center justify-between text-[10px] uppercase tracking-[0.2em] text-gray-600">
-                        <span>Quantite {quantity}</span>
-                        <span>Total {totalPrice.toLocaleString()}c</span>
+                        <span>{t('shop:blackMarket.quantityLabel', { n: quantity })}</span>
+                        <span>{t('shop:blackMarket.totalLabel', { price: totalPrice.toLocaleString() })}</span>
                       </div>
                     </div>
 

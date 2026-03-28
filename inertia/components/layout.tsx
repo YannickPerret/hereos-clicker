@@ -1,7 +1,10 @@
 import { Link, router, usePage } from '@inertiajs/react'
 import { type ReactNode, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import FloatingChat from '~/components/floating_chat'
 import NotificationCenter from '~/components/notification_center'
+import LanguageSwitcher from '~/components/language_switcher'
+import { translateBackendMessage } from '~/i18n/backend_messages'
 
 const ROLE_COLORS: Record<string, string> = {
   admin: 'text-cyber-red',
@@ -24,6 +27,7 @@ function rewardLabel(rewardType: string, rewardValue: number, rewardItemName: st
 
 export default function GameLayout({ children }: { children: ReactNode }) {
   const { auth, blackMarket, success, errors, dailyReward } = usePage().props as any
+  const { t } = useTranslation(['common', 'report', 'daily_reward'])
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [toast, setToast] = useState<null | { type: 'success' | 'error'; message: string }>(null)
   const [reportModalOpen, setReportModalOpen] = useState(false)
@@ -45,20 +49,20 @@ export default function GameLayout({ children }: { children: ReactNode }) {
     ? `/profile/${encodeURIComponent(activeCharacterName)}`
     : '/play'
   const navLinks = [
-    { href: '/play', label: 'ACCUEIL' },
-    { href: '/inventory', label: 'INVENTAIRE' },
-    ...(hasCompanionAccess ? [{ href: '/companions', label: 'DRONES' }] : []),
-    { href: '/talents', label: 'TALENTS' },
-    { href: '/shop', label: 'SHOP' },
-    ...(hasBlackMarketAccess ? [{ href: '/black-market', label: 'MARCHE NOIR' }] : []),
-    { href: '/party', label: 'GROUPE' },
-    { href: '/dungeon', label: 'DONJON' },
-    { href: '/iso-dungeon', label: 'DONJON 2.5D' },
-    { href: '/pvp', label: 'PVP' },
-    { href: '/quests', label: 'QUETES' },
-    { href: '/missions', label: 'MISSIONS' },
-    { href: '/friends', label: 'AMIS' },
-    { href: '/leaderboard', label: 'CLASSEMENT' },
+    { href: '/play', label: t('nav.home') },
+    { href: '/inventory', label: t('nav.inventory') },
+    ...(hasCompanionAccess ? [{ href: '/companions', label: t('nav.drones') }] : []),
+    { href: '/talents', label: t('nav.talents') },
+    { href: '/shop', label: t('nav.shop') },
+    ...(hasBlackMarketAccess ? [{ href: '/black-market', label: t('nav.blackMarket') }] : []),
+    { href: '/party', label: t('nav.party') },
+    { href: '/dungeon', label: t('nav.dungeon') },
+    { href: '/iso-dungeon', label: t('nav.dungeon25d') },
+    { href: '/pvp', label: t('nav.pvp') },
+    { href: '/quests', label: t('nav.quests') },
+    { href: '/missions', label: t('nav.missions') },
+    { href: '/friends', label: t('nav.friends') },
+    { href: '/leaderboard', label: t('nav.leaderboard') },
   ]
 
   useEffect(() => {
@@ -69,12 +73,12 @@ export default function GameLayout({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (success) {
-      setToast({ type: 'success', message: success })
+      setToast({ type: 'success', message: translateBackendMessage(success, t) })
       return
     }
 
     if (errors?.message) {
-      setToast({ type: 'error', message: errors.message })
+      setToast({ type: 'error', message: translateBackendMessage(errors.message, t) })
     }
   }, [errors?.message, success])
 
@@ -129,7 +133,7 @@ export default function GameLayout({ children }: { children: ReactNode }) {
           >
             <div className="flex items-start gap-3">
               <div className="mt-0.5 text-[10px] font-bold uppercase tracking-[0.24em]">
-                {toast.type === 'success' ? 'Succes' : 'Erreur'}
+                {toast.type === 'success' ? t('toast.success') : t('toast.error')}
               </div>
               <div className="flex-1 text-sm text-white">{toast.message}</div>
               <button
@@ -137,7 +141,7 @@ export default function GameLayout({ children }: { children: ReactNode }) {
                 onClick={() => setToast(null)}
                 className="text-xs text-gray-500 transition hover:text-white"
               >
-                FERMER
+                {t('toast.close')}
               </button>
             </div>
           </div>
@@ -149,7 +153,7 @@ export default function GameLayout({ children }: { children: ReactNode }) {
           <div className="flex min-w-0 items-center gap-3">
             <button
               type="button"
-              aria-label={mobileMenuOpen ? 'Fermer le menu' : 'Ouvrir le menu'}
+              aria-label={mobileMenuOpen ? t('aria.closeMenu') : t('aria.openMenu')}
               aria-expanded={mobileMenuOpen}
               onClick={() => setMobileMenuOpen((open) => !open)}
               className="md:hidden flex h-10 w-10 items-center justify-center rounded border border-cyber-blue/30 text-cyber-blue hover:bg-cyber-blue/10 transition-all"
@@ -171,6 +175,7 @@ export default function GameLayout({ children }: { children: ReactNode }) {
           </div>
 
           <div className="flex shrink-0 items-center gap-3">
+            <LanguageSwitcher />
             {auth?.user && (
               <>
                 <div className="text-right hidden sm:block">
@@ -188,7 +193,7 @@ export default function GameLayout({ children }: { children: ReactNode }) {
                   as="button"
                   className="text-xs text-cyber-red hover:text-red-400 border border-cyber-red/30 px-2 py-1 rounded hover:bg-cyber-red/10 transition-all"
                 >
-                  DECONNEXION
+                  {t('logout')}
                 </Link>
               </>
             )}
@@ -213,14 +218,14 @@ export default function GameLayout({ children }: { children: ReactNode }) {
                 href="/admin"
                 className="rounded border border-cyber-red/20 px-3 py-2.5 text-xs uppercase tracking-[0.22em] text-cyber-red transition-all hover:border-cyber-red/40 hover:bg-cyber-red/10"
               >
-                ADMIN
+                {t('nav.admin')}
               </Link>
             )}
             <Link
               href="/reports"
               className="rounded border border-cyber-orange/20 px-3 py-2.5 text-xs uppercase tracking-[0.22em] text-cyber-orange transition-all hover:border-cyber-orange/40 hover:bg-cyber-orange/10"
             >
-              MES REPORTS
+              {t('nav.myReports')}
             </Link>
           </nav>
         </aside>
@@ -235,7 +240,7 @@ export default function GameLayout({ children }: { children: ReactNode }) {
         <>
           <button
             type="button"
-            aria-label="Fermer le menu"
+            aria-label={t('aria.closeMenu')}
             onClick={() => setMobileMenuOpen(false)}
             className="fixed inset-0 z-[55] bg-cyber-black/70 md:hidden"
           />
@@ -257,7 +262,7 @@ export default function GameLayout({ children }: { children: ReactNode }) {
                   onClick={() => setMobileMenuOpen(false)}
                   className="rounded border border-cyber-red/20 px-3 py-2.5 text-left text-xs uppercase tracking-[0.22em] text-cyber-red transition-all hover:border-cyber-red/40 hover:bg-cyber-red/10"
                 >
-                  ADMIN
+                  {t('nav.admin')}
                 </Link>
               )}
               <button
@@ -268,14 +273,14 @@ export default function GameLayout({ children }: { children: ReactNode }) {
                 }}
                 className="rounded border border-cyber-orange/20 px-3 py-2.5 text-left text-xs uppercase tracking-[0.22em] text-cyber-orange transition-all hover:border-cyber-orange/40 hover:bg-cyber-orange/10"
               >
-                REPORT BUG
+                {t('reportBug')}
               </button>
               <Link
                 href="/reports"
                 onClick={() => setMobileMenuOpen(false)}
                 className="rounded border border-cyber-orange/20 px-3 py-2.5 text-left text-xs uppercase tracking-[0.22em] text-cyber-orange transition-all hover:border-cyber-orange/40 hover:bg-cyber-orange/10"
               >
-                MES REPORTS
+                {t('nav.myReports')}
               </Link>
             </nav>
           </aside>
@@ -287,14 +292,14 @@ export default function GameLayout({ children }: { children: ReactNode }) {
         onClick={() => setReportModalOpen(true)}
         className="fixed bottom-5 right-5 z-[65] hidden rounded-full border border-cyber-orange/40 bg-cyber-dark/90 px-5 py-3 text-[11px] font-bold uppercase tracking-[0.28em] text-cyber-orange shadow-2xl transition-all hover:bg-cyber-orange/10 md:block"
       >
-        REPORT BUG
+        {t('reportBug')}
       </button>
 
       {reportModalOpen && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-cyber-black/80 px-4">
           <button
             type="button"
-            aria-label="Fermer la fenetre"
+            aria-label={t('aria.closeWindow')}
             onClick={() => {
               if (submittingReport) return
               setReportModalOpen(false)
@@ -304,9 +309,9 @@ export default function GameLayout({ children }: { children: ReactNode }) {
           <div className="relative z-[81] w-full max-w-xl rounded-2xl border border-cyber-orange/30 bg-cyber-dark p-5 shadow-2xl">
             <div className="mb-4 flex items-start justify-between gap-4">
               <div>
-                <div className="text-[10px] uppercase tracking-[0.32em] text-cyber-orange">Support</div>
-                <h2 className="mt-1 text-lg font-bold tracking-widest text-white">REPORT BUG</h2>
-                <p className="mt-1 text-xs text-gray-500">Signale un bug, un exploit ou une suggestion sans quitter la page.</p>
+                <div className="text-[10px] uppercase tracking-[0.32em] text-cyber-orange">{t('report:support')}</div>
+                <h2 className="mt-1 text-lg font-bold tracking-widest text-white">{t('report:title')}</h2>
+                <p className="mt-1 text-xs text-gray-500">{t('report:description')}</p>
               </div>
               <button
                 type="button"
@@ -316,13 +321,13 @@ export default function GameLayout({ children }: { children: ReactNode }) {
                 }}
                 className="text-xs uppercase tracking-widest text-gray-500 transition hover:text-white"
               >
-                FERMER
+                {t('buttons.close')}
               </button>
             </div>
 
             <form onSubmit={submitBugReport} className="space-y-4">
               <div>
-                <label className="mb-2 block text-[10px] uppercase tracking-widest text-gray-500">Categorie</label>
+                <label className="mb-2 block text-[10px] uppercase tracking-widest text-gray-500">{t('report:category')}</label>
                 <div className="flex flex-wrap gap-2">
                   {REPORT_CATEGORIES.map((category) => (
                     <button
@@ -335,14 +340,14 @@ export default function GameLayout({ children }: { children: ReactNode }) {
                           : 'border-gray-800 text-gray-500 hover:border-gray-600 hover:text-white'
                       }`}
                     >
-                      {category}
+                      {t(`report:categories.${category}`)}
                     </button>
                   ))}
                 </div>
               </div>
 
               <div>
-                <label className="mb-1 block text-[10px] uppercase tracking-widest text-gray-500">Titre</label>
+                <label className="mb-1 block text-[10px] uppercase tracking-widest text-gray-500">{t('report:titleLabel')}</label>
                 <input
                   type="text"
                   maxLength={200}
@@ -350,12 +355,12 @@ export default function GameLayout({ children }: { children: ReactNode }) {
                   value={reportTitle}
                   onChange={(event) => setReportTitle(event.target.value)}
                   className="w-full rounded border border-gray-800 bg-cyber-black px-3 py-2 text-sm text-white focus:border-cyber-orange/50 focus:outline-none"
-                  placeholder="Resume court du probleme"
+                  placeholder={t('report:titlePlaceholder')}
                 />
               </div>
 
               <div>
-                <label className="mb-1 block text-[10px] uppercase tracking-widest text-gray-500">Description</label>
+                <label className="mb-1 block text-[10px] uppercase tracking-widest text-gray-500">{t('report:descriptionLabel')}</label>
                 <textarea
                   maxLength={2000}
                   required
@@ -363,7 +368,7 @@ export default function GameLayout({ children }: { children: ReactNode }) {
                   value={reportDescription}
                   onChange={(event) => setReportDescription(event.target.value)}
                   className="w-full resize-none rounded border border-gray-800 bg-cyber-black px-3 py-2 text-sm text-white focus:border-cyber-orange/50 focus:outline-none"
-                  placeholder="Etapes, contexte, ecran, comportement attendu, comportement observe..."
+                  placeholder={t('report:descriptionPlaceholder')}
                 />
               </div>
 
@@ -373,14 +378,14 @@ export default function GameLayout({ children }: { children: ReactNode }) {
                   onClick={() => setReportModalOpen(false)}
                   className="text-[11px] uppercase tracking-widest text-gray-500 transition hover:text-cyber-orange"
                 >
-                  Voir mes reports
+                  {t('report:viewReports')}
                 </Link>
                 <button
                   type="submit"
                   disabled={submittingReport}
                   className="rounded border border-cyber-orange/40 bg-cyber-orange/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.24em] text-cyber-orange transition-all hover:bg-cyber-orange/20 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {submittingReport ? 'ENVOI...' : 'ENVOYER'}
+                  {submittingReport ? t('report:submitting') : t('report:submit')}
                 </button>
               </div>
             </form>
@@ -392,7 +397,7 @@ export default function GameLayout({ children }: { children: ReactNode }) {
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-cyber-black/80 px-4">
           <button
             type="button"
-            aria-label="Fermer"
+            aria-label={t('aria.close')}
             onClick={() => setDailyRewardModalOpen(false)}
             className="absolute inset-0"
           />
@@ -400,13 +405,13 @@ export default function GameLayout({ children }: { children: ReactNode }) {
             <div className="mb-4 flex items-start justify-between gap-4">
               <div>
                 <div className="text-[10px] uppercase tracking-[0.32em] text-cyber-yellow">
-                  Recompense Journaliere
+                  {t('daily_reward:title')}
                 </div>
                 <h2 className="mt-1 text-lg font-bold tracking-widest text-white">
-                  JOUR {dailyReward.nextClaimStreak}
+                  {t('daily_reward:day', { n: dailyReward.nextClaimStreak })}
                 </h2>
                 <div className="mt-1 text-xs text-gray-500">
-                  Streak actuel: {dailyReward.currentStreak} | Meilleur: {dailyReward.highestStreak}
+                  {t('daily_reward:streak', { current: dailyReward.currentStreak, best: dailyReward.highestStreak })}
                 </div>
               </div>
               <button
@@ -414,7 +419,7 @@ export default function GameLayout({ children }: { children: ReactNode }) {
                 onClick={() => setDailyRewardModalOpen(false)}
                 className="text-xs uppercase tracking-widest text-gray-500 transition hover:text-white"
               >
-                FERMER
+                {t('buttons.close')}
               </button>
             </div>
 
@@ -451,7 +456,7 @@ export default function GameLayout({ children }: { children: ReactNode }) {
                               : 'text-gray-600'
                         }`}
                       >
-                        J{day.dayNumber}
+                        {t('daily_reward:dayShort', { n: day.dayNumber })}
                       </div>
                       <div className="my-1 text-base">
                         {isClaimed ? '✅' : '🎁'}
@@ -475,7 +480,7 @@ export default function GameLayout({ children }: { children: ReactNode }) {
             {dailyReward.canClaimToday && dailyReward.nextRewards?.length > 0 ? (
               <div className="text-center">
                 <div className="mb-3 text-sm text-gray-400">
-                  Recompenses du jour:{' '}
+                  {t('daily_reward:todayRewards')}{' '}
                   <span className="font-bold text-cyber-yellow">
                     {dailyReward.nextRewards.map((r: any, i: number) => (
                       <span key={i}>
@@ -505,12 +510,12 @@ export default function GameLayout({ children }: { children: ReactNode }) {
                   }}
                   className="rounded border border-cyber-yellow/40 bg-cyber-yellow/10 px-6 py-2.5 text-xs font-bold uppercase tracking-[0.24em] text-cyber-yellow transition-all hover:bg-cyber-yellow/20 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {claimingReward ? 'RECUPERATION...' : '[ RECUPERER LA RECOMPENSE ]'}
+                  {claimingReward ? t('daily_reward:claiming') : t('daily_reward:claim')}
                 </button>
               </div>
             ) : (
               <div className="text-center text-sm text-gray-500">
-                Recompense deja recuperee aujourd&apos;hui. Reviens demain !
+                {t('daily_reward:alreadyClaimed')}
               </div>
             )}
           </div>

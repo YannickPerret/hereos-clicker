@@ -1,5 +1,6 @@
 import { Link, router, usePage } from '@inertiajs/react'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import GameLayout from '~/components/layout'
 
 interface FriendEntry {
@@ -28,11 +29,13 @@ interface Props {
 function CharacterCard({
   entry,
   rightSlot,
+  t,
 }: {
   entry: FriendEntry
   rightSlot: React.ReactNode
+  t: (key: string, opts?: Record<string, any>) => string
 }) {
-  const presenceLabel = formatPresenceLabel(entry)
+  const presenceLabel = formatPresenceLabel(entry, t)
 
   return (
     <div className="rounded-lg border border-gray-800 bg-cyber-dark p-4">
@@ -58,42 +61,42 @@ function CharacterCard({
           href={`/profile/${encodeURIComponent(entry.name)}`}
           className="text-[10px] uppercase tracking-widest text-cyber-blue transition hover:text-white"
         >
-          Voir le profil
+          {t('friends:viewProfile')}
         </Link>
       </div>
     </div>
   )
 }
 
-function formatPresenceLabel(entry: FriendEntry) {
+function formatPresenceLabel(entry: FriendEntry, t: (key: string, opts?: Record<string, any>) => string) {
   if (entry.isOnline) {
-    return 'En ligne'
+    return t('friends:online')
   }
 
   if (!entry.lastSeenAt) {
-    return 'Hors ligne'
+    return t('friends:offline')
   }
 
   const diffMs = Date.now() - new Date(entry.lastSeenAt).getTime()
   if (!Number.isFinite(diffMs) || diffMs < 0) {
-    return 'Hors ligne'
+    return t('friends:offline')
   }
 
   const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
   if (diffHours < 1) {
-    return "Hors ligne il y a moins d'une heure"
+    return t('friends:offlineLessThanHour')
   }
 
   if (diffHours < 24) {
-    return `Hors ligne il y a ${diffHours}h`
+    return t('friends:offlineHours', { hours: diffHours })
   }
 
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
   if (diffDays < 7) {
-    return `Hors ligne il y a ${diffDays} jour${diffDays > 1 ? 's' : ''}`
+    return t('friends:offlineDays', { days: diffDays })
   }
 
-  return "Hors ligne il y a plus d'une semaine"
+  return t('friends:offlineWeek')
 }
 
 export default function FriendsIndex({
@@ -102,6 +105,7 @@ export default function FriendsIndex({
   incomingRequests,
   outgoingRequests,
 }: Props) {
+  const { t } = useTranslation(['friends', 'common'])
   const { errors } = usePage().props as any
   const [characterName, setCharacterName] = useState('')
 
@@ -111,8 +115,8 @@ export default function FriendsIndex({
         <div className="mb-6 flex items-center justify-between gap-4">
           <div>
             <div className="text-[10px] uppercase tracking-[0.32em] text-gray-500">Social</div>
-            <h1 className="mt-2 text-2xl font-bold tracking-widest text-cyber-green">AMIS</h1>
-            <div className="mt-1 text-xs text-gray-500">Reseau actif de {character.name}</div>
+            <h1 className="mt-2 text-2xl font-bold tracking-widest text-cyber-green">{t('friends:title')}</h1>
+            <div className="mt-1 text-xs text-gray-500">{t('friends:networkOf', { name: character.name })}</div>
           </div>
         </div>
 
@@ -123,7 +127,7 @@ export default function FriendsIndex({
         )}
 
         <div className="mb-6 rounded-lg border border-cyber-green/20 bg-cyber-dark p-4">
-          <div className="mb-3 text-[10px] uppercase tracking-[0.28em] text-gray-500">Ajouter un ami</div>
+          <div className="mb-3 text-[10px] uppercase tracking-[0.28em] text-gray-500">{t('friends:addFriend')}</div>
           <form
             onSubmit={(event) => {
               event.preventDefault()
@@ -136,7 +140,7 @@ export default function FriendsIndex({
               type="text"
               value={characterName}
               onChange={(event) => setCharacterName(event.target.value)}
-              placeholder="Nom du personnage..."
+              placeholder={t('friends:namePlaceholder')}
               className="flex-1 rounded border border-gray-800 bg-cyber-black px-4 py-2.5 text-sm text-white focus:border-cyber-green/40 focus:outline-none"
             />
             <button
@@ -144,7 +148,7 @@ export default function FriendsIndex({
               disabled={!characterName.trim()}
               className="rounded border border-cyber-green/30 px-4 py-2.5 text-xs font-bold uppercase tracking-[0.24em] text-cyber-green transition hover:bg-cyber-green/10 disabled:opacity-40"
             >
-              ENVOYER
+              {t('friends:send')}
             </button>
           </form>
         </div>
@@ -152,18 +156,19 @@ export default function FriendsIndex({
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
           <section className="xl:col-span-1">
             <div className="mb-3 text-sm font-bold uppercase tracking-widest text-cyber-orange">
-              Demandes entrantes
+              {t('friends:incomingRequests')}
             </div>
             <div className="space-y-3">
               {incomingRequests.length === 0 ? (
                 <div className="rounded-lg border border-gray-800 bg-cyber-dark px-4 py-6 text-center text-xs text-gray-600">
-                  Aucune demande en attente
+                  {t('friends:noRequests')}
                 </div>
               ) : (
                 incomingRequests.map((entry) => (
                   <CharacterCard
                     key={entry.id}
                     entry={entry}
+                    t={t}
                     rightSlot={
                       <div className="flex gap-2">
                         <button
@@ -171,14 +176,14 @@ export default function FriendsIndex({
                           onClick={() => router.post(`/friends/${entry.id}/accept`)}
                           className="rounded border border-cyber-green/30 px-2 py-1 text-[10px] uppercase tracking-widest text-cyber-green hover:bg-cyber-green/10"
                         >
-                          OK
+                          {t('friends:accept')}
                         </button>
                         <button
                           type="button"
                           onClick={() => router.post(`/friends/${entry.id}/decline`)}
                           className="rounded border border-cyber-red/30 px-2 py-1 text-[10px] uppercase tracking-widest text-cyber-red hover:bg-cyber-red/10"
                         >
-                          NON
+                          {t('friends:decline')}
                         </button>
                       </div>
                     }
@@ -190,29 +195,30 @@ export default function FriendsIndex({
 
           <section className="xl:col-span-1">
             <div className="mb-3 text-sm font-bold uppercase tracking-widest text-cyber-blue">
-              Amis
+              {t('friends:friendsSection')}
             </div>
             <div className="space-y-3">
               {friends.length === 0 ? (
                 <div className="rounded-lg border border-gray-800 bg-cyber-dark px-4 py-6 text-center text-xs text-gray-600">
-                  Aucun ami pour le moment
+                  {t('friends:noFriends')}
                 </div>
               ) : (
                 friends.map((entry) => (
                   <CharacterCard
                     key={entry.id}
                     entry={entry}
+                    t={t}
                     rightSlot={
                       <button
                         type="button"
                         onClick={() => {
-                          if (window.confirm(`Retirer ${entry.name} de tes amis ?`)) {
+                          if (window.confirm(t('friends:removeConfirm', { name: entry.name }))) {
                             router.post(`/friends/${entry.id}/remove`)
                           }
                         }}
                         className="rounded border border-cyber-red/30 px-2 py-1 text-[10px] uppercase tracking-widest text-cyber-red hover:bg-cyber-red/10"
                       >
-                        RETIRER
+                        {t('friends:remove')}
                       </button>
                     }
                   />
@@ -223,25 +229,26 @@ export default function FriendsIndex({
 
           <section className="xl:col-span-1">
             <div className="mb-3 text-sm font-bold uppercase tracking-widest text-cyber-purple">
-              Demandes envoyees
+              {t('friends:outgoingRequests')}
             </div>
             <div className="space-y-3">
               {outgoingRequests.length === 0 ? (
                 <div className="rounded-lg border border-gray-800 bg-cyber-dark px-4 py-6 text-center text-xs text-gray-600">
-                  Aucune demande envoyee
+                  {t('friends:noOutgoing')}
                 </div>
               ) : (
                 outgoingRequests.map((entry) => (
                   <CharacterCard
                     key={entry.id}
                     entry={entry}
+                    t={t}
                     rightSlot={
                       <button
                         type="button"
                         onClick={() => router.post(`/friends/${entry.id}/cancel`)}
                         className="rounded border border-gray-700 px-2 py-1 text-[10px] uppercase tracking-widest text-gray-400 hover:border-gray-500 hover:text-white"
                       >
-                        ANNULER
+                        {t('friends:cancel')}
                       </button>
                     }
                   />

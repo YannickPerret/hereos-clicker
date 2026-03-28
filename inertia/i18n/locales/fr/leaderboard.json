@@ -1,0 +1,28 @@
+{
+  "title": "CLASSEMENTS",
+  "seasonRanking": "Classement de saison",
+  "freeDate": "date libre",
+  "noEnd": "sans fin",
+  "features": {
+    "pvpLadder": "Ladder PvP",
+    "worldBoss": "Boss mondial",
+    "playerMarket": "Marche joueur"
+  },
+  "globalRanking": "Classement Global",
+  "globalInfo": "Credits • Niveau • Clicks",
+  "playersLoaded": "{{count}} joueur(s) charges",
+  "headers": {
+    "rank": "Rang",
+    "runner": "Runner",
+    "level": "Niveau",
+    "clicks": "Clicks",
+    "credits": "Credits"
+  },
+  "noRunners": "Aucun runner enregistre",
+  "loading": "Chargement...",
+  "scrollToLoad": "Scroll pour charger la suite",
+  "endOfRanking": "Fin du classement",
+  "pvpRanking": "Classement PvP",
+  "pvpInfo": "Elo • Wins / Losses",
+  "noPvpRanking": "Aucun classement PvP disponible"
+}

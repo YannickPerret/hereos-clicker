@@ -1,4 +1,5 @@
 import { router } from '@inertiajs/react'
+import { useTranslation } from 'react-i18next'
 import GameLayout from '~/components/layout'
 
 interface OwnedCompanion {
@@ -43,25 +44,28 @@ const RARITY_COLORS: Record<string, string> = {
   legendary: 'border-cyber-yellow/30 text-cyber-yellow',
 }
 
-const BONUS_LABELS: Record<string, string> = {
-  cpc_flat: 'Credits/Click',
-  cps_flat: 'Credits/Sec',
-  atk_flat: 'Attaque',
-  def_flat: 'Defense',
-  crit_chance: 'Crit%',
-  hp_flat: 'HP Max',
-  loot_bonus: 'Bonus Loot',
-}
+// BONUS_LABELS moved inside component to use t()
 
 export default function Companions({ character, owned, shop }: Props) {
+  const { t } = useTranslation(['companions', 'common'])
   const active = owned.find((c) => c.isActive)
+
+  const BONUS_LABELS: Record<string, string> = {
+    cpc_flat: t('companions:bonusTypes.cpc'),
+    cps_flat: t('companions:bonusTypes.cps'),
+    atk_flat: t('companions:bonusTypes.attack'),
+    def_flat: t('companions:bonusTypes.defense'),
+    crit_chance: t('companions:bonusTypes.critChance'),
+    hp_flat: t('companions:bonusTypes.maxHp'),
+    loot_bonus: t('companions:bonusTypes.lootBonus'),
+  }
 
   return (
     <GameLayout>
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold text-cyber-pink tracking-widest">
-            DRONES & COMPAGNONS
+            {t('companions:title')}
           </h1>
           <span className="text-xs text-cyber-yellow">{character.credits.toLocaleString()}c</span>
         </div>
@@ -84,13 +88,12 @@ export default function Companions({ character, owned, shop }: Props) {
                     <span className="text-gray-700 ml-2">LVL {active.level}</span>
                   </div>
                   <div className="text-[10px] mt-1 text-gray-500">
-                    Prochain palier: +{active.nextBonusValue} pour{' '}
-                    {active.upgradePrice.toLocaleString()}c
+                    {t('companions:nextTier', { value: active.nextBonusValue, price: active.upgradePrice.toLocaleString() })}
                   </div>
                 </div>
               </div>
               <div className="text-[10px] bg-cyber-green/20 text-cyber-green px-2 py-1 rounded border border-cyber-green/30">
-                ACTIF
+                {t('companions:active')}
               </div>
             </div>
           </div>
@@ -100,12 +103,12 @@ export default function Companions({ character, owned, shop }: Props) {
           {/* Owned */}
           <div>
             <h2 className="text-sm text-gray-400 uppercase tracking-widest mb-3">
-              Tes compagnons ({owned.length})
+              {t('companions:yourCompanions', { count: owned.length })}
             </h2>
             <div className="space-y-2">
               {owned.length === 0 ? (
                 <div className="text-xs text-gray-700 italic text-center py-8">
-                  Tu n'as aucun compagnon. Achete-en un dans le shop!
+                  {t('companions:noCompanions')}
                 </div>
               ) : (
                 owned.map((c) => (
@@ -122,8 +125,7 @@ export default function Companions({ character, owned, shop }: Props) {
                             +{c.bonusValue} {BONUS_LABELS[c.bonusType]} • LVL {c.level}
                           </div>
                           <div className="text-[10px] text-gray-500 mt-0.5">
-                            Niveau suivant: +{c.nextBonusValue} • Cout{' '}
-                            {c.upgradePrice.toLocaleString()}c
+                            {t('companions:nextLevel', { value: c.nextBonusValue, price: c.upgradePrice.toLocaleString() })}
                           </div>
                         </div>
                       </div>
@@ -133,14 +135,14 @@ export default function Companions({ character, owned, shop }: Props) {
                             onClick={() => router.post(`/companions/${c.id}/deactivate`)}
                             className="text-[10px] px-2 py-1 rounded border border-gray-700 text-gray-500 hover:text-gray-400"
                           >
-                            DESACTIVER
+                            {t('companions:deactivate')}
                           </button>
                         ) : (
                           <button
                             onClick={() => router.post(`/companions/${c.id}/activate`)}
                             className="text-[10px] px-2 py-1 rounded border border-cyber-green/30 text-cyber-green hover:bg-cyber-green/10"
                           >
-                            ACTIVER
+                            {t('companions:activate')}
                           </button>
                         )}
                         <button
@@ -152,7 +154,7 @@ export default function Companions({ character, owned, shop }: Props) {
                               : 'border-gray-800 text-gray-700 cursor-not-allowed'
                           }`}
                         >
-                          UPGRADE {c.upgradePrice.toLocaleString()}c
+                          {t('companions:upgrade', { price: c.upgradePrice.toLocaleString() })}
                         </button>
                       </div>
                     </div>
@@ -165,7 +167,7 @@ export default function Companions({ character, owned, shop }: Props) {
           {/* Shop */}
           <div>
             <h2 className="text-sm text-gray-400 uppercase tracking-widest mb-3">
-              Shop compagnons ({shop.length})
+              {t('companions:shopSection', { count: shop.length })}
             </h2>
             <div className="space-y-2">
               {shop.map((c) => {

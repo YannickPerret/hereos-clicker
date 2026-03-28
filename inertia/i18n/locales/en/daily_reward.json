@@ -1,0 +1,10 @@
+{
+  "title": "Daily Reward",
+  "day": "DAY {{n}}",
+  "dayShort": "D{{n}}",
+  "streak": "Current streak: {{current}} | Best: {{best}}",
+  "todayRewards": "Today's rewards:",
+  "claiming": "CLAIMING...",
+  "claim": "[ CLAIM REWARD ]",
+  "alreadyClaimed": "Reward already claimed today. Come back tomorrow!"
+}

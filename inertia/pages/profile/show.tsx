@@ -1,4 +1,5 @@
 import { router } from '@inertiajs/react'
+import { useTranslation } from 'react-i18next'
 import CyberpunkAvatar from '~/components/cyberpunk_avatar'
 import GameLayout from '~/components/layout'
 
@@ -67,25 +68,11 @@ interface Props {
   friendStatus: 'self' | 'none' | 'incoming' | 'outgoing' | 'friend'
 }
 
-const SPEC_CONFIG: Record<string, { label: string; color: string; border: string }> = {
-  hacker: { label: 'HACKER', color: 'text-cyber-green', border: 'border-cyber-green/30' },
-  netrunner: { label: 'NETRUNNER', color: 'text-cyber-blue', border: 'border-cyber-blue/30' },
-  samurai: { label: 'STREET SAMURAI', color: 'text-cyber-red', border: 'border-cyber-red/30' },
-  chrome_dealer: {
-    label: 'CHROME DEALER',
-    color: 'text-cyber-yellow',
-    border: 'border-cyber-yellow/30',
-  },
-}
-
-const TYPE_LABELS: Record<string, string> = {
-  weapon: 'ARME',
-  armor: 'ARMURE',
-  implant: 'IMPLANT',
-  clothes_hair: 'CHEVEUX',
-  clothes_face: 'VISAGE',
-  clothes_outer: 'HAUT',
-  clothes_legs: 'BAS',
+const SPEC_COLORS: Record<string, { color: string; border: string }> = {
+  hacker: { color: 'text-cyber-green', border: 'border-cyber-green/30' },
+  netrunner: { color: 'text-cyber-blue', border: 'border-cyber-blue/30' },
+  samurai: { color: 'text-cyber-red', border: 'border-cyber-red/30' },
+  chrome_dealer: { color: 'text-cyber-yellow', border: 'border-cyber-yellow/30' },
 }
 
 const RARITY_TEXT: Record<string, string> = {
@@ -96,25 +83,6 @@ const RARITY_TEXT: Record<string, string> = {
   legendary: 'text-cyber-yellow',
 }
 
-const EFFECT_LABELS: Record<string, string> = {
-  attack_boost: 'ATK',
-  defense_boost: 'DEF',
-  click_multiplier: 'CPC',
-  permanent_click: 'CPC',
-  hp_restore: 'HP',
-  xp_boost: 'XP',
-}
-
-const BONUS_LABELS: Record<string, string> = {
-  cpc_flat: 'Credits/Click',
-  cps_flat: 'Credits/Sec',
-  atk_flat: 'Attaque',
-  def_flat: 'Defense',
-  crit_chance: 'Crit%',
-  hp_flat: 'HP Max',
-  loot_bonus: 'Bonus Loot',
-}
-
 export default function PublicProfile({
   character,
   equippedItems,
@@ -122,7 +90,8 @@ export default function PublicProfile({
   companions,
   friendStatus,
 }: Props) {
-  const spec = character.chosenSpec ? SPEC_CONFIG[character.chosenSpec] : null
+  const { t } = useTranslation(['profile', 'common', 'companions'])
+  const specColors = character.chosenSpec ? SPEC_COLORS[character.chosenSpec] : null
   const equipmentSlots = [
     'weapon',
     'armor',
@@ -139,7 +108,7 @@ export default function PublicProfile({
         <div className="mb-6 flex items-center justify-between">
           <div>
             <div className="text-[10px] uppercase tracking-[0.35em] text-gray-600">
-              Profil Public
+              {t('publicProfile')}
             </div>
             <h1 className="mt-2 text-2xl font-bold tracking-widest text-cyber-blue">
               {character.name}
@@ -158,22 +127,22 @@ export default function PublicProfile({
                 }
                 className="rounded border border-cyber-green/30 bg-cyber-green/10 px-3 py-1.5 text-[10px] uppercase tracking-widest text-cyber-green transition hover:bg-cyber-green/20"
               >
-                Ajouter en ami
+                {t('addFriend')}
               </button>
             )}
             {friendStatus === 'incoming' && (
               <div className="rounded border border-cyber-orange/30 bg-cyber-orange/10 px-3 py-1.5 text-[10px] uppercase tracking-widest text-cyber-orange">
-                Demande entrante
+                {t('incomingRequest')}
               </div>
             )}
             {friendStatus === 'outgoing' && (
               <div className="rounded border border-cyber-blue/30 bg-cyber-blue/10 px-3 py-1.5 text-[10px] uppercase tracking-widest text-cyber-blue">
-                Demande envoyee
+                {t('sentRequest')}
               </div>
             )}
             {friendStatus === 'friend' && (
               <div className="rounded border border-cyber-green/30 bg-cyber-green/10 px-3 py-1.5 text-[10px] uppercase tracking-widest text-cyber-green">
-                Deja ami
+                {t('alreadyFriend')}
               </div>
             )}
             <button
@@ -181,7 +150,7 @@ export default function PublicProfile({
               onClick={() => router.visit('/play')}
               className="rounded border border-gray-800 px-3 py-1.5 text-[10px] uppercase tracking-widest text-gray-500 transition hover:border-gray-600 hover:text-white"
             >
-              Retour
+              {t('back')}
             </button>
           </div>
         </div>
@@ -199,54 +168,54 @@ export default function PublicProfile({
             <div className="rounded-lg border border-cyber-blue/20 bg-cyber-dark p-4">
               <div className="mb-3 flex items-center justify-between">
                 <span className="text-[10px] uppercase tracking-widest text-gray-500">
-                  Specialisation
+                  {t('specialization')}
                 </span>
-                {spec ? (
+                {specColors && character.chosenSpec ? (
                   <span
-                    className={`rounded border px-2 py-1 text-[10px] font-bold uppercase tracking-widest ${spec.color} ${spec.border}`}
+                    className={`rounded border px-2 py-1 text-[10px] font-bold uppercase tracking-widest ${specColors.color} ${specColors.border}`}
                   >
-                    {spec.label}
+                    {t(`common:specs.${character.chosenSpec}`)}
                   </span>
                 ) : (
                   <span className="text-[10px] uppercase tracking-widest text-gray-600">
-                    Aucune
+                    {t('none')}
                   </span>
                 )}
               </div>
 
               <div className="space-y-1 text-xs">
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Niveau</span>
+                  <span className="text-gray-500">{t('common:stats.level')}</span>
                   <span className="text-cyber-green">LVL {character.level}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500">HP</span>
+                  <span className="text-gray-500">{t('common:stats.hp')}</span>
                   <span className="text-cyber-red">
                     {character.hpCurrent}/{character.hpMax}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500">ATK</span>
+                  <span className="text-gray-500">{t('common:stats.atk')}</span>
                   <span className="text-cyber-red">{character.attack}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500">DEF</span>
+                  <span className="text-gray-500">{t('common:stats.def')}</span>
                   <span className="text-cyber-blue">{character.defense}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500">CPC</span>
+                  <span className="text-gray-500">{t('common:stats.cpc')}</span>
                   <span className="text-cyber-pink">{character.creditsPerClick}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500">CPS</span>
+                  <span className="text-gray-500">{t('common:stats.cps')}</span>
                   <span className="text-cyber-purple">{character.creditsPerSecond}/s</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Crit%</span>
+                  <span className="text-gray-500">{t('common:stats.crit')}</span>
                   <span className="text-cyber-yellow">{character.critChance}%</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Crit Dmg</span>
+                  <span className="text-gray-500">{t('common:stats.critDmg')}</span>
                   <span className="text-cyber-yellow">{character.critDamage}%</span>
                 </div>
                 <div className="flex justify-between">
@@ -270,7 +239,7 @@ export default function PublicProfile({
           <div className="lg:col-span-2 space-y-4">
             <div className="rounded-lg border border-cyber-purple/20 bg-cyber-dark p-4">
               <h2 className="mb-3 text-sm uppercase tracking-widest text-cyber-purple">
-                Equipement
+                {t('equipment')}
               </h2>
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
                 {equipmentSlots.map((type) => {
@@ -282,7 +251,7 @@ export default function PublicProfile({
                       className="rounded-lg border border-gray-800 bg-cyber-black/40 p-3"
                     >
                       <div className="mb-1 text-[10px] uppercase tracking-widest text-gray-600">
-                        {TYPE_LABELS[type]}
+                        {t(`common:types.${type}`)}
                       </div>
                       {entry ? (
                         <>
@@ -296,13 +265,13 @@ export default function PublicProfile({
                           </div>
                           {entry.item.effectType && entry.item.effectValue !== null && (
                             <div className="mt-2 text-[10px] text-cyber-green">
-                              {EFFECT_LABELS[entry.item.effectType] || entry.item.effectType}: +
+                              {t(`common:effects.${entry.item.effectType}`, { defaultValue: entry.item.effectType })}: +
                               {entry.item.effectValue}
                             </div>
                           )}
                         </>
                       ) : (
-                        <div className="text-xs text-gray-700">[ Vide ]</div>
+                        <div className="text-xs text-gray-700">{t('emptySlot')}</div>
                       )}
                     </div>
                   )
@@ -312,10 +281,10 @@ export default function PublicProfile({
 
             <div className="rounded-lg border border-cyber-green/20 bg-cyber-dark p-4">
               <h2 className="mb-3 text-sm uppercase tracking-widest text-cyber-green">
-                Talents Debloques
+                {t('unlockedTalents')}
               </h2>
               {talents.length === 0 ? (
-                <div className="text-sm text-gray-600">Aucun talent debloque.</div>
+                <div className="text-sm text-gray-600">{t('noTalents')}</div>
               ) : (
                 <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                   {talents
@@ -332,7 +301,7 @@ export default function PublicProfile({
                           </div>
                         </div>
                         <div className="mt-1 text-[10px] text-gray-500 uppercase tracking-widest">
-                          {SPEC_CONFIG[talent.spec]?.label || talent.spec}
+                          {t(`common:specs.${talent.spec}`, { defaultValue: talent.spec })}
                         </div>
                         <div className="mt-2 text-[10px] text-cyber-green">
                           {talent.effectType}: +{talent.effectValue}
@@ -345,10 +314,10 @@ export default function PublicProfile({
 
             <div className="rounded-lg border border-cyber-pink/20 bg-cyber-dark p-4">
               <h2 className="mb-3 text-sm uppercase tracking-widest text-cyber-pink">
-                Drones & Compagnons
+                {t('dronesCompanions')}
               </h2>
               {companions.length === 0 ? (
-                <div className="text-sm text-gray-600">Aucun drone equipe.</div>
+                <div className="text-sm text-gray-600">{t('companions:noCompanions')}</div>
               ) : (
                 <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                   {companions
@@ -371,7 +340,7 @@ export default function PublicProfile({
                               </div>
                               <div className="mt-2 text-[10px] text-cyber-green">
                                 +{companion.bonusValue}{' '}
-                                {BONUS_LABELS[companion.bonusType] || companion.bonusType}
+                                {companion.bonusType}
                               </div>
                               <div className="mt-1 text-[10px] uppercase tracking-widest text-gray-600">
                                 LVL {companion.level}
@@ -380,7 +349,7 @@ export default function PublicProfile({
                           </div>
                           {companion.isActive && (
                             <div className="rounded border border-cyber-green/30 bg-cyber-green/10 px-2 py-1 text-[10px] uppercase tracking-widest text-cyber-green">
-                              Actif
+                              {t('companions:active')}
                             </div>
                           )}
                         </div>

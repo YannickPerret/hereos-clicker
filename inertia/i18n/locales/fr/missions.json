@@ -1,0 +1,19 @@
+{
+  "dailyReward": "Recompense Journaliere",
+  "streak": "Streak {{n}}",
+  "bestStreak": "Meilleur streak: {{n}}",
+  "claimedToday": "Reclamee aujourd hui",
+  "nextClaim": "Prochain claim: {{n}}",
+  "noRewards": "Aucune recompense",
+  "dayLabel": "Jour {{n}}",
+  "claimDayReward": "[ RECLAMER LA RECOMPENSE DU JOUR ]",
+  "comeBackTomorrow": "Reviens apres le reset quotidien pour continuer ton streak.",
+  "title": "MISSIONS QUOTIDIENNES",
+  "completionCount": "{{done}}/{{total}} terminees",
+  "allDone": "Toutes les missions du jour sont terminees!",
+  "newMissionsTomorrow": "Reviens demain pour de nouvelles missions.",
+  "progression": "Progression",
+  "reward": "Recompense",
+  "claimBtn": "[ RECLAMER ]",
+  "claimed": "Reclamee ✓"
+}

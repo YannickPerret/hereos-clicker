@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { router } from '@inertiajs/react'
+import { useTranslation } from 'react-i18next'
 import GameLayout from '~/components/layout'
 
 interface Item {
@@ -50,18 +51,6 @@ const RARITY_GLOW: Record<string, string> = {
   legendary: 'hover:shadow-[0_0_15px_rgba(255,255,0,0.3)]',
 }
 
-const TYPE_LABELS: Record<string, string> = {
-  weapon: 'ARME',
-  armor: 'ARMURE',
-  implant: 'IMPLANT',
-  clothes_hair: 'CHEVEUX',
-  clothes_face: 'VISAGE',
-  clothes_outer: 'HAUT',
-  clothes_legs: 'BAS',
-  consumable: 'CONSO',
-  upgrade: 'UPGRADE',
-}
-
 const TYPE_ORDER = [
   'weapon',
   'armor',
@@ -84,6 +73,7 @@ const formatEffect = (item: Item) => {
 }
 
 export default function Shop({ character, listings }: Props) {
+  const { t } = useTranslation(['shop', 'common'])
   const [quantities, setQuantities] = useState<Record<number, string>>({})
   const [filter, setFilter] = useState<string>('all')
   const shopActionOptions = {
@@ -130,10 +120,10 @@ export default function Shop({ character, listings }: Props) {
       {/* Credits display */}
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-cyber-pink neon-text-pink tracking-widest">
-          NETMARKET
+          {t('shop:title')}
         </h1>
         <div className="bg-cyber-dark border border-cyber-yellow/30 rounded-lg px-4 py-2">
-          <span className="text-xs text-gray-500 mr-2">CREDITS:</span>
+          <span className="text-xs text-gray-500 mr-2">{t('shop:credits')}</span>
           <span className="text-cyber-yellow font-bold text-lg">
             {character.credits.toLocaleString()}
           </span>
@@ -150,7 +140,7 @@ export default function Shop({ character, listings }: Props) {
               : 'border-gray-800 bg-cyber-dark text-gray-500 hover:border-cyber-pink/30 hover:text-cyber-pink'
           }`}
         >
-          Toutes ({listings.length})
+          {t('shop:allItems', { count: listings.length })}
         </button>
         {TYPE_ORDER.map((type) => (
           <button
@@ -163,14 +153,14 @@ export default function Shop({ character, listings }: Props) {
                 : 'border-gray-800 bg-cyber-dark text-gray-500 hover:border-cyber-blue/30 hover:text-cyber-blue'
             } ${categoryCounts[type] === 0 ? 'opacity-40' : ''}`}
           >
-            {TYPE_LABELS[type]} ({categoryCounts[type]})
+            {t(`common:types.${type}`)} ({categoryCounts[type]})
           </button>
         ))}
       </div>
 
       {visibleCategories.length === 0 ? (
         <div className="rounded-lg border border-gray-800 bg-cyber-dark p-12 text-center">
-          <p className="text-sm text-gray-600">Aucun item disponible dans cette categorie.</p>
+          <p className="text-sm text-gray-600">{t('shop:noItems')}</p>
         </div>
       ) : (
         visibleCategories.map((cat) => {
@@ -180,7 +170,7 @@ export default function Shop({ character, listings }: Props) {
           return (
             <div key={cat} className="mb-8">
               <h2 className="text-sm uppercase tracking-widest text-gray-500 mb-3 border-b border-gray-800 pb-2">
-                {TYPE_LABELS[cat]}
+                {t(`common:types.${cat}`)}
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 {items.map((listing) => {
@@ -212,7 +202,7 @@ export default function Shop({ character, listings }: Props) {
                             {listing.price.toLocaleString()}c
                           </div>
                           {listing.stock !== null && (
-                            <div className="text-[10px] text-gray-600">Stock: {listing.stock}</div>
+                            <div className="text-[10px] text-gray-600">{t('shop:stock', { n: listing.stock })}</div>
                           )}
                         </div>
                       </div>
@@ -221,7 +211,7 @@ export default function Shop({ character, listings }: Props) {
 
                       {formatEffect(listing.item) && (
                         <div className="text-xs text-cyber-green mb-3">
-                          Effet: {formatEffect(listing.item)}
+                          {t('shop:effect', { effect: formatEffect(listing.item) })}
                         </div>
                       )}
 
@@ -254,8 +244,8 @@ export default function Shop({ character, listings }: Props) {
                           </button>
                         </div>
                         <div className="mt-2 flex items-center justify-between text-[10px] uppercase tracking-widest text-gray-600">
-                          <span>Quantite: {quantity}</span>
-                          <span>Total: {totalPrice.toLocaleString()}c</span>
+                          <span>{t('shop:quantity', { n: quantity })}</span>
+                          <span>{t('shop:total', { price: totalPrice.toLocaleString() })}</span>
                         </div>
                       </div>
 
@@ -275,12 +265,12 @@ export default function Shop({ character, listings }: Props) {
                         }`}
                       >
                         {outOfStock
-                          ? '[ RUPTURE ]'
+                          ? t('shop:outOfStock')
                           : !hasEnoughStock
-                            ? '[ STOCK INSUFFISANT ]'
+                            ? t('shop:insufficientStock')
                             : canAfford
-                              ? `[ ACHETER x${quantity} ]`
-                              : '[ FONDS INSUFFISANTS ]'}
+                              ? t('shop:buy', { n: quantity })
+                              : t('shop:insufficientFunds')}
                       </button>
                     </div>
                   )

@@ -1,0 +1,14 @@
+{
+  "equipped": "EQUIPPED",
+  "stats": "Stats",
+  "emptySlot": "[ Empty ]",
+  "unequip": "Unequip",
+  "discard": "Discard",
+  "equip": "Equip",
+  "use": "Use",
+  "title": "INVENTORY ({{count}} items)",
+  "empty": "Inventory empty. Visit the Shop or explore Dungeons.",
+  "discardConfirm": "Confirmation",
+  "discardMessage": "Choose the quantity to discard. This action is irreversible.",
+  "discardStock": "Current stock: {{stock}} • Discard x{{quantity}}"
+}

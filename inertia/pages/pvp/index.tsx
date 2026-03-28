@@ -1,5 +1,6 @@
 import { router, usePage } from '@inertiajs/react'
 import { useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import GameLayout from '~/components/layout'
 
 interface Match {
@@ -84,6 +85,7 @@ export default function PvpArena({
   currentSeason,
   seasonHistory,
 }: Props) {
+  const { t } = useTranslation(['pvp', 'common'])
   const { props } = usePage<{
     errors?: { message?: string }
     success?: string
@@ -129,14 +131,14 @@ export default function PvpArena({
     <GameLayout>
       <div className="max-w-6xl mx-auto">
         <div className="mb-6 flex items-center justify-between">
-          <h1 className="text-2xl font-bold tracking-widest text-cyber-red">ARENA PVP</h1>
+          <h1 className="text-2xl font-bold tracking-widest text-cyber-red">{t('pvp:title')}</h1>
           <div className="flex items-center gap-4">
             <div className="text-right">
-              <div className="text-xs text-gray-600">ELO</div>
+              <div className="text-xs text-gray-600">{t('pvp:elo')}</div>
               <div className="text-lg font-bold text-cyber-yellow">{character.pvpRating}</div>
             </div>
             <div className="text-right">
-              <div className="text-xs text-gray-600">W/L</div>
+              <div className="text-xs text-gray-600">{t('pvp:winLoss')}</div>
               <div className="text-sm">
                 <span className="font-bold text-cyber-green">{character.pvpWins}</span>
                 <span className="text-gray-600"> / </span>
@@ -151,7 +153,7 @@ export default function PvpArena({
             <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
               <div>
                 <div className="text-[10px] uppercase tracking-[0.3em] text-cyber-yellow">
-                  Saison active
+                  {t('pvp:activeSeason')}
                 </div>
                 <div className="mt-1 text-lg font-bold text-white">{activeSeason.name}</div>
                 <div className="text-xs uppercase tracking-widest text-gray-500">
@@ -163,15 +165,15 @@ export default function PvpArena({
               </div>
               <div className="space-y-2 text-right">
                 <div className="text-[10px] uppercase tracking-widest text-gray-500">
-                  {activeSeason.startsAt ? new Date(activeSeason.startsAt).toLocaleString() : 'date libre'}
+                  {activeSeason.startsAt ? new Date(activeSeason.startsAt).toLocaleString() : t('pvp:freeDate')}
                   {'  ->  '}
-                  {activeSeason.endsAt ? new Date(activeSeason.endsAt).toLocaleString() : 'sans fin'}
+                  {activeSeason.endsAt ? new Date(activeSeason.endsAt).toLocaleString() : t('pvp:noEnd')}
                 </div>
                 <div className="flex flex-wrap justify-end gap-2 text-[10px] uppercase tracking-widest">
-                  {activeSeason.isRankedPvpEnabled && <span className="rounded border border-cyber-red/40 px-2 py-1 text-cyber-red">PvP ranked</span>}
-                  {activeSeason.isWorldBossEnabled && <span className="rounded border border-cyber-green/40 px-2 py-1 text-cyber-green">Boss mondial</span>}
-                  {activeSeason.isPlayerMarketEnabled && <span className="rounded border border-cyber-blue/40 px-2 py-1 text-cyber-blue">Marche joueur</span>}
-                  {activeSeason.isBlackMarketBonusEnabled && <span className="rounded border border-cyber-yellow/40 px-2 py-1 text-cyber-yellow">Bonus marche noir</span>}
+                  {activeSeason.isRankedPvpEnabled && <span className="rounded border border-cyber-red/40 px-2 py-1 text-cyber-red">{t('pvp:features.ranked')}</span>}
+                  {activeSeason.isWorldBossEnabled && <span className="rounded border border-cyber-green/40 px-2 py-1 text-cyber-green">{t('pvp:features.worldBoss')}</span>}
+                  {activeSeason.isPlayerMarketEnabled && <span className="rounded border border-cyber-blue/40 px-2 py-1 text-cyber-blue">{t('pvp:features.playerMarket')}</span>}
+                  {activeSeason.isBlackMarketBonusEnabled && <span className="rounded border border-cyber-yellow/40 px-2 py-1 text-cyber-yellow">{t('pvp:features.blackMarketBonus')}</span>}
                 </div>
               </div>
             </div>
@@ -201,14 +203,14 @@ export default function PvpArena({
                   </div>
                   {activeMatch.status === 'waiting' ? (
                     <div className="rounded border border-cyber-yellow/30 bg-cyber-yellow/10 px-4 py-3 text-sm font-bold uppercase tracking-widest text-cyber-yellow">
-                      [ RECHERCHE EN COURS... ]
+                      {t('pvp:searching')}
                     </div>
                   ) : (
                     <button
                       onClick={() => router.visit(`/pvp/match/${activeMatch.id}`)}
                       className="w-full rounded border border-cyber-yellow bg-cyber-yellow/20 py-3 text-sm font-bold uppercase tracking-widest text-cyber-yellow transition-all hover:bg-cyber-yellow/30"
                     >
-                      [ REJOINDRE COMBAT ]
+                      {t('pvp:joinFight')}
                     </button>
                   )}
                   {activeMatch.status === 'waiting' && (
@@ -216,26 +218,26 @@ export default function PvpArena({
                       onClick={() => router.post('/pvp/leave-queue')}
                       className="w-full rounded border border-cyber-red/40 bg-cyber-red/10 py-3 text-xs font-bold uppercase tracking-widest text-cyber-red transition-all hover:bg-cyber-red/20"
                     >
-                      [ ANNULER LA RECHERCHE ]
+                      {t('pvp:cancelSearch')}
                     </button>
                   )}
                 </div>
               ) : (
                 <p className="text-[10px] text-gray-600">
-                  Matchmaking par mode. Les files duo/trio utilisent ton groupe actuel.
+                  {t('pvp:matchmakingInfo')}
                 </p>
               )}
             </div>
 
             <div className="rounded-lg border border-gray-800 bg-cyber-dark p-4">
-              <h3 className="mb-2 text-xs uppercase tracking-widest text-gray-600">Tes stats</h3>
+              <h3 className="mb-2 text-xs uppercase tracking-widest text-gray-600">{t('pvp:yourStats')}</h3>
               <div className="space-y-1 text-xs">
                 {[
-                  { label: 'ATK', value: character.attack, color: 'text-cyber-red' },
-                  { label: 'DEF', value: character.defense, color: 'text-cyber-blue' },
-                  { label: 'HP', value: character.hpMax, color: 'text-cyber-green' },
-                  { label: 'CRIT%', value: `${character.critChance}%`, color: 'text-cyber-yellow' },
-                  { label: 'CRIT DMG', value: `${character.critDamage}%`, color: 'text-cyber-yellow' },
+                  { label: t('common:stats.atk'), value: character.attack, color: 'text-cyber-red' },
+                  { label: t('common:stats.def'), value: character.defense, color: 'text-cyber-blue' },
+                  { label: t('common:stats.hp'), value: character.hpMax, color: 'text-cyber-green' },
+                  { label: t('common:stats.crit'), value: `${character.critChance}%`, color: 'text-cyber-yellow' },
+                  { label: t('common:stats.critDmg'), value: `${character.critDamage}%`, color: 'text-cyber-yellow' },
                 ].map((stat) => (
                   <div key={stat.label} className="flex justify-between">
                     <span className="text-gray-500">{stat.label}</span>
@@ -248,32 +250,32 @@ export default function PvpArena({
             {currentSeason && (
               <div className="rounded-lg border border-cyber-yellow/20 bg-cyber-dark p-4">
                 <h3 className="mb-2 text-xs uppercase tracking-widest text-cyber-yellow">
-                  Saison PvP
+                  {t('pvp:seasonPvp')}
                 </h3>
                 <div className="space-y-1 text-xs">
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Nom</span>
+                    <span className="text-gray-500">{t('pvp:name')}</span>
                     <span className="text-white">{currentSeason.seasonName}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-500">ELO saison</span>
+                    <span className="text-gray-500">{t('pvp:seasonElo')}</span>
                     <span className="text-cyber-yellow">{currentSeason.rating}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Peak</span>
+                    <span className="text-gray-500">{t('pvp:peak')}</span>
                     <span className="text-cyber-yellow">{currentSeason.peakRating}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Record</span>
+                    <span className="text-gray-500">{t('pvp:record')}</span>
                     <span className="text-white">{currentSeason.wins}W / {currentSeason.losses}L</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Matchs</span>
+                    <span className="text-gray-500">{t('pvp:matches')}</span>
                     <span className="text-white">{currentSeason.gamesPlayed}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Rang</span>
-                    <span className="text-cyber-blue">{currentSeason.rank ? `#${currentSeason.rank}` : 'NC'}</span>
+                    <span className="text-gray-500">{t('pvp:rank')}</span>
+                    <span className="text-cyber-blue">{currentSeason.rank ? `#${currentSeason.rank}` : t('pvp:noClassification')}</span>
                   </div>
                 </div>
               </div>
@@ -287,11 +289,11 @@ export default function PvpArena({
                   <div>
                     <h3 className="text-sm font-bold uppercase tracking-widest text-cyber-red">{card.label}</h3>
                     <div className="mt-1 text-[10px] uppercase tracking-widest text-gray-600">
-                      {card.teamSize}v{card.teamSize}
+                      {t('pvp:teamSize', { n: card.teamSize })}
                     </div>
                   </div>
                   <div className="text-right text-[10px] text-gray-500">
-                    <div>{card.waitingTeams} equipe(s)</div>
+                    <div>{t('pvp:teamsWaiting', { count: card.waitingTeams })}</div>
                     <div className="text-cyber-yellow">{formatEta(card.etaSeconds)}</div>
                   </div>
                 </div>
@@ -311,7 +313,7 @@ export default function PvpArena({
                       : 'cursor-not-allowed border-gray-800 bg-gray-900 text-gray-700'
                   }`}
                 >
-                  {activeMatch ? '[ FILE ACTIVE ]' : `[ LANCER ${card.label.toUpperCase()} ]`}
+                  {activeMatch ? t('pvp:activeQueue') : t('pvp:startQueue', { mode: card.label.toUpperCase() })}
                 </button>
               </div>
             ))}
@@ -319,17 +321,17 @@ export default function PvpArena({
 
           <div className="space-y-6 lg:col-span-1">
             <div className="rounded-lg border border-gray-800 bg-cyber-dark p-4">
-              <h3 className="mb-3 text-sm uppercase tracking-widest text-gray-400">Historique</h3>
+              <h3 className="mb-3 text-sm uppercase tracking-widest text-gray-400">{t('pvp:history')}</h3>
               <div className="space-y-1">
                 {recentMatches.length === 0 ? (
-                  <div className="py-4 text-center text-xs italic text-gray-700">Aucun combat</div>
+                  <div className="py-4 text-center text-xs italic text-gray-700">{t('pvp:noFights')}</div>
                 ) : (
                   recentMatches.map((match) => (
                     <div key={`${match.id}-${match.queueMode}`} className={`rounded p-2 text-xs ${match.isWin ? 'bg-cyber-green/5' : 'bg-cyber-red/5'}`}>
                       <div className="flex items-center justify-between">
                         <div>
                           <span className={match.isWin ? 'text-cyber-green' : 'text-cyber-red'}>{match.isWin ? 'W' : 'L'}</span>
-                          <span className="ml-2 text-gray-500">vs</span>
+                          <span className="ml-2 text-gray-500">{t('pvp:vs')}</span>
                           <span className="ml-1 text-white">{match.challengerName === character.name ? match.defenderName : match.challengerName}</span>
                         </div>
                         <span className={`font-bold ${match.isWin ? 'text-cyber-green' : 'text-cyber-red'}`}>
@@ -344,10 +346,10 @@ export default function PvpArena({
             </div>
 
             <div className="rounded-lg border border-gray-800 bg-cyber-dark p-4">
-              <h3 className="mb-3 text-sm uppercase tracking-widest text-gray-400">Saisons</h3>
+              <h3 className="mb-3 text-sm uppercase tracking-widest text-gray-400">{t('pvp:seasons')}</h3>
               <div className="space-y-2">
                 {seasonHistory.length === 0 ? (
-                  <div className="py-4 text-center text-xs italic text-gray-700">Aucune saison jouee</div>
+                  <div className="py-4 text-center text-xs italic text-gray-700">{t('pvp:noSeasons')}</div>
                 ) : (
                   seasonHistory.map((entry) => (
                     <div key={entry.id} className="rounded border border-gray-800 bg-cyber-black/30 p-3 text-xs">
@@ -361,7 +363,7 @@ export default function PvpArena({
                         <div className="text-right">
                           <div className="font-bold text-cyber-yellow">{entry.rating} ELO</div>
                           <div className="text-[10px] text-gray-500">
-                            {entry.finalRank ? `#${entry.finalRank}` : 'sans classement'}
+                            {entry.finalRank ? `#${entry.finalRank}` : t('pvp:noRanking')}
                           </div>
                         </div>
                       </div>
@@ -378,11 +380,11 @@ export default function PvpArena({
                               onClick={() => router.post(`/pvp/seasons/${entry.id}/claim`)}
                               className="rounded border border-cyber-green/30 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-cyber-green hover:bg-cyber-green/10"
                             >
-                              Claim
+                              {t('pvp:claim')}
                             </button>
                           ) : (
                             <div className="text-[10px] uppercase tracking-widest text-gray-500">
-                              {entry.rewardClaimed ? 'Recuperee' : 'En attente'}
+                              {entry.rewardClaimed ? t('pvp:claimed') : t('pvp:pending')}
                             </div>
                           )}
                         </div>

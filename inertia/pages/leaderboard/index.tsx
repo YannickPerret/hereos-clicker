@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { usePage } from '@inertiajs/react'
+import { useTranslation } from 'react-i18next'
 import GameLayout from '~/components/layout'
 
 interface Player {
@@ -42,6 +43,7 @@ export default function Leaderboard({
   pvpHasMore: initialPvpHasMore,
   pvpNextOffset: initialPvpNextOffset,
 }: Props) {
+  const { t } = useTranslation(['leaderboard', 'common'])
   const [players, setPlayers] = useState(initialPlayers)
   const [playersHasMore, setPlayersHasMore] = useState(initialPlayersHasMore)
   const [playersNextOffset, setPlayersNextOffset] = useState(initialPlayersNextOffset)
@@ -147,7 +149,7 @@ export default function Leaderboard({
     <GameLayout>
       <div className="mx-auto max-w-7xl">
         <h1 className="mb-6 text-center text-2xl font-bold tracking-widest text-cyber-yellow">
-          CLASSEMENTS
+          {t('leaderboard:title')}
         </h1>
 
         {activeSeason && (
@@ -155,7 +157,7 @@ export default function Leaderboard({
             <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
               <div>
                 <div className="text-[10px] uppercase tracking-[0.3em] text-cyber-yellow">
-                  Classement de saison
+                  {t('leaderboard:seasonRanking')}
                 </div>
                 <div className="mt-1 text-lg font-bold text-white">{activeSeason.name}</div>
                 <div className="text-xs uppercase tracking-widest text-gray-500">
@@ -167,14 +169,14 @@ export default function Leaderboard({
               </div>
               <div className="space-y-2 text-right">
                 <div className="text-[10px] uppercase tracking-widest text-gray-500">
-                  {activeSeason.startsAt ? new Date(activeSeason.startsAt).toLocaleString() : 'date libre'}
+                  {activeSeason.startsAt ? new Date(activeSeason.startsAt).toLocaleString() : t('leaderboard:freeDate')}
                   {'  ->  '}
-                  {activeSeason.endsAt ? new Date(activeSeason.endsAt).toLocaleString() : 'sans fin'}
+                  {activeSeason.endsAt ? new Date(activeSeason.endsAt).toLocaleString() : t('leaderboard:noEnd')}
                 </div>
                 <div className="flex flex-wrap justify-end gap-2 text-[10px] uppercase tracking-widest">
-                  {activeSeason.isRankedPvpEnabled && <span className="rounded border border-cyber-yellow/40 px-2 py-1 text-cyber-yellow">Ladder PvP</span>}
-                  {activeSeason.isWorldBossEnabled && <span className="rounded border border-cyber-green/40 px-2 py-1 text-cyber-green">Boss mondial</span>}
-                  {activeSeason.isPlayerMarketEnabled && <span className="rounded border border-cyber-blue/40 px-2 py-1 text-cyber-blue">Marche joueur</span>}
+                  {activeSeason.isRankedPvpEnabled && <span className="rounded border border-cyber-yellow/40 px-2 py-1 text-cyber-yellow">{t('leaderboard:features.pvpLadder')}</span>}
+                  {activeSeason.isWorldBossEnabled && <span className="rounded border border-cyber-green/40 px-2 py-1 text-cyber-green">{t('leaderboard:features.worldBoss')}</span>}
+                  {activeSeason.isPlayerMarketEnabled && <span className="rounded border border-cyber-blue/40 px-2 py-1 text-cyber-blue">{t('leaderboard:features.playerMarket')}</span>}
                 </div>
               </div>
             </div>
@@ -186,24 +188,24 @@ export default function Leaderboard({
             <div className="mb-4 flex items-end justify-between gap-3">
               <div>
                 <h2 className="text-sm font-bold uppercase tracking-widest text-cyber-blue">
-                  Classement Global
+                  {t('leaderboard:globalRanking')}
                 </h2>
                 <div className="mt-1 text-[10px] uppercase tracking-widest text-gray-600">
-                  Credits • Niveau • Clicks
+                  {t('leaderboard:globalInfo')}
                 </div>
               </div>
-              <div className="text-[10px] text-gray-600">{players.length} joueur(s) charges</div>
+              <div className="text-[10px] text-gray-600">{t('leaderboard:playersLoaded', { count: players.length })}</div>
             </div>
 
             <div className="overflow-hidden rounded-lg border border-cyber-blue/10 bg-cyber-black/30">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-cyber-blue/10">
-                    <th className="px-4 py-3 text-left text-[10px] uppercase tracking-widest text-gray-600">Rang</th>
-                    <th className="px-4 py-3 text-left text-[10px] uppercase tracking-widest text-gray-600">Runner</th>
-                    <th className="px-4 py-3 text-right text-[10px] uppercase tracking-widest text-gray-600">Niveau</th>
-                    <th className="px-4 py-3 text-right text-[10px] uppercase tracking-widest text-gray-600">Clicks</th>
-                    <th className="px-4 py-3 text-right text-[10px] uppercase tracking-widest text-gray-600">Credits</th>
+                    <th className="px-4 py-3 text-left text-[10px] uppercase tracking-widest text-gray-600">{t('leaderboard:headers.rank')}</th>
+                    <th className="px-4 py-3 text-left text-[10px] uppercase tracking-widest text-gray-600">{t('leaderboard:headers.runner')}</th>
+                    <th className="px-4 py-3 text-right text-[10px] uppercase tracking-widest text-gray-600">{t('leaderboard:headers.level')}</th>
+                    <th className="px-4 py-3 text-right text-[10px] uppercase tracking-widest text-gray-600">{t('leaderboard:headers.clicks')}</th>
+                    <th className="px-4 py-3 text-right text-[10px] uppercase tracking-widest text-gray-600">{t('leaderboard:headers.credits')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -223,7 +225,7 @@ export default function Leaderboard({
                   {players.length === 0 && (
                     <tr>
                       <td colSpan={5} className="px-4 py-8 text-center text-gray-700">
-                        Aucun runner enregistre
+                        {t('leaderboard:noRunners')}
                       </td>
                     </tr>
                   )}
@@ -233,7 +235,7 @@ export default function Leaderboard({
 
             <div ref={globalSentinelRef} className="h-6" />
             <div className="pt-2 text-center text-xs text-gray-600">
-              {playersLoading ? 'Chargement...' : playersHasMore ? 'Scroll pour charger la suite' : 'Fin du classement'}
+              {playersLoading ? t('leaderboard:loading') : playersHasMore ? t('leaderboard:scrollToLoad') : t('leaderboard:endOfRanking')}
             </div>
           </section>
 
@@ -241,13 +243,13 @@ export default function Leaderboard({
             <div className="mb-4 flex items-end justify-between gap-3">
               <div>
                 <h2 className="text-sm font-bold uppercase tracking-widest text-cyber-yellow">
-                  Classement PvP
+                  {t('leaderboard:pvpRanking')}
                 </h2>
                 <div className="mt-1 text-[10px] uppercase tracking-widest text-gray-600">
-                  Elo • Wins / Losses
+                  {t('leaderboard:pvpInfo')}
                 </div>
               </div>
-              <div className="text-[10px] text-gray-600">{pvpRankings.length} joueur(s) charges</div>
+              <div className="text-[10px] text-gray-600">{t('leaderboard:playersLoaded', { count: pvpRankings.length })}</div>
             </div>
 
             <div className="space-y-1">
@@ -268,14 +270,14 @@ export default function Leaderboard({
               ))}
               {pvpRankings.length === 0 && (
                 <div className="py-8 text-center text-gray-700">
-                  Aucun classement PvP disponible
+                  {t('leaderboard:noPvpRanking')}
                 </div>
               )}
             </div>
 
             <div ref={pvpSentinelRef} className="h-6" />
             <div className="pt-2 text-center text-xs text-gray-600">
-              {pvpLoading ? 'Chargement...' : pvpHasMore ? 'Scroll pour charger la suite' : 'Fin du classement'}
+              {pvpLoading ? t('leaderboard:loading') : pvpHasMore ? t('leaderboard:scrollToLoad') : t('leaderboard:endOfRanking')}
             </div>
           </section>
         </div>

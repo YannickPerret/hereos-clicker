@@ -1,5 +1,6 @@
 import { useForm, router } from '@inertiajs/react'
 import { useState, useCallback, useRef, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import CyberpunkAvatar from '~/components/cyberpunk_avatar'
 import GameLayout from '~/components/layout'
 
@@ -99,15 +100,6 @@ interface Props {
   } | null
 }
 
-const TYPE_LABELS: Record<string, string> = {
-  weapon: 'ARME',
-  armor: 'ARMURE',
-  implant: 'IMPLANT',
-  clothes_hair: 'CHEVEUX',
-  clothes_face: 'VISAGE',
-  clothes_outer: 'HAUT',
-  clothes_legs: 'BAS',
-}
 
 const RARITY_TEXT: Record<string, string> = {
   common: 'text-gray-400',
@@ -117,19 +109,12 @@ const RARITY_TEXT: Record<string, string> = {
   legendary: 'text-cyber-yellow',
 }
 
-const EFFECT_LABELS: Record<string, string> = {
-  attack_boost: 'ATK',
-  defense_boost: 'DEF',
-  click_multiplier: 'CPC',
-  permanent_click: 'CPC',
-}
 
-const SPEC_CONFIG: Record<string, { label: string; color: string; border: string }> = {
-  hacker: { label: 'HACKER', color: 'text-cyber-green', border: 'border-cyber-green/30' },
-  netrunner: { label: 'NETRUNNER', color: 'text-cyber-blue', border: 'border-cyber-blue/30' },
-  samurai: { label: 'STREET SAMURAI', color: 'text-cyber-red', border: 'border-cyber-red/30' },
+const SPEC_STYLE: Record<string, { color: string; border: string }> = {
+  hacker: { color: 'text-cyber-green', border: 'border-cyber-green/30' },
+  netrunner: { color: 'text-cyber-blue', border: 'border-cyber-blue/30' },
+  samurai: { color: 'text-cyber-red', border: 'border-cyber-red/30' },
   chrome_dealer: {
-    label: 'CHROME DEALER',
     color: 'text-cyber-yellow',
     border: 'border-cyber-yellow/30',
   },
@@ -148,6 +133,7 @@ function QuestTrackCard({
   track: NonNullable<Props['questSummary']>['mainTrack']
   accent: 'blue' | 'yellow'
 }) {
+  const { t } = useTranslation(['play', 'common'])
   if (!track) return null
 
   const accentClasses =
@@ -181,17 +167,17 @@ function QuestTrackCard({
           onClick={() => router.visit('/quests')}
           className={`px-2.5 py-1 border rounded text-[10px] uppercase tracking-widest transition-all ${accentClasses.button}`}
         >
-          Journal
+          {t('play:journal')}
         </button>
       </div>
 
       <div className="text-[10px] text-gray-600 mb-3">
-        {track.completedCount}/{track.totalCount} quetes completees
+        {t('play:questTrack', { done: track.completedCount, total: track.totalCount })}
       </div>
 
       {track.activeQuest ? (
         <div className={`rounded-lg border bg-cyber-black/40 p-3 ${accentClasses.inner}`}>
-          <div className="text-[10px] uppercase tracking-[0.24em] text-gray-500 mb-1">Active</div>
+          <div className="text-[10px] uppercase tracking-[0.24em] text-gray-500 mb-1">{t('play:active')}</div>
           <div className={`text-sm font-bold ${accentClasses.text}`}>{track.activeQuest.title}</div>
           <div className="text-xs text-gray-400 mt-1">{track.activeQuest.summary}</div>
           <div className="text-[11px] text-cyber-yellow mt-3">{track.activeQuest.objectiveLabel}</div>
@@ -212,7 +198,7 @@ function QuestTrackCard({
         </div>
       ) : (
         <div className="rounded-lg border border-cyber-green/20 bg-cyber-green/5 p-3 text-xs text-cyber-green">
-          Track termine.
+          {t('play:trackDone')}
         </div>
       )}
     </div>
@@ -230,6 +216,7 @@ export default function Play({
   party,
   questSummary: initialQuestSummary,
 }: Props) {
+  const { t } = useTranslation(['play', 'common'])
   const [char, setChar] = useState(activeCharacter)
   const [liveLeaderboard, setLiveLeaderboard] = useState(leaderboard)
   const [questSummary, setQuestSummary] = useState(initialQuestSummary)
@@ -321,7 +308,7 @@ export default function Play({
       .then((r) => {
         if (r.status === 429) {
           return r.json().then((data) => {
-            setAntiCheatMsg(data.error || 'Trop rapide!')
+            setAntiCheatMsg(data.error || t('play:tooFast'))
             if (data.penaltySeconds) {
               setTimeout(() => setAntiCheatMsg(null), data.penaltySeconds * 1000)
             } else {
@@ -454,14 +441,14 @@ export default function Play({
           <div className="grid grid-cols-5 gap-3 mb-6">
             {[
               {
-                label: 'CREDITS',
+                label: t('common:stats.credits'),
                 value: formatCredits(char?.credits || 0),
                 color: 'text-cyber-yellow',
               },
-              { label: 'NIVEAU', value: `LVL ${char?.level || 1}`, color: 'text-cyber-green' },
-              { label: 'CPC', value: `${effectiveCpc}`, color: 'text-cyber-blue' },
+              { label: t('common:stats.level'), value: `LVL ${char?.level || 1}`, color: 'text-cyber-green' },
+              { label: t('common:stats.cpc'), value: `${effectiveCpc}`, color: 'text-cyber-blue' },
               {
-                label: 'CPS',
+                label: t('common:stats.cps'),
                 value: effectiveCps > 0 ? `${effectiveCps}/s` : 'OFF',
                 color: effectiveCps > 0 ? 'text-cyber-purple' : 'text-gray-600',
               },
@@ -520,13 +507,13 @@ export default function Play({
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <div className="text-[10px] uppercase tracking-[0.25em] text-gray-500">
-                    Revenus hors-ligne
+                    {t('play:offlineEarnings')}
                   </div>
                   <div className="mt-1 text-xl font-bold text-cyber-yellow">
                     +{formatCredits(pendingOfflineCredits)}
                   </div>
                   <div className="mt-1 text-xs text-gray-500">
-                    Credits generes par tes daemons. Tu peux les recuperer quand tu veux.
+                    {t('play:offlineMessage', { credits: formatCredits(pendingOfflineCredits), hours: 4 })}
                   </div>
                 </div>
                 <button
@@ -563,7 +550,7 @@ export default function Play({
                   }}
                   className="rounded border border-cyber-yellow/40 bg-cyber-yellow/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-cyber-yellow transition-all hover:bg-cyber-yellow/20 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {collectingOffline ? 'COLLECTE...' : 'RECUPERER'}
+                  {collectingOffline ? '...' : t('play:collectOffline')}
                 </button>
               </div>
             </div>
@@ -606,9 +593,9 @@ export default function Play({
                   className="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
                   style={{ boxShadow: '0 0 40px #00f0ff, 0 0 80px #00f0ff33' }}
                 />
-                <span className="relative z-10 neon-text">HACK</span>
+                <span className="relative z-10 neon-text">{t('play:clickButton')}</span>
                 <div className="absolute inset-x-0 bottom-7 z-10 text-center text-xs font-bold uppercase tracking-[0.25em] text-cyber-yellow">
-                  +{effectiveCpc} credits
+                  {t('play:perClick', { value: effectiveCpc })}
                 </div>
               </button>
 
@@ -635,7 +622,7 @@ export default function Play({
               <div className="inline-flex items-center gap-2 bg-cyber-purple/10 border border-cyber-purple/30 rounded-full px-4 py-1.5">
                 <div className="w-2 h-2 rounded-full bg-cyber-purple animate-pulse" />
                 <span className="text-xs text-cyber-purple">
-                  Auto-hack actif: +{effectiveCps} credits/sec
+                  {t('play:perSecond', { value: effectiveCps })}
                 </span>
               </div>
             </div>
@@ -693,16 +680,16 @@ export default function Play({
 
                   <div className="rounded border border-gray-800 bg-cyber-black/30 px-3 py-3 mb-3">
                     <div className="text-[10px] uppercase tracking-widest text-gray-500 mb-2">
-                      Specialisation
+                      {t('play:specLabel')}
                     </div>
                     {char.chosenSpec ? (
                       <span
-                        className={`inline-flex rounded border px-2 py-1 text-[10px] font-bold uppercase tracking-widest ${SPEC_CONFIG[char.chosenSpec]?.color} ${SPEC_CONFIG[char.chosenSpec]?.border}`}
+                        className={`inline-flex rounded border px-2 py-1 text-[10px] font-bold uppercase tracking-widest ${SPEC_STYLE[char.chosenSpec]?.color} ${SPEC_STYLE[char.chosenSpec]?.border}`}
                       >
-                        {SPEC_CONFIG[char.chosenSpec]?.label || char.chosenSpec}
+                        {t(`common:specs.${char.chosenSpec}`)}
                       </span>
                     ) : (
-                      <span className="text-xs text-gray-600">Aucune specialisation choisie</span>
+                      <span className="text-xs text-gray-600">{t('play:noSpec')}</span>
                     )}
                   </div>
 
@@ -717,7 +704,7 @@ export default function Play({
                             className="rounded border border-gray-800 bg-cyber-black/40 px-3 py-2"
                           >
                             <div className="text-[10px] uppercase tracking-wider text-gray-600 mb-1">
-                              {TYPE_LABELS[type]}
+                              {t(`common:types.${type}`)}
                             </div>
                             {entry ? (
                               <div
@@ -726,7 +713,7 @@ export default function Play({
                                 {entry.item.name}
                               </div>
                             ) : (
-                              <div className="text-xs text-gray-700">[ Vide ]</div>
+                              <div className="text-xs text-gray-700">{t('play:emptySlot')}</div>
                             )}
                           </div>
                         )
@@ -782,16 +769,16 @@ export default function Play({
               </h3>
               <div className="space-y-1 text-xs">
                 {[
-                  { label: 'ATK', value: `${char.attack}`, color: 'text-cyber-red' },
-                  { label: 'DEF', value: `${char.defense}`, color: 'text-cyber-blue' },
+                  { label: t('common:stats.atk'), value: `${char.attack}`, color: 'text-cyber-red' },
+                  { label: t('common:stats.def'), value: `${char.defense}`, color: 'text-cyber-blue' },
                   {
-                    label: 'HP',
+                    label: t('common:stats.hp'),
                     value: `${char.hpCurrent}/${char.hpMax}`,
                     color: 'text-cyber-green',
                   },
-                  { label: 'CRIT%', value: `${char.critChance ?? 5}%`, color: 'text-cyber-yellow' },
+                  { label: t('common:stats.crit'), value: `${char.critChance ?? 5}%`, color: 'text-cyber-yellow' },
                   {
-                    label: 'CRIT DMG',
+                    label: t('common:stats.critDmg'),
                     value: `${char.critDamage ?? 150}%`,
                     color: 'text-cyber-yellow',
                   },
@@ -805,7 +792,7 @@ export default function Play({
 
               <div className="mt-4 border-t border-gray-800 pt-3">
                 <div className="text-[10px] uppercase tracking-widest text-gray-500 mb-2 text-center">
-                  Equipement
+                  {t('play:equipped')}
                 </div>
                 <div className="space-y-2">
                   {['weapon', 'armor', 'implant'].map((type) => {
@@ -817,7 +804,7 @@ export default function Play({
                         className="rounded border border-gray-800 bg-cyber-black/40 px-2 py-2"
                       >
                         <div className="text-[10px] uppercase tracking-wider text-gray-600 mb-1">
-                          {TYPE_LABELS[type]}
+                          {t(`common:types.${type}`)}
                         </div>
                         {entry ? (
                           <>
@@ -828,13 +815,13 @@ export default function Play({
                             </div>
                             {entry.item.effectType && entry.item.effectValue !== null && (
                               <div className="text-[10px] text-cyber-green mt-0.5">
-                                {EFFECT_LABELS[entry.item.effectType] || entry.item.effectType}: +
+                                {t(`common:effects.${entry.item.effectType}`, { defaultValue: entry.item.effectType })}: +
                                 {entry.item.effectValue}
                               </div>
                             )}
                           </>
                         ) : (
-                          <div className="text-xs text-gray-700">[ Vide ]</div>
+                          <div className="text-xs text-gray-700">{t('play:emptySlot')}</div>
                         )}
                       </div>
                     )
@@ -856,7 +843,7 @@ export default function Play({
                       : 'bg-cyber-green/10 border-cyber-green/30 text-cyber-green'
                   }`}
                 >
-                  {party.status === 'in_dungeon' ? 'EN DONJON' : 'EN ATTENTE'}
+                  {party.status === 'in_dungeon' ? t('play:partyInDungeon') : t('play:partyWaiting')}
                 </span>
               </div>
               <div className="text-[10px] text-gray-600 mb-2 truncate">{party.name}</div>
@@ -878,7 +865,7 @@ export default function Play({
                     <span
                       className={`text-[10px] ${m.isReady ? 'text-cyber-green' : 'text-gray-600'}`}
                     >
-                      {m.isReady ? 'PRET' : '...'}
+                      {m.isReady ? t('play:partyReady') : '...'}
                     </span>
                   </div>
                 ))}
@@ -889,14 +876,14 @@ export default function Play({
                     onClick={() => router.visit(`/dungeon/run/${party.activeDungeonRunId}`)}
                     className="w-full py-2 bg-cyber-red/20 border border-cyber-red text-cyber-red font-bold uppercase tracking-widest rounded text-[10px] hover:bg-cyber-red/30 transition-all animate-pulse"
                   >
-                    [ REJOINDRE LE DONJON ]
+                    {t('play:joinDungeon')}
                   </button>
                 )}
                 <button
                   onClick={() => router.visit('/party')}
                   className="w-full py-1.5 border border-gray-800 text-gray-500 rounded text-[10px] hover:text-gray-300 hover:border-gray-600 transition-all"
                 >
-                  GERER LE GROUPE
+                  {t('play:manageParty')}
                 </button>
               </div>
             </div>

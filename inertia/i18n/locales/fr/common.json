@@ -1,0 +1,100 @@
+{
+  "nav": {
+    "home": "ACCUEIL",
+    "inventory": "INVENTAIRE",
+    "drones": "DRONES",
+    "talents": "TALENTS",
+    "shop": "SHOP",
+    "blackMarket": "MARCHE NOIR",
+    "party": "GROUPE",
+    "dungeon": "DONJON",
+    "dungeon25d": "DONJON 2.5D",
+    "pvp": "PVP",
+    "quests": "QUETES",
+    "missions": "MISSIONS",
+    "friends": "AMIS",
+    "leaderboard": "CLASSEMENT",
+    "admin": "ADMIN",
+    "myReports": "MES REPORTS"
+  },
+  "toast": {
+    "success": "Succes",
+    "error": "Erreur",
+    "close": "FERMER"
+  },
+  "logout": "DECONNEXION",
+  "reportBug": "REPORT BUG",
+  "types": {
+    "weapon": "ARME",
+    "armor": "ARMURE",
+    "implant": "IMPLANT",
+    "clothes_hair": "CHEVEUX",
+    "clothes_face": "VISAGE",
+    "clothes_outer": "HAUT",
+    "clothes_legs": "BAS",
+    "consumable": "CONSO",
+    "upgrade": "UPGRADE"
+  },
+  "specs": {
+    "hacker": "HACKER",
+    "netrunner": "NETRUNNER",
+    "samurai": "STREET SAMURAI",
+    "chrome_dealer": "CHROME DEALER"
+  },
+  "stats": {
+    "atk": "ATK",
+    "def": "DEF",
+    "hp": "HP",
+    "cpc": "CPC",
+    "cps": "CPS",
+    "crit": "CRIT%",
+    "critDmg": "CRIT DMG",
+    "credits": "Credits",
+    "level": "Niveau",
+    "xp": "XP"
+  },
+  "effects": {
+    "attack_boost": "ATK",
+    "defense_boost": "DEF",
+    "click_multiplier": "CPC",
+    "permanent_click": "CPC",
+    "hp_boost": "HP",
+    "temp_click_boost": "BOOST",
+    "xp_boost": "XP"
+  },
+  "buttons": {
+    "close": "FERMER",
+    "cancel": "Annuler",
+    "confirm": "Confirmer",
+    "send": "ENVOYER",
+    "back": "Retour",
+    "loading": "Chargement..."
+  },
+  "aria": {
+    "openMenu": "Ouvrir le menu",
+    "closeMenu": "Fermer le menu",
+    "closeWindow": "Fermer la fenetre",
+    "close": "Fermer"
+  },
+  "backendMsg": {
+    "notEnoughCredits": "Credits insuffisants",
+    "outOfStock": "Rupture de stock",
+    "alreadyInParty": "Deja dans un groupe",
+    "partyNotFoundOrInDungeon": "Groupe introuvable ou deja en donjon",
+    "partyFull": "Groupe plein",
+    "alreadyInThisParty": "Deja dans ce groupe",
+    "reportSent": "Report envoye. Merci, Netrunner.",
+    "itemEquipped": "Item equipe",
+    "itemUnequipped": "Item retire",
+    "itemUsed": "Item utilise",
+    "itemDiscarded": "Item jete",
+    "companionActivated": "Compagnon active",
+    "companionDeactivated": "Compagnon desactive",
+    "companionUpgraded": "Compagnon ameliore",
+    "friendRequestSent": "Demande d'ami envoyee",
+    "friendRequestAccepted": "Demande d'ami acceptee",
+    "friendRemoved": "Ami retire",
+    "missionClaimed": "Mission reclamee",
+    "rewardClaimed": "Recompense reclamee"
+  }
+}

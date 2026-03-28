@@ -1,0 +1,40 @@
+{
+  "title": "ARBRE DES TALENTS",
+  "specInfo": "Specialisation: {{spec}} — 20 tiers, 2 choix par tier",
+  "intro": "Choisis ta voie. Une seule spec a la fois. 2 choix par tier.",
+  "respec": "RESPEC",
+  "points": "Points",
+  "level": "Niveau",
+  "cpcBonus": "CPC Bonus",
+  "cpsBonus": "CPS Bonus",
+  "combat": "Combat",
+  "economy": "Economie",
+  "yourSpec": "ta spec",
+  "active": "actif",
+  "locked": "verrouille",
+  "tier": "T{{n}}",
+  "or": "ou",
+  "respecHint": "Pour changer de specialisation, achete un Neural Respec Chip au shop (50 000 credits).",
+  "respecTitle": "NEURAL RESPEC",
+  "respecMessage": "Tous tes talents seront effaces et tes points recuperes. Ta specialisation sera debloquee. Le Neural Respec Chip sera consomme.",
+  "respecWarning": "Cette action est irreversible.",
+  "specTreeTitle": "{{spec}} — ARBRE DE TALENTS",
+  "specs": {
+    "hacker": {
+      "label": "HACKER",
+      "description": "Puissance de clic brute. Chaque frappe compte."
+    },
+    "netrunner": {
+      "label": "NETRUNNER",
+      "description": "Revenus passifs. Tes daemons minent pendant que tu dors."
+    },
+    "samurai": {
+      "label": "STREET SAMURAI",
+      "description": "Combat. Plus fort, plus resistant, plus mortel."
+    },
+    "chrome_dealer": {
+      "label": "CHROME DEALER",
+      "description": "Economie et loot. Le vrai pouvoir, c'est l'argent."
+    }
+  }
+}

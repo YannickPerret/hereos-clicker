@@ -1,5 +1,6 @@
 import { router } from '@inertiajs/react'
 import { useState, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import GameLayout from '~/components/layout'
 import QuestOverlay from '~/components/quest_overlay'
 
@@ -73,15 +74,18 @@ const STATUS_STYLES: Record<QuestEntry['status'], string> = {
   available: 'border-cyber-yellow/30 bg-cyber-yellow/5',
 }
 
-const STATUS_LABELS: Record<QuestEntry['status'], string> = {
-  active: 'ACTIVE',
-  completed: 'TERMINEE',
-  locked: 'VERROUILLEE',
-  available: 'DISPONIBLE',
-}
+// STATUS_LABELS moved inside component to use t()
 
 export default function Quests({ character, journal, flowStates: initialFlowStates }: Props) {
+  const { t } = useTranslation(['quests', 'common'])
   const [flowStates, setFlowStates] = useState<Record<number, FlowState>>(initialFlowStates || {})
+
+  const STATUS_LABELS: Record<QuestEntry['status'], string> = {
+    active: t('quests:status.active'),
+    completed: t('quests:status.completed'),
+    locked: t('quests:status.locked'),
+    available: t('quests:status.available'),
+  }
   const [activeOverlayQuestId, setActiveOverlayQuestId] = useState<number | null>(null)
   const [activeOverlayTitle, setActiveOverlayTitle] = useState('')
   const [expandedQuestId, setExpandedQuestId] = useState<number | null>(null)
@@ -115,11 +119,11 @@ export default function Quests({ character, journal, flowStates: initialFlowStat
         <div className="flex items-start justify-between gap-4 mb-6">
           <div>
             <div className="text-[10px] uppercase tracking-[0.3em] text-cyber-blue mb-1">
-              Journal des Quetes
+              {t('quests:journalLabel')}
             </div>
-            <h1 className="text-3xl font-bold text-white tracking-[0.12em] uppercase">Journal</h1>
+            <h1 className="text-3xl font-bold text-white tracking-[0.12em] uppercase">{t('quests:title')}</h1>
             <p className="text-sm text-gray-500 mt-2">
-              Quetes principales permanentes et suite de saison active dans le meme journal.
+              {t('quests:description')}
             </p>
           </div>
 
@@ -128,7 +132,7 @@ export default function Quests({ character, journal, flowStates: initialFlowStat
             onClick={() => router.visit('/play')}
             className="px-3 py-2 border border-cyber-blue/30 text-cyber-blue rounded text-[10px] uppercase tracking-widest hover:bg-cyber-blue/10 transition-all"
           >
-            Retour clicker
+            {t('quests:backToClicker')}
           </button>
         </div>
 
@@ -160,7 +164,7 @@ export default function Quests({ character, journal, flowStates: initialFlowStat
 
                     <div className="grid gap-3 sm:grid-cols-2">
                       <div className="rounded-lg border border-gray-800 bg-cyber-black/30 p-3">
-                        <div className="text-[10px] uppercase tracking-widest text-gray-500">Progression</div>
+                        <div className="text-[10px] uppercase tracking-widest text-gray-500">{t('quests:progression')}</div>
                         <div className="text-lg font-bold text-cyber-green mt-1">
                           {track.completedCount}/{track.totalCount}
                         </div>
@@ -185,7 +189,7 @@ export default function Quests({ character, journal, flowStates: initialFlowStat
                           <div className="flex items-start justify-between gap-4">
                             <div>
                               <div className="text-[10px] uppercase tracking-[0.28em] text-gray-500 mb-1">
-                                Etape {quest.sortOrder}
+                                {t('quests:step', { n: quest.sortOrder })}
                               </div>
                               <h3 className="text-lg font-bold text-white uppercase tracking-[0.08em]">
                                 {quest.title}
@@ -203,7 +207,7 @@ export default function Quests({ character, journal, flowStates: initialFlowStat
                           </div>
 
                           <div className="mt-3 flex justify-between text-[10px] text-gray-500 mb-1">
-                            <span>Progression</span>
+                            <span>{t('quests:progression')}</span>
                             <span>
                               {quest.progress}/{quest.targetValue}
                             </span>
@@ -226,8 +230,8 @@ export default function Quests({ character, journal, flowStates: initialFlowStat
                           {isExpanded && (
                             <div className="mt-3">
                               <div className="mb-2 grid gap-2 text-[11px] text-gray-500 sm:grid-cols-2">
-                                <div>Objectif: {quest.objectiveLabel}</div>
-                                <div>Parent: {quest.parentQuestTitle || 'Aucun'}</div>
+                                <div>{t('quests:objective', { label: quest.objectiveLabel })}</div>
+                                <div>{quest.parentQuestTitle ? t('quests:parent', { name: quest.parentQuestTitle }) : t('quests:parentNone')}</div>
                               </div>
 
                               {quest.narrative && (
@@ -248,7 +252,7 @@ export default function Quests({ character, journal, flowStates: initialFlowStat
                                       }}
                                       className="w-full rounded-lg border border-cyber-purple/40 bg-cyber-purple/10 px-4 py-2.5 text-[11px] uppercase tracking-widest text-cyber-purple hover:bg-cyber-purple/20 transition-all"
                                     >
-                                      Ouvrir le flow narratif
+                                      {t('quests:openFlow')}
                                     </button>
                                   </div>
                                 )}
@@ -273,7 +277,7 @@ export default function Quests({ character, journal, flowStates: initialFlowStat
                         track.questType === 'main' ? 'text-cyber-purple' : 'text-cyber-yellow'
                       }`}
                     >
-                      Quete Active
+                      {t('quests:activeQuest')}
                     </div>
                     {track.activeQuest ? (
                       <>
@@ -290,7 +294,7 @@ export default function Quests({ character, journal, flowStates: initialFlowStat
                           {track.activeQuest.objectiveLabel}
                         </div>
                         <div className="mt-2 flex justify-between text-[10px] text-gray-500">
-                          <span>Progression live</span>
+                          <span>{t('quests:liveProgress')}</span>
                           <span>
                             {track.activeQuest.progress}/{track.activeQuest.targetValue}
                           </span>
@@ -309,7 +313,7 @@ export default function Quests({ character, journal, flowStates: initialFlowStat
                         </div>
                       </>
                     ) : (
-                      <div className="text-sm text-cyber-green">Tout ce track est termine.</div>
+                      <div className="text-sm text-cyber-green">{t('quests:trackDone')}</div>
                     )}
                   </div>
                 </div>
