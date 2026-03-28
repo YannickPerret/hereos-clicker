@@ -105,7 +105,7 @@ export default class ChatController {
       })
     }
 
-    if (ChatModerationService.containsObscenity(message)) {
+    if (await ChatModerationService.containsObscenity(message, locale)) {
       return response.badRequest({ error: this.localizedError(locale, 'chatObscenityBlocked') })
     }
 

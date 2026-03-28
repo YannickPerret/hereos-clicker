@@ -252,6 +252,10 @@ router
     router.post('/admin/system-messages/:id/update', [AdminController, 'updateSystemMessage'])
     router.post('/admin/system-messages/:id/toggle', [AdminController, 'toggleSystemMessage'])
     router.post('/admin/system-messages/:id/delete', [AdminController, 'deleteSystemMessage'])
+    router.post('/admin/chat-blocked-terms/create', [AdminController, 'createChatBlockedTerm'])
+    router.post('/admin/chat-blocked-terms/:id/update', [AdminController, 'updateChatBlockedTerm'])
+    router.post('/admin/chat-blocked-terms/:id/toggle', [AdminController, 'toggleChatBlockedTerm'])
+    router.post('/admin/chat-blocked-terms/:id/delete', [AdminController, 'deleteChatBlockedTerm'])
 
     // Daily rewards
     router.get('/admin/daily-rewards', [AdminController, 'dailyRewards'])

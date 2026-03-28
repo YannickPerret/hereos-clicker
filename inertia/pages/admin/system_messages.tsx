@@ -10,11 +10,19 @@ interface SystemMsg {
   channel: string
 }
 
-interface Props {
-  messages: SystemMsg[]
+interface BlockedTerm {
+  id: number
+  term: string
+  language: 'all' | 'fr' | 'en'
+  isActive: boolean
 }
 
-export default function SystemMessages({ messages }: Props) {
+interface Props {
+  messages: SystemMsg[]
+  blockedTerms: BlockedTerm[]
+}
+
+export default function SystemMessages({ messages, blockedTerms }: Props) {
   const { props } = usePage<{ errors?: { message?: string }; success?: string }>()
   const [newMessage, setNewMessage] = useState('')
   const [newInterval, setNewInterval] = useState(10)
@@ -23,6 +31,11 @@ export default function SystemMessages({ messages }: Props) {
   const [editMessage, setEditMessage] = useState('')
   const [editInterval, setEditInterval] = useState(10)
   const [editChannel, setEditChannel] = useState('global')
+  const [newTerm, setNewTerm] = useState('')
+  const [newTermLanguage, setNewTermLanguage] = useState<'all' | 'fr' | 'en'>('all')
+  const [editingTermId, setEditingTermId] = useState<number | null>(null)
+  const [editTerm, setEditTerm] = useState('')
+  const [editTermLanguage, setEditTermLanguage] = useState<'all' | 'fr' | 'en'>('all')
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault()
@@ -51,6 +64,31 @@ export default function SystemMessages({ messages }: Props) {
       isActive: messages.find((m) => m.id === id)?.isActive ? 'true' : 'false',
     })
     setEditingId(null)
+  }
+
+  const handleCreateBlockedTerm = (e: React.FormEvent) => {
+    e.preventDefault()
+    router.post('/admin/chat-blocked-terms/create', {
+      term: newTerm,
+      language: newTermLanguage,
+    })
+    setNewTerm('')
+    setNewTermLanguage('all')
+  }
+
+  const startEditBlockedTerm = (term: BlockedTerm) => {
+    setEditingTermId(term.id)
+    setEditTerm(term.term)
+    setEditTermLanguage(term.language)
+  }
+
+  const handleUpdateBlockedTerm = (term: BlockedTerm) => {
+    router.post(`/admin/chat-blocked-terms/${term.id}/update`, {
+      term: editTerm,
+      language: editTermLanguage,
+      isActive: term.isActive ? 'true' : 'false',
+    })
+    setEditingTermId(null)
   }
 
   return (
@@ -234,6 +272,147 @@ export default function SystemMessages({ messages }: Props) {
               </div>
             ))
           )}
+        </div>
+
+        <div className="mt-10">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-sm font-bold text-cyber-yellow tracking-widest">
+              MOTS BLOQUES DU CHAT
+            </h2>
+            <div className="text-[10px] uppercase text-gray-600">
+              S ajoute a la liste codee en dur FR/EN
+            </div>
+          </div>
+
+          <div className="mb-6 rounded-lg border border-cyber-yellow/30 bg-cyber-dark p-4">
+            <form onSubmit={handleCreateBlockedTerm} className="flex flex-col gap-3 md:flex-row">
+              <input
+                type="text"
+                value={newTerm}
+                onChange={(e) => setNewTerm(e.target.value)}
+                placeholder="mot ou expression a bloquer"
+                className="flex-1 rounded border border-gray-800 bg-cyber-black px-3 py-2 text-sm text-white focus:border-cyber-yellow/50 focus:outline-none"
+                required
+              />
+              <select
+                value={newTermLanguage}
+                onChange={(e) => setNewTermLanguage(e.target.value as 'all' | 'fr' | 'en')}
+                className="rounded border border-gray-800 bg-cyber-black px-3 py-2 text-sm text-white focus:border-cyber-yellow/50 focus:outline-none"
+              >
+                <option value="all">ALL</option>
+                <option value="fr">FR</option>
+                <option value="en">EN</option>
+              </select>
+              <button
+                type="submit"
+                className="rounded border border-cyber-yellow/30 px-4 py-2 text-xs uppercase text-cyber-yellow transition-all hover:bg-cyber-yellow/10"
+              >
+                Ajouter
+              </button>
+            </form>
+          </div>
+
+          <div className="space-y-3">
+            {blockedTerms.length === 0 ? (
+              <div className="rounded-lg border border-gray-800 bg-cyber-dark p-6 text-sm text-gray-600">
+                Aucun mot bloque personnalise.
+              </div>
+            ) : (
+              blockedTerms.map((term) => (
+                <div
+                  key={term.id}
+                  className={`rounded-lg border p-4 ${
+                    term.isActive ? 'border-cyber-yellow/30 bg-cyber-dark' : 'border-gray-800 bg-cyber-dark/70 opacity-60'
+                  }`}
+                >
+                  {editingTermId === term.id ? (
+                    <div className="flex flex-col gap-3 md:flex-row md:items-center">
+                      <input
+                        type="text"
+                        value={editTerm}
+                        onChange={(e) => setEditTerm(e.target.value)}
+                        className="flex-1 rounded border border-gray-800 bg-cyber-black px-3 py-2 text-sm text-white focus:outline-none"
+                      />
+                      <select
+                        value={editTermLanguage}
+                        onChange={(e) => setEditTermLanguage(e.target.value as 'all' | 'fr' | 'en')}
+                        className="rounded border border-gray-800 bg-cyber-black px-3 py-2 text-sm text-white focus:outline-none"
+                      >
+                        <option value="all">ALL</option>
+                        <option value="fr">FR</option>
+                        <option value="en">EN</option>
+                      </select>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleUpdateBlockedTerm(term)}
+                          className="rounded border border-cyber-green/30 px-3 py-2 text-[10px] uppercase text-cyber-green hover:bg-cyber-green/10"
+                        >
+                          Sauver
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingTermId(null)}
+                          className="px-3 py-2 text-[10px] uppercase text-gray-500 hover:text-white"
+                        >
+                          Annuler
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <div className="mb-1 flex items-center gap-2">
+                          <span
+                            className={`rounded border px-1.5 py-0.5 text-[9px] font-bold uppercase ${
+                              term.isActive
+                                ? 'border-cyber-yellow/30 bg-cyber-yellow/10 text-cyber-yellow'
+                                : 'border-gray-700 bg-gray-800 text-gray-500'
+                            }`}
+                          >
+                            {term.isActive ? 'ACTIF' : 'INACTIF'}
+                          </span>
+                          <span className="text-[10px] uppercase text-gray-500">{term.language}</span>
+                        </div>
+                        <div className="font-mono text-sm text-gray-300">{term.term}</div>
+                      </div>
+                      <div className="flex gap-1">
+                        <button
+                          type="button"
+                          onClick={() => startEditBlockedTerm(term)}
+                          className="rounded border border-cyber-blue/30 px-2 py-1 text-[10px] uppercase text-cyber-blue hover:bg-cyber-blue/10"
+                        >
+                          Modifier
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => router.post(`/admin/chat-blocked-terms/${term.id}/toggle`)}
+                          className={`rounded border px-2 py-1 text-[10px] uppercase ${
+                            term.isActive
+                              ? 'border-cyber-yellow/30 text-cyber-yellow hover:bg-cyber-yellow/10'
+                              : 'border-cyber-green/30 text-cyber-green hover:bg-cyber-green/10'
+                          }`}
+                        >
+                          {term.isActive ? 'Desactiver' : 'Activer'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (confirm('Supprimer ce mot bloque ?')) {
+                              router.post(`/admin/chat-blocked-terms/${term.id}/delete`)
+                            }
+                          }}
+                          className="rounded border border-cyber-red/30 px-2 py-1 text-[10px] uppercase text-cyber-red hover:bg-cyber-red/10"
+                        >
+                          Suppr
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
         </div>
       </div>
     </GameLayout>

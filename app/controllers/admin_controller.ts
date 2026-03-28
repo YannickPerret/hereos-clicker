@@ -21,6 +21,7 @@ import Season from '#models/season'
 import Quest from '#models/quest'
 import QuestArc from '#models/quest_arc'
 import QuestFlowStep from '#models/quest_flow_step'
+import ChatBlockedTerm from '#models/chat_blocked_term'
 import BlackMarketService from '#services/black_market_service'
 import SeasonService from '#services/season_service'
 import TalentService from '#services/talent_service'
@@ -1205,10 +1206,14 @@ export default class AdminController {
   // ── System Messages (auto-chat) ──
 
   async systemMessages({ inertia }: HttpContext) {
-    const messages = await SystemMessage.query().orderBy('createdAt', 'desc')
+    const [messages, blockedTerms] = await Promise.all([
+      SystemMessage.query().orderBy('createdAt', 'desc'),
+      ChatBlockedTerm.query().orderBy('term', 'asc').orderBy('id', 'asc'),
+    ])
 
     return inertia.render('admin/system_messages', {
       messages: messages.map((m) => m.serialize()),
+      blockedTerms: blockedTerms.map((term) => term.serialize()),
     })
   }
 
@@ -1273,6 +1278,98 @@ export default class AdminController {
     reloadSystemMessages()
 
     session.flash('success', 'Message systeme supprime')
+    return response.redirect('/admin/system-messages')
+  }
+
+  async createChatBlockedTerm({ request, response, session }: HttpContext) {
+    const term = String(request.input('term', '')).trim().toLowerCase()
+    const language = ['all', 'fr', 'en'].includes(request.input('language'))
+      ? request.input('language')
+      : 'all'
+
+    if (!term || term.length < 2 || term.length > 255) {
+      session.flash('errors', { message: 'Mot bloque invalide (2-255 caracteres)' })
+      return response.redirect('/admin/system-messages')
+    }
+
+    const existing = await ChatBlockedTerm.query()
+      .where('term', term)
+      .where('language', language)
+      .first()
+
+    if (existing) {
+      session.flash('errors', { message: 'Ce mot bloque existe deja' })
+      return response.redirect('/admin/system-messages')
+    }
+
+    await ChatBlockedTerm.create({
+      term,
+      language,
+      isActive: true,
+    })
+
+    const { default: ChatModerationService } = await import('#services/chat_moderation_service')
+    ChatModerationService.clearCustomTermsCache()
+
+    session.flash('success', 'Mot bloque ajoute')
+    return response.redirect('/admin/system-messages')
+  }
+
+  async updateChatBlockedTerm({ params, request, response, session }: HttpContext) {
+    const blockedTerm = await ChatBlockedTerm.findOrFail(params.id)
+    const term = String(request.input('term', blockedTerm.term)).trim().toLowerCase()
+    const language = ['all', 'fr', 'en'].includes(request.input('language'))
+      ? request.input('language')
+      : blockedTerm.language
+    const isActive = request.input('isActive') === 'true' || request.input('isActive') === true
+
+    if (!term || term.length < 2 || term.length > 255) {
+      session.flash('errors', { message: 'Mot bloque invalide (2-255 caracteres)' })
+      return response.redirect('/admin/system-messages')
+    }
+
+    const duplicate = await ChatBlockedTerm.query()
+      .whereNot('id', blockedTerm.id)
+      .where('term', term)
+      .where('language', language)
+      .first()
+
+    if (duplicate) {
+      session.flash('errors', { message: 'Ce mot bloque existe deja' })
+      return response.redirect('/admin/system-messages')
+    }
+
+    blockedTerm.term = term
+    blockedTerm.language = language
+    blockedTerm.isActive = isActive
+    await blockedTerm.save()
+
+    const { default: ChatModerationService } = await import('#services/chat_moderation_service')
+    ChatModerationService.clearCustomTermsCache()
+
+    session.flash('success', 'Mot bloque mis a jour')
+    return response.redirect('/admin/system-messages')
+  }
+
+  async toggleChatBlockedTerm({ params, response }: HttpContext) {
+    const blockedTerm = await ChatBlockedTerm.findOrFail(params.id)
+    blockedTerm.isActive = !blockedTerm.isActive
+    await blockedTerm.save()
+
+    const { default: ChatModerationService } = await import('#services/chat_moderation_service')
+    ChatModerationService.clearCustomTermsCache()
+
+    return response.redirect('/admin/system-messages')
+  }
+
+  async deleteChatBlockedTerm({ params, response, session }: HttpContext) {
+    const blockedTerm = await ChatBlockedTerm.findOrFail(params.id)
+    await blockedTerm.delete()
+
+    const { default: ChatModerationService } = await import('#services/chat_moderation_service')
+    ChatModerationService.clearCustomTermsCache()
+
+    session.flash('success', 'Mot bloque supprime')
     return response.redirect('/admin/system-messages')
   }
 

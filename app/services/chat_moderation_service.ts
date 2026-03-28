@@ -1,3 +1,5 @@
+import ChatBlockedTerm from '#models/chat_blocked_term'
+
 type RateLimitState = {
   timestamps: number[]
   blockedUntil: number | null
@@ -9,7 +11,7 @@ const CHAT_RATE_LIMIT = {
   cooldownMs: 30_000,
 }
 
-const OBSCENE_TERMS = [
+const DEFAULT_OBSCENE_TERMS = [
   'fuck',
   'fucking',
   'motherfucker',
@@ -41,14 +43,14 @@ const OBSCENE_TERMS = [
   'fdp',
 ] as const
 
-const OBSCENE_PATTERNS = OBSCENE_TERMS.map((term) => {
+function buildTermPattern(term: string) {
   const body = term
     .split('')
     .map((char) => `${char}+`)
     .join('[^a-z0-9]*')
 
   return new RegExp(`(?:^|[^a-z])${body}(?:$|[^a-z])`, 'i')
-})
+}
 
 function normalizeMessageForModeration(message: string) {
   return message
@@ -74,6 +76,9 @@ function buildCompactMessageForModeration(message: string) {
 
 export default class ChatModerationService {
   private static rateLimitState = new Map<number, RateLimitState>()
+  private static customTermsCache:
+    | { expiresAt: number; terms: { term: string; language: 'all' | 'fr' | 'en' }[] }
+    | null = null
 
   static checkRateLimit(userId: number) {
     const now = Date.now()
@@ -111,13 +116,46 @@ export default class ChatModerationService {
     }
   }
 
-  static containsObscenity(message: string) {
+  static clearCustomTermsCache() {
+    this.customTermsCache = null
+  }
+
+  private static async getCustomTerms() {
+    const now = Date.now()
+    if (this.customTermsCache && this.customTermsCache.expiresAt > now) {
+      return this.customTermsCache.terms
+    }
+
+    const rows = await ChatBlockedTerm.query().where('isActive', true).orderBy('term', 'asc')
+    const terms = rows.map((row) => ({
+      term: row.term,
+      language: row.language,
+    }))
+
+    this.customTermsCache = {
+      expiresAt: now + 60_000,
+      terms,
+    }
+
+    return terms
+  }
+
+  static async containsObscenity(message: string, locale: string = 'all') {
     const normalized = normalizeMessageForModeration(message)
     const compact = buildCompactMessageForModeration(message)
+    const customTerms = await this.getCustomTerms()
+    const allTerms = [
+      ...DEFAULT_OBSCENE_TERMS.map((term) => ({ term, language: 'all' as const })),
+      ...customTerms,
+    ]
 
-    return (
-      OBSCENE_PATTERNS.some((pattern) => pattern.test(normalized)) ||
-      OBSCENE_TERMS.some((term) => compact.includes(term))
-    )
+    return allTerms.some(({ term, language }) => {
+      if (language !== 'all' && locale !== 'all' && language !== locale) {
+        return false
+      }
+
+      const normalizedTerm = buildCompactMessageForModeration(term)
+      return buildTermPattern(normalizedTerm).test(normalized) || compact.includes(normalizedTerm)
+    })
   }
 }
