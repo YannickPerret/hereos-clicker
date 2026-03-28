@@ -33,9 +33,18 @@ export default function Login() {
           alt="HEREOS"
           className="mx-auto mb-3 h-20 w-auto object-contain"
         />
-        <p className="text-center text-gray-500 mb-8 text-sm tracking-widest uppercase">
+        <p className="text-center text-gray-500 mb-6 text-sm tracking-widest uppercase">
           {t('login.subtitle')}
         </p>
+
+        <div className="mb-8 rounded-lg border border-cyber-blue/15 bg-cyber-dark/50 px-5 py-4 text-center backdrop-blur-sm">
+          <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.35em] text-cyber-blue">
+            {t('pitch.headline')}
+          </div>
+          <p className="text-xs leading-relaxed text-gray-400">
+            {t('pitch.description')}
+          </p>
+        </div>
 
         <form onSubmit={handleSubmit} className="bg-cyber-dark border border-cyber-blue/30 rounded-lg p-8 neon-border">
           <div className="space-y-5">
