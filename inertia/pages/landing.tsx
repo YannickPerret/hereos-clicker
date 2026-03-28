@@ -22,18 +22,12 @@ export default function Landing() {
 
       <div className="relative z-10 mx-auto flex min-h-screen max-w-7xl flex-col px-6 pb-24 pt-4">
         <div className="flex items-center justify-between border-b border-cyber-blue/15 bg-cyber-black/70 py-4 backdrop-blur-xl">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center">
             <img
               src="/images/hereos_logo.webp"
               alt="HEREOS"
-              className="h-12 w-auto object-contain sm:h-14"
+              className="h-14 w-auto object-contain sm:h-16"
             />
-            <span
-              className="text-xl font-black uppercase tracking-[0.2em] text-cyber-blue sm:text-2xl"
-              style={{ fontFamily: 'Space Grotesk, sans-serif' }}
-            >
-              HEREOS
-            </span>
           </div>
 
           <div className="flex items-center gap-3">
