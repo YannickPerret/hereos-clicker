@@ -1,5 +1,5 @@
 import { useForm, Link } from '@inertiajs/react'
-import { useTranslation } from 'react-i18next'
+import { Trans, useTranslation } from 'react-i18next'
 import LanguageSwitcher from '~/components/language_switcher'
 
 export default function Login() {
@@ -85,8 +85,16 @@ export default function Login() {
         </form>
       </div>
 
-      <footer className="relative z-10 mt-auto pb-6 pt-8 text-center text-[10px] uppercase tracking-[0.3em] text-gray-700">
-        HEREOS &copy; 2025 &mdash; All rights reserved
+      <footer className="relative z-10 mt-auto pb-6 pt-8 text-center text-gray-600 space-y-2">
+        <p className="text-[11px]">
+          <Trans i18nKey="auth:legal.notice" components={{
+            terms: <Link href="/terms" className="text-cyber-blue hover:underline" />,
+            privacy: <Link href="/privacy" className="text-cyber-pink hover:underline" />,
+          }} />
+        </p>
+        <p className="text-[10px] uppercase tracking-[0.3em] text-gray-700">
+          HEREOS &copy; 2025 &mdash; All rights reserved
+        </p>
       </footer>
     </div>
   )

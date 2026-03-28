@@ -24,6 +24,10 @@ const IsoAdminController = () => import('#controllers/iso_admin_controller')
 // Transmit SSE routes
 transmit.registerRoutes()
 
+// Public (no auth) routes
+router.get('/terms', async ({ inertia }) => inertia.render('legal/terms'))
+router.get('/privacy', async ({ inertia }) => inertia.render('legal/privacy'))
+
 // Guest routes
 router
   .group(() => {
