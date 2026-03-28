@@ -1,5 +1,6 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import { DateTime } from 'luxon'
+import db from '@adonisjs/lucid/services/db'
 import User from '#models/user'
 import Character from '#models/character'
 import CharacterQuest from '#models/character_quest'
@@ -967,21 +968,37 @@ export default class AdminController {
       'basePrice',
     ])
 
-    item.name = data.name || item.name
-    item.description = data.description ?? item.description
-    item.nameEn = data.nameEn !== undefined ? data.nameEn?.trim() || null : item.nameEn
-    item.descriptionEn =
+    const nextName = data.name || item.name
+    const nextDescription = data.description ?? item.description
+    const nextNameEn = data.nameEn !== undefined ? data.nameEn?.trim() || null : item.nameEn
+    const nextDescriptionEn =
       data.descriptionEn !== undefined ? data.descriptionEn?.trim() || null : item.descriptionEn
-    item.type = data.type || item.type
-    item.rarity = data.rarity || item.rarity
-    item.icon = data.icon || item.icon
-    item.effectType = data.effectType || null
-    item.effectValue =
+    const nextType = data.type || item.type
+    const nextRarity = data.rarity || item.rarity
+    const nextIcon = data.icon || item.icon
+    const nextEffectType = data.effectType || null
+    const nextEffectValue =
       data.effectValue !== undefined && data.effectValue !== '' ? Number(data.effectValue) : null
-    item.basePrice = Number(data.basePrice) || item.basePrice
-    await item.save()
+    const nextBasePrice =
+      data.basePrice !== undefined && data.basePrice !== '' ? Number(data.basePrice) : item.basePrice
 
-    session.flash('success', `Item "${item.name}" mis a jour`)
+    await db
+      .from('items')
+      .where('id', item.id)
+      .update({
+        name: nextName,
+        description: nextDescription,
+        name_en: nextNameEn,
+        description_en: nextDescriptionEn,
+        type: nextType,
+        rarity: nextRarity,
+        icon: nextIcon,
+        effect_type: nextEffectType,
+        effect_value: nextEffectValue,
+        base_price: nextBasePrice,
+      })
+
+    session.flash('success', `Item "${nextName}" mis a jour`)
     return response.redirect('/admin/items')
   }
 

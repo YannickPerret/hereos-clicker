@@ -92,6 +92,19 @@ export default function AdminItems({ items }: Props) {
     setEditData({ ...item, effectValue: item.effectValue ?? '', basePrice: item.basePrice })
   }
 
+  const buildItemPayload = (data: any) => ({
+    name: data.name,
+    description: data.description,
+    nameEn: data.nameEn ?? '',
+    descriptionEn: data.descriptionEn ?? '',
+    type: data.type,
+    rarity: data.rarity,
+    icon: data.icon,
+    effectType: data.effectType ?? '',
+    effectValue: data.effectValue,
+    basePrice: data.basePrice,
+  })
+
   const startShopEdit = (item: ItemEntry) => {
     if (item.shop) {
       setShopEditId(item.id)
@@ -314,7 +327,7 @@ export default function AdminItems({ items }: Props) {
                 <form
                   onSubmit={(e) => {
                     e.preventDefault()
-                    router.post(`/admin/items/${item.id}/update`, editData)
+                    router.post(`/admin/items/${item.id}/update`, buildItemPayload(editData))
                     setEditId(null)
                   }}
                   className="space-y-2"
