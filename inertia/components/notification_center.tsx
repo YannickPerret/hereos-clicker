@@ -1,5 +1,6 @@
 import { router, usePage } from '@inertiajs/react'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { Transmit } from '@adonisjs/transmit-client'
 import { useTranslation } from 'react-i18next'
 import { translateBackendMessage } from '~/i18n/backend_messages'
 
@@ -22,6 +23,11 @@ interface FriendRequestNotification {
   pvpRating: number
   chosenSpec: string | null
   createdAt: string
+}
+
+interface PartyInviteEventPayload {
+  type: 'party_invite'
+  invite: InviteNotification
 }
 
 function readStoredIds(key: string) {
@@ -59,6 +65,7 @@ export default function NotificationCenter() {
   const [error, setError] = useState<string | null>(null)
   const seenInviteIds = useRef<Set<number>>(new Set())
   const seenFriendRequestIds = useRef<Set<number>>(new Set())
+  const transmitRef = useRef<Transmit | null>(null)
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -71,6 +78,19 @@ export default function NotificationCenter() {
     if (typeof window === 'undefined') return
     window.localStorage.setItem('notification-center-open', isOpen ? '1' : '0')
   }, [isOpen])
+
+  const pushInviteNotification = useCallback((invite: InviteNotification) => {
+    setInvites((prev) => {
+      const existingIds = new Set(prev.map((item) => item.id))
+      return existingIds.has(invite.id) ? prev : [invite, ...prev]
+    })
+    setToasts((prev) => {
+      const existingIds = new Set(prev.map((item) => item.id))
+      return existingIds.has(invite.id) ? prev : [invite, ...prev]
+    })
+    seenInviteIds.current.add(invite.id)
+    persistIds('notification-center-seen-invites', seenInviteIds.current)
+  }, [])
 
   const loadInvites = useCallback(async () => {
     if (!auth?.user) return
@@ -137,6 +157,24 @@ export default function NotificationCenter() {
     }, 5000)
     return () => clearInterval(interval)
   }, [auth?.user, loadFriendRequests, loadInvites])
+
+  useEffect(() => {
+    if (!auth?.user?.id || typeof window === 'undefined') return
+
+    transmitRef.current = new Transmit({ baseUrl: window.location.origin })
+    const subscription = transmitRef.current.subscription(`user/${auth.user.id}/notifications`)
+    subscription.create()
+    subscription.onMessage((data: PartyInviteEventPayload) => {
+      if (data?.type === 'party_invite' && data.invite) {
+        pushInviteNotification(data.invite)
+      }
+    })
+
+    return () => {
+      subscription.delete()
+      transmitRef.current = null
+    }
+  }, [auth?.user?.id, pushInviteNotification])
 
   const removeInviteEverywhere = useCallback((inviteId: number) => {
     setInvites((prev) => prev.filter((invite) => invite.id !== inviteId))
@@ -379,7 +417,7 @@ export default function NotificationCenter() {
                 onClick={() => respondToInvite(invite.id, 'accept')}
                 className="flex-1 rounded border border-cyber-green/30 bg-cyber-green/10 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-cyber-green transition-all hover:bg-cyber-green/20 disabled:opacity-50"
               >
-                Accepter
+                {t('accept')}
               </button>
               <button
                 type="button"
@@ -387,7 +425,7 @@ export default function NotificationCenter() {
                 onClick={() => respondToInvite(invite.id, 'decline')}
                 className="flex-1 rounded border border-cyber-red/30 bg-cyber-red/10 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-cyber-red transition-all hover:bg-cyber-red/20 disabled:opacity-50"
               >
-                Refuser
+                {t('decline')}
               </button>
             </div>
             <button
@@ -422,7 +460,7 @@ export default function NotificationCenter() {
                 onClick={() => respondToFriendRequest(request.id, 'accept')}
                 className="flex-1 rounded border border-cyber-green/30 bg-cyber-green/10 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-cyber-green transition-all hover:bg-cyber-green/20 disabled:opacity-50"
               >
-                Accepter
+                {t('accept')}
               </button>
               <button
                 type="button"
@@ -430,7 +468,7 @@ export default function NotificationCenter() {
                 onClick={() => respondToFriendRequest(request.id, 'decline')}
                 className="flex-1 rounded border border-cyber-red/30 bg-cyber-red/10 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-cyber-red transition-all hover:bg-cyber-red/20 disabled:opacity-50"
               >
-                Refuser
+                {t('decline')}
               </button>
             </div>
             <button

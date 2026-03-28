@@ -379,11 +379,25 @@ export default class PartyController {
         return response.badRequest({ error: 'Invitation deja envoyee.' })
       }
 
-      await PartyInvite.create({
+      const invite = await PartyInvite.create({
         partyId: membership.party.id,
         invitedByCharacterId: character.id,
         invitedCharacterId: invitedCharacter.id,
         status: 'pending',
+      })
+
+      transmit.broadcast(`user/${invitedCharacter.userId}/notifications`, {
+        type: 'party_invite',
+        invite: {
+          id: invite.id,
+          partyId: membership.party.id,
+          partyName: membership.party.name,
+          partyCode: membership.party.code,
+          invitedByName: character.name,
+          memberCount: membership.party.members.length,
+          maxSize: membership.party.maxSize,
+          createdAt: invite.createdAt.toISO(),
+        },
       })
     } catch (error) {
       if (this.isMissingInviteTable(error)) {

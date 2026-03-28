@@ -30,10 +30,12 @@ function rewardLabel(
 }
 
 export default function GameLayout({ children }: { children: ReactNode }) {
-  const { auth, blackMarket, success, errors, dailyReward } = usePage().props as any
+  const page = usePage() as any
+  const { auth, blackMarket, success, errors, dailyReward } = page.props as any
   const { t } = useTranslation(['common', 'report', 'daily_reward', 'auth'])
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [toast, setToast] = useState<null | { type: 'success' | 'error'; message: string }>(null)
+  const [partyCountdown, setPartyCountdown] = useState<number | null>(null)
   const [reportModalOpen, setReportModalOpen] = useState(false)
   const [dailyRewardModalOpen, setDailyRewardModalOpen] = useState(false)
   const [claimingReward, setClaimingReward] = useState(false)
@@ -45,11 +47,21 @@ export default function GameLayout({ children }: { children: ReactNode }) {
   const roleColor = ROLE_COLORS[auth?.user?.role] || ROLE_COLORS.user
   const roleLabel = auth?.user?.roleLabel || 'RUNNER'
   const isGuest = Boolean(auth?.user?.isGuest)
+  const activeActivity = auth?.activeActivity || null
   const blackMarketMinLevel = Number(blackMarket?.minLevel || 12)
   const hasBlackMarketAccess = Number(auth?.activeCharacterLevel || 0) >= blackMarketMinLevel
   const companionMinLevel = 10
   const hasCompanionAccess = Number(auth?.activeCharacterLevel || 0) >= companionMinLevel
   const activeCharacterName = auth?.activeCharacterName || null
+  const activePartyId = auth?.activePartyId || null
+  const currentPath = typeof page.url === 'string' ? page.url.split('?')[0] : ''
+  const isPartyPage = currentPath.startsWith('/party')
+  const isDungeonRunPage = currentPath.startsWith('/dungeon/run/')
+  const isIsoDungeonRunPage = currentPath.startsWith('/iso-dungeon/run/')
+  const isPvpMatchPage = currentPath.startsWith('/pvp/match/')
+  const isOnActiveActivity = Boolean(
+    activeActivity?.returnPath && currentPath === activeActivity.returnPath
+  )
   const publicProfileHref = activeCharacterName
     ? `/profile/${encodeURIComponent(activeCharacterName)}`
     : '/play'
@@ -109,6 +121,61 @@ export default function GameLayout({ children }: { children: ReactNode }) {
     setSubmittingReport(false)
   }, [errors?.message, submittingReport])
 
+  useEffect(() => {
+    if (!activePartyId || isPartyPage || isDungeonRunPage || isIsoDungeonRunPage) {
+      setPartyCountdown(null)
+      return
+    }
+
+    let active = true
+    const pollPartyState = async () => {
+      if (!active) return
+
+      try {
+        const res = await fetch(`/party/state/${activePartyId}`)
+        if (!res.ok) return
+
+        const data = await res.json()
+        if (!active) return
+
+        if (data.dungeonRunId) {
+          setPartyCountdown(null)
+          if (!isDungeonRunPage || currentPath !== `/dungeon/run/${data.dungeonRunId}`) {
+            active = false
+            router.visit(`/dungeon/run/${data.dungeonRunId}`)
+          }
+          return
+        }
+
+        if (data.countdown !== null && data.countdown !== undefined) {
+          setPartyCountdown(data.countdown)
+        } else {
+          setPartyCountdown(null)
+        }
+
+        if (!data.party) {
+          setPartyCountdown(null)
+        }
+      } catch {
+        // Ignore transient poll failures
+      }
+    }
+
+    pollPartyState()
+    const interval = window.setInterval(pollPartyState, partyCountdown !== null ? 1000 : 2000)
+    return () => {
+      active = false
+      window.clearInterval(interval)
+    }
+  }, [
+    activePartyId,
+    currentPath,
+    isDungeonRunPage,
+    isIsoDungeonRunPage,
+    isPartyPage,
+    partyCountdown,
+  ])
+
   const submitBugReport = (event: React.FormEvent) => {
     event.preventDefault()
     setSubmittingReport(true)
@@ -149,6 +216,23 @@ export default function GameLayout({ children }: { children: ReactNode }) {
                 {t('toast.close')}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {partyCountdown !== null && partyCountdown > 0 && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/80">
+          <div className="text-center">
+            <div className="mb-4 text-xs uppercase tracking-widest text-cyber-red animate-pulse">
+              {t('partyLaunch.title')}
+            </div>
+            <div
+              className="mb-6 text-8xl font-bold text-cyber-yellow neon-text"
+              style={{ animation: 'pulse 1s ease-in-out infinite' }}
+            >
+              {partyCountdown}
+            </div>
+            <div className="text-sm text-gray-400">{t('partyLaunch.message')}</div>
           </div>
         </div>
       )}
@@ -236,6 +320,34 @@ export default function GameLayout({ children }: { children: ReactNode }) {
         </aside>
         <main className="min-w-0 flex-1 px-4 py-6 md:px-6">
           <div className="mx-auto max-w-[calc(96rem-18rem)]">
+            {activeActivity &&
+              !isOnActiveActivity &&
+              !isDungeonRunPage &&
+              !isIsoDungeonRunPage &&
+              !isPvpMatchPage && (
+                <div className="mb-6 rounded-xl border border-cyber-blue/35 bg-cyber-blue/10 px-4 py-4">
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                      <div className="text-[10px] uppercase tracking-[0.3em] text-cyber-blue">
+                        {t('activityBanner.title')}
+                      </div>
+                      <div className="mt-1 text-sm text-gray-300">
+                        {activeActivity.type === 'pvp'
+                          ? t('activityBanner.pvpMessage')
+                          : t('activityBanner.dungeonMessage')}
+                      </div>
+                    </div>
+                    <Link
+                      href={activeActivity.returnPath}
+                      className="rounded border border-cyber-blue/40 bg-cyber-blue/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.22em] text-cyber-blue transition-all hover:bg-cyber-blue/20"
+                    >
+                      {activeActivity.type === 'pvp'
+                        ? t('activityBanner.returnPvp')
+                        : t('activityBanner.returnDungeon')}
+                    </Link>
+                  </div>
+                </div>
+              )}
             {isGuest && (
               <div className="mb-6 rounded-xl border border-cyber-yellow/35 bg-cyber-yellow/10 px-4 py-4">
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">

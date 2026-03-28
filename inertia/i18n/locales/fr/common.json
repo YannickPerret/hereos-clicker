@@ -22,6 +22,17 @@
     "error": "Erreur",
     "close": "FERMER"
   },
+  "partyLaunch": {
+    "title": "Depart du donjon",
+    "message": "Le leader lance le run. Redirection imminente..."
+  },
+  "activityBanner": {
+    "title": "Activite en cours",
+    "dungeonMessage": "Un donjon est en cours. Clique ici pour y retourner.",
+    "pvpMessage": "Un match PvP est en cours. Clique ici pour y retourner.",
+    "returnDungeon": "Retourner au donjon",
+    "returnPvp": "Retourner au PvP"
+  },
   "logout": "DECONNEXION",
   "reportBug": "REPORT BUG",
   "types": {

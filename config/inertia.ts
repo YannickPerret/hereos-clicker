@@ -4,6 +4,7 @@ import BlackMarketService from '#services/black_market_service'
 import PartyMember from '#models/party_member'
 import SeasonService from '#services/season_service'
 import DailyRewardService from '#services/daily_reward_service'
+import ActiveActivityService from '#services/active_activity_service'
 
 export default defineConfig({
   rootView: 'inertia_layout',
@@ -19,6 +20,17 @@ export default defineConfig({
       if (user) {
         await user.load('role')
         const activeCharacter = await Character.query().where('userId', user.id).first()
+        const activeMembership = activeCharacter
+          ? await PartyMember.query()
+              .where('characterId', activeCharacter.id)
+              .whereHas('party', (q) => q.whereIn('status', ['waiting', 'countdown', 'in_dungeon']))
+              .preload('party')
+              .first()
+          : null
+        const activeActivity = activeCharacter
+          ? await ActiveActivityService.getForCharacter(activeCharacter.id)
+          : null
+
         return {
           user: {
             id: user.id,
@@ -30,6 +42,8 @@ export default defineConfig({
           },
           activeCharacterName: activeCharacter?.name || null,
           activeCharacterLevel: activeCharacter?.level || null,
+          activePartyId: activeMembership?.partyId || null,
+          activeActivity,
         }
       }
       return { user: null }

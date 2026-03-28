@@ -57,18 +57,26 @@ router
     router.post('/play/collect-offline', [PlayController, 'collectOffline'])
 
     // Inventory
-    router.get('/inventory', [InventoryController, 'index'])
-    router.post('/inventory/:id/equip', [InventoryController, 'equip'])
-    router.post('/inventory/:id/unequip', [InventoryController, 'unequip'])
-    router.post('/inventory/:id/use', [InventoryController, 'use'])
-    router.post('/inventory/:id/discard', [InventoryController, 'discard'])
+    router
+      .group(() => {
+        router.get('/inventory', [InventoryController, 'index'])
+        router.post('/inventory/:id/equip', [InventoryController, 'equip'])
+        router.post('/inventory/:id/unequip', [InventoryController, 'unequip'])
+        router.post('/inventory/:id/use', [InventoryController, 'use'])
+        router.post('/inventory/:id/discard', [InventoryController, 'discard'])
+      })
+      .use(middleware.activityLock())
 
     // Shop
-    router.get('/shop', [ShopController, 'index'])
-    router.post('/shop/:id/buy', [ShopController, 'buy'])
-    router.get('/black-market', [BlackMarketController, 'index'])
-    router.post('/black-market/deals/:id/buy', [BlackMarketController, 'buy'])
-    router.post('/black-market/clean', [BlackMarketController, 'clean'])
+    router
+      .group(() => {
+        router.get('/shop', [ShopController, 'index'])
+        router.post('/shop/:id/buy', [ShopController, 'buy'])
+        router.get('/black-market', [BlackMarketController, 'index'])
+        router.post('/black-market/deals/:id/buy', [BlackMarketController, 'buy'])
+        router.post('/black-market/clean', [BlackMarketController, 'clean'])
+      })
+      .use(middleware.activityLock())
 
     // Dungeon
     router.get('/dungeon', [DungeonController, 'index'])
@@ -100,10 +108,14 @@ router
     router.post('/party/start-dungeon', [PartyController, 'startDungeon'])
 
     // PvP Arena
-    router.get('/pvp', [PvpController, 'index'])
-    router.post('/pvp/queue', [PvpController, 'queue'])
-    router.post('/pvp/leave-queue', [PvpController, 'leaveQueue'])
-    router.post('/pvp/seasons/:statId/claim', [PvpController, 'claimSeasonReward'])
+    router
+      .group(() => {
+        router.get('/pvp', [PvpController, 'index'])
+        router.post('/pvp/queue', [PvpController, 'queue'])
+        router.post('/pvp/leave-queue', [PvpController, 'leaveQueue'])
+        router.post('/pvp/seasons/:statId/claim', [PvpController, 'claimSeasonReward'])
+      })
+      .use(middleware.activityLock())
     router.get('/pvp/match/:matchId', [PvpController, 'show'])
     router.get('/pvp/match/:matchId/state', [PvpController, 'state'])
     router.post('/pvp/match/:matchId/attack', [PvpController, 'attack'])
@@ -133,11 +145,15 @@ router
     router.post('/friends/requests/:id/decline', [FriendsController, 'declineRequest'])
 
     // Compagnons
-    router.get('/companions', [CompanionController, 'index'])
-    router.post('/companions/:id/buy', [CompanionController, 'buy'])
-    router.post('/companions/:id/upgrade', [CompanionController, 'upgrade'])
-    router.post('/companions/:id/activate', [CompanionController, 'activate'])
-    router.post('/companions/:id/deactivate', [CompanionController, 'deactivate'])
+    router
+      .group(() => {
+        router.get('/companions', [CompanionController, 'index'])
+        router.post('/companions/:id/buy', [CompanionController, 'buy'])
+        router.post('/companions/:id/upgrade', [CompanionController, 'upgrade'])
+        router.post('/companions/:id/activate', [CompanionController, 'activate'])
+        router.post('/companions/:id/deactivate', [CompanionController, 'deactivate'])
+      })
+      .use(middleware.activityLock())
 
     // Chat (API JSON pour le composant flottant)
     router.get('/chat/channels', [ChatController, 'channels'])

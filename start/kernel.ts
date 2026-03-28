@@ -23,4 +23,5 @@ export const middleware = router.named({
   auth: () => import('#middleware/auth_middleware'),
   guest: () => import('#middleware/guest_middleware'),
   role: () => import('#middleware/role_middleware'),
+  activityLock: () => import('#middleware/activity_lock_middleware'),
 })

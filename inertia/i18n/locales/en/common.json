@@ -22,6 +22,17 @@
     "error": "Error",
     "close": "CLOSE"
   },
+  "partyLaunch": {
+    "title": "Dungeon launch",
+    "message": "The leader is starting the run. Redirecting shortly..."
+  },
+  "activityBanner": {
+    "title": "Activity in progress",
+    "dungeonMessage": "A dungeon run is active. Click here to return to it.",
+    "pvpMessage": "A PvP match is active. Click here to return to it.",
+    "returnDungeon": "Return to dungeon",
+    "returnPvp": "Return to PvP"
+  },
   "logout": "LOGOUT",
   "reportBug": "REPORT BUG",
   "types": {
