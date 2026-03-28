@@ -58,13 +58,16 @@ export default function Landing() {
               >
                 {t('createAccount')}
               </Link>
+              <Link
+                href="/login"
+                className="rounded border border-gray-700 bg-white/5 px-6 py-3 text-sm font-bold uppercase tracking-[0.22em] text-gray-200 transition-all hover:border-cyber-blue/40 hover:bg-cyber-blue/10 hover:text-cyber-blue"
+              >
+                {t('login')}
+              </Link>
             </div>
 
             <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-gray-500">
               <span>{t('trust')}</span>
-              <Link href="/login" className="text-cyber-blue transition hover:text-cyber-pink">
-                {t('login')}
-              </Link>
             </div>
           </section>
 
