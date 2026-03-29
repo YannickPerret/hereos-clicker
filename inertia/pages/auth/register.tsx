@@ -1,9 +1,10 @@
-import { useForm, Link } from '@inertiajs/react'
+import { useForm, Link, usePage } from '@inertiajs/react'
 import { Trans, useTranslation } from 'react-i18next'
 import LanguageSwitcher from '~/components/language_switcher'
 
 export default function Register() {
   const { t } = useTranslation('auth')
+  const { props } = usePage<{ success?: string; errors?: { message?: string } }>()
   const { data, setData, post, processing, errors } = useForm({
     username: '',
     email: '',
@@ -55,6 +56,17 @@ export default function Register() {
           onSubmit={handleSubmit}
           className="bg-cyber-dark border border-cyber-pink/30 rounded-lg p-8 neon-border-pink"
         >
+          {props.success && (
+            <div className="mb-5 rounded-lg border border-cyber-green/50 bg-cyber-green/10 px-4 py-3 text-sm text-cyber-green">
+              {props.success}
+            </div>
+          )}
+          {props.errors?.message && (
+            <div className="mb-5 rounded-lg border border-cyber-red/50 bg-cyber-red/10 px-4 py-3 text-sm text-cyber-red">
+              {props.errors.message}
+            </div>
+          )}
+
           <div className="space-y-5">
             <div>
               <label className="block text-xs uppercase tracking-wider text-cyber-pink mb-2">
@@ -115,6 +127,9 @@ export default function Register() {
               />
               {passwordMismatch && (
                 <p className="text-cyber-red text-xs mt-1">{t('register.passwordMismatch')}</p>
+              )}
+              {errors.passwordConfirmation && (
+                <p className="text-cyber-red text-xs mt-1">{errors.passwordConfirmation}</p>
               )}
             </div>
 
