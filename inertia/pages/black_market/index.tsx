@@ -40,6 +40,7 @@ interface Vendor {
   specialties: string[]
   reputation: number
   nextMilestone: number | null
+  refreshAt: number
   deals: Deal[]
 }
 
@@ -65,6 +66,8 @@ interface Props {
     heatLabel: string
     heatMarkupPercent: number
     refreshAt: number
+    refreshVendorKey: string | null
+    refreshVendorName: string | null
     rotationHours: number
   }
   vendors: Vendor[]
@@ -116,15 +119,24 @@ export default function BlackMarket({ character, profile, vendors, cleaners, nig
   const { t } = useTranslation(['shop', 'common'])
   const [quantities, setQuantities] = useState<Record<number, string>>({})
   const [timeLeft, setTimeLeft] = useState(() => formatTimeRemaining(profile.refreshAt))
+  const [vendorTimers, setVendorTimers] = useState<Record<string, string>>(() =>
+    Object.fromEntries(vendors.map((vendor) => [vendor.key, formatTimeRemaining(vendor.refreshAt)]))
+  )
 
   useEffect(() => {
     setTimeLeft(formatTimeRemaining(profile.refreshAt))
+    setVendorTimers(
+      Object.fromEntries(vendors.map((vendor) => [vendor.key, formatTimeRemaining(vendor.refreshAt)]))
+    )
     const timer = window.setInterval(() => {
       setTimeLeft(formatTimeRemaining(profile.refreshAt))
+      setVendorTimers(
+        Object.fromEntries(vendors.map((vendor) => [vendor.key, formatTimeRemaining(vendor.refreshAt)]))
+      )
     }, 1000)
 
     return () => window.clearInterval(timer)
-  }, [profile.refreshAt])
+  }, [profile.refreshAt, vendors])
 
   const totalDeals = useMemo(() => vendors.reduce((sum, vendor) => sum + vendor.deals.length, 0), [vendors])
 
@@ -186,8 +198,15 @@ export default function BlackMarket({ character, profile, vendors, cleaners, nig
               </div>
             </div>
             <div className="rounded-xl border border-cyber-blue/20 bg-cyber-black/60 px-4 py-3">
-              <div className="text-[10px] uppercase tracking-[0.28em] text-gray-500">{t('shop:blackMarket.refresh')}</div>
+              <div className="text-[10px] uppercase tracking-[0.28em] text-gray-500">
+                {t('shop:blackMarket.nextRefresh')}
+              </div>
               <div className="mt-1 text-2xl font-bold text-cyber-blue">{timeLeft}</div>
+              {profile.refreshVendorName && (
+                <div className="text-xs text-gray-500">
+                  {t('shop:blackMarket.nextTrader', { name: profile.refreshVendorName })}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -280,6 +299,7 @@ export default function BlackMarket({ character, profile, vendors, cleaners, nig
                     ? t('shop:blackMarket.nextMilestone', { milestone: vendor.nextMilestone })
                     : t('shop:blackMarket.nextMilestoneMax')}
                 </div>
+                <div>{t('shop:blackMarket.traderRefresh', { time: vendorTimers[vendor.key] || '00:00:00' })}</div>
               </div>
             </div>
 

@@ -34,6 +34,7 @@ export const BLACK_MARKET_VENDORS: Record<VendorKey, { name: string; tagline: st
 const DEFAULT_MIN_LEVEL = 12
 const DEFAULT_ROTATION_HOURS = 12
 const SLOTS_PER_VENDOR = 4
+const VENDOR_ORDER = Object.keys(BLACK_MARKET_VENDORS) as VendorKey[]
 
 const SPEC_LABELS: Record<string, string> = {
   hacker: 'Hacker',
@@ -68,17 +69,32 @@ export default class BlackMarketService {
     return BLACK_MARKET_VENDORS
   }
 
-  private static async getRotationWindow(now = Date.now()) {
+  private static async getVendorRotationWindow(vendorKey: VendorKey, now = Date.now()) {
     const rotationHours = await this.getRotationHours()
     const rotationMs = rotationHours * 60 * 60 * 1000
-    const rotationKey = Math.floor(now / rotationMs)
+    const vendorIndex = Math.max(0, VENDOR_ORDER.indexOf(vendorKey))
+    const vendorStepMs = rotationMs / VENDOR_ORDER.length
+    const shiftedNow = now - vendorIndex * vendorStepMs
+    const vendorRotationIndex = Math.floor(shiftedNow / rotationMs)
+    const startsAt = vendorRotationIndex * rotationMs + vendorIndex * vendorStepMs
 
     return {
-      rotationKey,
-      startsAt: rotationKey * rotationMs,
-      endsAt: (rotationKey + 1) * rotationMs,
+      rotationKey: vendorRotationIndex * VENDOR_ORDER.length + vendorIndex,
+      startsAt,
+      endsAt: startsAt + rotationMs,
       rotationHours,
     }
+  }
+
+  private static async getAllVendorRotationWindows(now = Date.now()) {
+    const windows = await Promise.all(
+      VENDOR_ORDER.map(async (vendorKey) => [
+        vendorKey,
+        await this.getVendorRotationWindow(vendorKey, now),
+      ] as const)
+    )
+
+    return new Map(windows)
   }
 
   private static getHeatState(heat: number) {
@@ -162,19 +178,22 @@ export default class BlackMarketService {
   }
 
   private static async ensureRotation() {
-    const { rotationKey, startsAt, endsAt } = await this.getRotationWindow()
-    const existingDeals = await BlackMarketDeal.query().where('rotationKey', rotationKey)
-    const existingKeys = new Set(existingDeals.map((deal) => `${deal.vendorKey}:${deal.slot}`))
+    const windows = await this.getAllVendorRotationWindows()
 
-    for (const vendorKey of Object.keys(BLACK_MARKET_VENDORS) as VendorKey[]) {
-      const picks = await this.pickCatalog(rotationKey, vendorKey)
+    for (const vendorKey of VENDOR_ORDER) {
+      const window = windows.get(vendorKey)!
+      const existingDeals = await BlackMarketDeal.query()
+        .where('vendorKey', vendorKey)
+        .where('rotationKey', window.rotationKey)
+      const existingKeys = new Set(existingDeals.map((deal) => `${deal.vendorKey}:${deal.slot}`))
+      const picks = await this.pickCatalog(window.rotationKey, vendorKey)
 
       for (const pick of picks) {
         const dealKey = `${vendorKey}:${pick.slot}`
         if (existingKeys.has(dealKey)) continue
 
         await BlackMarketDeal.create({
-          rotationKey,
+          rotationKey: window.rotationKey,
           vendorKey,
           slot: pick.slot,
           itemId: pick.entry.itemId,
@@ -184,8 +203,8 @@ export default class BlackMarketService {
           reputationRequired: pick.entry.reputationRequired,
           requiredSpec: pick.entry.requiredSpec,
           featured: pick.entry.isFeatured,
-          startsAt,
-          endsAt,
+          startsAt: window.startsAt,
+          endsAt: window.endsAt,
         })
       }
     }
@@ -194,22 +213,34 @@ export default class BlackMarketService {
   static async getMarketState(character: Character) {
     await this.ensureRotation()
 
-    const [{ rotationKey, endsAt, rotationHours }, profile, reputationMap, talentBonuses, deals, cleaners] = await Promise.all([
-      this.getRotationWindow(),
+    const [vendorWindows, profile, reputationMap, talentBonuses, cleaners] = await Promise.all([
+      this.getAllVendorRotationWindows(),
       this.ensureProfile(character),
       this.ensureReputations(character.id),
       TalentService.getCharacterBonuses(character.id),
-      (async () => {
-        const { rotationKey } = await this.getRotationWindow()
-        return BlackMarketDeal.query().where('rotationKey', rotationKey).preload('item').orderBy('vendorKey', 'asc').orderBy('slot', 'asc')
-      })(),
       BlackMarketCleaner.query().where('isActive', true).orderBy('sortOrder', 'asc').orderBy('id', 'asc'),
     ])
+    const deals = (
+      await Promise.all(
+        VENDOR_ORDER.map(async (vendorKey) => {
+          const window = vendorWindows.get(vendorKey)!
+          return BlackMarketDeal.query()
+            .where('vendorKey', vendorKey)
+            .where('rotationKey', window.rotationKey)
+            .preload('item')
+            .orderBy('slot', 'asc')
+        })
+      )
+    ).flat()
 
     const heatState = this.getHeatState(profile.heat)
-    const vendors = (Object.keys(BLACK_MARKET_VENDORS) as VendorKey[]).map((vendorKey) => {
+    const nextRefresh = [...vendorWindows.entries()]
+      .sort((left, right) => left[1].endsAt - right[1].endsAt)[0]
+
+    const vendors = VENDOR_ORDER.map((vendorKey) => {
       const reputation = reputationMap.get(vendorKey)?.reputation || 0
       const info = BLACK_MARKET_VENDORS[vendorKey]
+      const window = vendorWindows.get(vendorKey)!
       const vendorDeals = deals
         .filter((deal) => deal.vendorKey === vendorKey)
         .map((deal) => {
@@ -247,6 +278,7 @@ export default class BlackMarketService {
         ...info,
         reputation,
         nextMilestone: this.getRepMilestones().find((value) => value > reputation) || null,
+        refreshAt: window.endsAt,
         deals: vendorDeals,
       }
     })
@@ -263,8 +295,10 @@ export default class BlackMarketService {
         heatLabel: heatState.label,
         heatTone: heatState.tone,
         heatMarkupPercent: heatState.markupPercent,
-        refreshAt: endsAt,
-        rotationHours,
+        refreshAt: nextRefresh?.[1].endsAt || Date.now(),
+        refreshVendorKey: nextRefresh?.[0] || null,
+        refreshVendorName: nextRefresh ? BLACK_MARKET_VENDORS[nextRefresh[0]].name : null,
+        rotationHours: nextRefresh?.[1].rotationHours || (await this.getRotationHours()),
       },
       vendors,
       cleaners: cleaners.map((cleaner) => ({
@@ -273,20 +307,24 @@ export default class BlackMarketService {
         disabled: profile.heat <= 0,
       })),
       nightMarketLive: vendors.some((vendor) => vendor.deals.some((deal) => deal.featured)),
-      rotationKey,
+      rotationKey: nextRefresh?.[1].rotationKey || 0,
     }
   }
 
   static async buyDeal(character: Character, dealId: number, requestedQuantity: number) {
     await this.ensureRotation()
 
-    const { rotationKey } = await this.getRotationWindow()
+    const vendorWindows = await this.getAllVendorRotationWindows()
     const quantity = Math.max(1, Math.floor(requestedQuantity || 1))
     const deal = await BlackMarketDeal.query()
       .where('id', dealId)
-      .where('rotationKey', rotationKey)
       .preload('item')
       .firstOrFail()
+    const activeWindow = vendorWindows.get(deal.vendorKey as VendorKey)
+
+    if (!activeWindow || deal.rotationKey !== activeWindow.rotationKey) {
+      throw new Error('Offer expired')
+    }
 
     const [profile, reputationMap, talentBonuses] = await Promise.all([
       this.ensureProfile(character),
