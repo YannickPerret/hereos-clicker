@@ -246,19 +246,28 @@ export default function DungeonIndex({ character, floors, bestiary, activeRun, b
           <p className="mt-2 max-w-3xl text-sm text-gray-500">{t('dungeon:bestiaryDescription')}</p>
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-4">
           {Object.entries(bestiaryByTier).map(([tier, entries]) => (
-            <section key={tier} className="rounded-lg border border-gray-800 bg-cyber-dark/60 p-4">
-              <div className="mb-4 flex items-center justify-between border-b border-gray-800 pb-3">
-                <h3 className="text-sm font-bold uppercase tracking-[0.24em] text-cyber-yellow">
-                  {t('dungeon:tierLabel', { tier })}
-                </h3>
-                <span className="text-xs text-gray-600">
-                  {entries.filter((entry) => entry.discovered).length}/{entries.length} {t('dungeon:discovered')}
+            <details
+              key={tier}
+              open={Number(tier) === 1}
+              className="group rounded-lg border border-gray-800 bg-cyber-dark/60 p-4"
+            >
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 border-b border-gray-800 pb-3 marker:hidden">
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-bold uppercase tracking-[0.24em] text-cyber-yellow">
+                    {t('dungeon:tierLabel', { tier })}
+                  </span>
+                  <span className="text-[11px] uppercase tracking-[0.22em] text-gray-600">
+                    {entries.filter((entry) => entry.discovered).length}/{entries.length} {t('dungeon:discovered')}
+                  </span>
+                </div>
+                <span className="text-xs font-bold uppercase tracking-[0.24em] text-gray-500 transition-transform group-open:rotate-180">
+                  v
                 </span>
-              </div>
+              </summary>
 
-              <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+              <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
                 {entries.map((entry) => (
                   <div
                     key={entry.id}
@@ -346,7 +355,7 @@ export default function DungeonIndex({ character, floors, bestiary, activeRun, b
                   </div>
                 ))}
               </div>
-            </section>
+            </details>
           ))}
         </div>
       </div>
