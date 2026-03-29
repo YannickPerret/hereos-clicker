@@ -49,6 +49,11 @@ const RARITY_COLORS: Record<string, string> = {
 export default function Companions({ character, owned, shop }: Props) {
   const { t } = useTranslation(['companions', 'common'])
   const active = owned.find((c) => c.isActive)
+  const companionActionOptions = {
+    preserveScroll: true,
+    preserveState: true,
+    only: ['character', 'owned', 'shop', 'errors', 'success'],
+  } as const
 
   const BONUS_LABELS: Record<string, string> = {
     cpc_flat: t('companions:bonusTypes.cpc'),
@@ -132,21 +137,39 @@ export default function Companions({ character, owned, shop }: Props) {
                       <div className="flex flex-col gap-2">
                         {c.isActive ? (
                           <button
-                            onClick={() => router.post(`/companions/${c.id}/deactivate`)}
+                            onClick={() =>
+                              router.post(
+                                `/companions/${c.id}/deactivate`,
+                                {},
+                                companionActionOptions
+                              )
+                            }
                             className="text-[10px] px-2 py-1 rounded border border-gray-700 text-gray-500 hover:text-gray-400"
                           >
                             {t('companions:deactivate')}
                           </button>
                         ) : (
                           <button
-                            onClick={() => router.post(`/companions/${c.id}/activate`)}
+                            onClick={() =>
+                              router.post(
+                                `/companions/${c.id}/activate`,
+                                {},
+                                companionActionOptions
+                              )
+                            }
                             className="text-[10px] px-2 py-1 rounded border border-cyber-green/30 text-cyber-green hover:bg-cyber-green/10"
                           >
                             {t('companions:activate')}
                           </button>
                         )}
                         <button
-                          onClick={() => router.post(`/companions/${c.id}/upgrade`)}
+                          onClick={() =>
+                            router.post(
+                              `/companions/${c.id}/upgrade`,
+                              {},
+                              companionActionOptions
+                            )
+                          }
                           disabled={character.credits < c.upgradePrice}
                           className={`text-[10px] px-2 py-1 rounded border font-bold ${
                             character.credits >= c.upgradePrice
@@ -189,7 +212,9 @@ export default function Companions({ character, owned, shop }: Props) {
                         </div>
                       </div>
                       <button
-                        onClick={() => router.post(`/companions/${c.id}/buy`)}
+                        onClick={() =>
+                          router.post(`/companions/${c.id}/buy`, {}, companionActionOptions)
+                        }
                         disabled={!canAfford}
                         className={`text-[10px] px-3 py-1.5 rounded border font-bold ${
                           canAfford
