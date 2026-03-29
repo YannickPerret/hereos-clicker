@@ -122,7 +122,7 @@ export default class AccountSecurityService {
   }
 
   private static async sendMail(to: string, subject: string, text: string, html: string) {
-    await mail.send((message) => {
+    await mail.sendLater((message) => {
       message.to(to).subject(subject).text(text).html(html)
     })
   }
