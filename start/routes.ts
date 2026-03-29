@@ -31,6 +31,7 @@ transmit.registerRoutes()
 router.get('/', [AuthController, 'showLanding']).use(middleware.guest())
 router.get('/terms', async ({ inertia }) => inertia.render('legal/terms'))
 router.get('/privacy', async ({ inertia }) => inertia.render('legal/privacy'))
+router.get('/verify-email', [AuthController, 'verifyEmail'])
 
 // Guest routes
 router
@@ -39,6 +40,10 @@ router
     router.post('/login', [AuthController, 'login'])
     router.get('/register', [AuthController, 'showRegister'])
     router.post('/register', [AuthController, 'register'])
+    router.get('/forgot-password', [AuthController, 'showForgotPassword'])
+    router.post('/forgot-password', [AuthController, 'forgotPassword'])
+    router.get('/reset-password', [AuthController, 'showResetPassword'])
+    router.post('/reset-password', [AuthController, 'resetPassword'])
     router.post('/guest', [AuthController, 'loginGuest'])
   })
   .use(middleware.guest())
