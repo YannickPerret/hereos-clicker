@@ -67,7 +67,7 @@ export default class extends BaseSchema {
       }
 
       await verifyExistingAccounts.update({
-        email_verified_at: db.raw('CURRENT_TIMESTAMP'),
+        email_verified_at: new Date().toISOString(),
       })
     })
   }
