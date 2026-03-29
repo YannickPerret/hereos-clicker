@@ -183,11 +183,23 @@ export default class DungeonController {
     })
   }
 
-  async enter({ params, auth, response, session }: HttpContext) {
+  async enter({ params, auth, response, session, locale }: HttpContext) {
     const character = await Character.query().where('userId', auth.user!.id).firstOrFail()
 
     try {
-      const { run } = await CombatService.startRun(character, params.floorId)
+      const floor = await DungeonFloor.findOrFail(params.floorId)
+
+      if (auth.user!.isGuest && floor.floorNumber > 5) {
+        session.flash('errors', {
+          message:
+            locale === 'en'
+              ? 'Guest accounts can access dungeons up to Floor 5. Create an account to go further.'
+              : "Les comptes invites peuvent acceder aux donjons jusqu'au Floor 5. Cree un compte pour aller plus loin.",
+        })
+        return response.redirect('/dungeon')
+      }
+
+      const { run } = await CombatService.startRun(character, floor.id)
       return response.redirect(`/dungeon/run/${run.id}`)
     } catch (e: any) {
       session.flash('errors', { message: e.message })

@@ -134,6 +134,10 @@ export default function Talents(props: Props) {
   const [expandedSpec, setExpandedSpec] = useState<string | null>(
     props.character.chosenSpec || null
   )
+  const preserveTalentView = {
+    preserveScroll: true,
+    preserveState: true,
+  } as const
 
   return (
     <GameLayout>
@@ -161,7 +165,7 @@ export default function Talents(props: Props) {
               </button>
               <button
                 onClick={() => {
-                  router.post('/talents/respec')
+                  router.post('/talents/respec', {}, preserveTalentView)
                   setShowRespecConfirm(false)
                 }}
                 className="flex-1 py-2 text-xs bg-cyber-red/20 border border-cyber-red text-cyber-red rounded hover:bg-cyber-red/30 transition-all uppercase font-bold"
@@ -375,9 +379,13 @@ export default function Talents(props: Props) {
                               talent={choiceA}
                               config={config}
                               characterLevel={character.level}
-                              onClick={() =>
-                                router.post('/talents/unlock', { talentId: choiceA.id })
-                              }
+                              onClick={() => {
+                                router.post(
+                                  '/talents/unlock',
+                                  { talentId: choiceA.id },
+                                  preserveTalentView
+                                )
+                              }}
                               t={t}
                             />
                           )}
@@ -407,9 +415,13 @@ export default function Talents(props: Props) {
                               talent={choiceB}
                               config={config}
                               characterLevel={character.level}
-                              onClick={() =>
-                                router.post('/talents/unlock', { talentId: choiceB.id })
-                              }
+                              onClick={() => {
+                                router.post(
+                                  '/talents/unlock',
+                                  { talentId: choiceB.id },
+                                  preserveTalentView
+                                )
+                              }}
                               t={t}
                             />
                           )}

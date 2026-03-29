@@ -1,4 +1,4 @@
-import { router } from '@inertiajs/react'
+import { router, usePage } from '@inertiajs/react'
 import { useTranslation } from 'react-i18next'
 import GameLayout from '~/components/layout'
 
@@ -26,6 +26,8 @@ interface Props {
 
 export default function DungeonIndex({ character, floors, activeRun, bossRush }: Props) {
   const { t } = useTranslation(['dungeon', 'common'])
+  const page = usePage<{ auth?: { user?: { isGuest?: boolean } | null } }>()
+  const isGuest = Boolean(page.props?.auth?.user?.isGuest)
   const bossRushLocked = character.level < bossRush.unlockLevel
   const bossRushUnavailable = !bossRush.isEnabled
   const canEnterBossRush = !bossRushLocked && !bossRushUnavailable
@@ -62,6 +64,12 @@ export default function DungeonIndex({ character, floors, activeRun, bossRush }:
           </span>
         </div>
       </div>
+
+      {isGuest && (
+        <div className="mb-6 rounded-lg border border-cyber-yellow/30 bg-cyber-yellow/10 px-4 py-3 text-sm text-cyber-yellow">
+          {t('dungeon:guestFloorLimit')}
+        </div>
+      )}
 
       <div className="mb-6">
         <div className="rounded-lg border border-cyber-purple/30 bg-cyber-dark p-5 transition-all">
@@ -123,13 +131,15 @@ export default function DungeonIndex({ character, floors, activeRun, bossRush }:
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {floors.map((floor) => {
           const locked = character.level < floor.minLevel
+          const guestLocked = isGuest && floor.floorNumber > 5
           const lowHp = character.hpCurrent < character.hpMax * 0.3
+          const disabled = locked || guestLocked
 
           return (
             <div
               key={floor.id}
               className={`bg-cyber-dark border rounded-lg p-5 transition-all ${
-                locked
+                disabled
                   ? 'border-gray-800 opacity-50'
                   : 'border-cyber-red/30 hover:border-cyber-red/60 hover:shadow-[0_0_20px_rgba(255,0,64,0.1)]'
               }`}
@@ -148,24 +158,31 @@ export default function DungeonIndex({ character, floors, activeRun, bossRush }:
               <p className="text-xs text-gray-500 mb-4">{floor.description}</p>
 
               <div className="flex justify-between items-center">
-                <span className={`text-xs ${locked ? 'text-cyber-red' : 'text-gray-600'}`}>
-                  {t('dungeon:levelReq', { n: floor.minLevel })}
-                </span>
+                <div className="flex flex-col gap-1">
+                  <span className={`text-xs ${locked ? 'text-cyber-red' : 'text-gray-600'}`}>
+                    {t('dungeon:levelReq', { n: floor.minLevel })}
+                  </span>
+                  {guestLocked && (
+                    <span className="text-[10px] uppercase tracking-widest text-cyber-yellow">
+                      {t('dungeon:guestFloorLocked')}
+                    </span>
+                  )}
+                </div>
 
                 <button
                   onClick={() => router.post(`/dungeon/enter/${floor.id}`)}
-                  disabled={locked}
+                  disabled={disabled}
                   className={`px-4 py-2 text-xs uppercase tracking-widest rounded font-bold transition-all ${
-                    locked
+                    disabled
                       ? 'bg-gray-900 border border-gray-700 text-gray-700 cursor-not-allowed'
                       : 'bg-cyber-red/10 border border-cyber-red/50 text-cyber-red hover:bg-cyber-red/20'
                   }`}
                 >
-                  {locked ? t('dungeon:locked') : t('dungeon:enter')}
+                  {guestLocked ? t('dungeon:guestLocked') : locked ? t('dungeon:locked') : t('dungeon:enter')}
                 </button>
               </div>
 
-              {lowHp && !locked && (
+              {lowHp && !disabled && (
                 <div className="mt-2 text-[10px] text-cyber-orange">
                   {t('dungeon:lowHpWarning')}
                 </div>
