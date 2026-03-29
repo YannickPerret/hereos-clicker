@@ -394,8 +394,7 @@ export default class QuestService {
 
       if (reward.type === 'xp') {
         character.xp += reward.value
-        while (character.xp >= character.level * 100) {
-          character.levelUp()
+        if (character.applyLevelUps()) {
           await CompanionService.refillHpAfterLevelUp(character)
         }
         continue

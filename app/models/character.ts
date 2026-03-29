@@ -10,6 +10,11 @@ import CharacterPvpSeasonStat from '#models/character_pvp_season_stat'
 import CharacterBossRushSeasonStat from '#models/character_boss_rush_season_stat'
 
 export default class Character extends BaseModel {
+  static xpRequiredForLevel(level: number) {
+    const safeLevel = Math.max(1, Math.floor(level))
+    return 100 + safeLevel * 70 + safeLevel * safeLevel * 7
+  }
+
   @column({ isPrimary: true })
   declare id: number
 
@@ -121,9 +126,24 @@ export default class Character extends BaseModel {
   @hasMany(() => CharacterBossRushSeasonStat)
   declare bossRushSeasonStats: HasMany<typeof CharacterBossRushSeasonStat>
 
+  getXpForNextLevel() {
+    return Character.xpRequiredForLevel(this.level)
+  }
+
+  applyLevelUps() {
+    let leveledUp = false
+
+    while (this.xp >= this.getXpForNextLevel()) {
+      this.levelUp()
+      leveledUp = true
+    }
+
+    return leveledUp
+  }
+
   /** Apply level up bonuses — RPG style scaling */
   levelUp() {
-    this.xp -= this.level * 100
+    this.xp -= this.getXpForNextLevel()
     this.level += 1
     this.talentPoints += 1
 

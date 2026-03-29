@@ -116,8 +116,7 @@ export default class InventoryController {
     } else if (invItem.item.effectType === 'xp_boost') {
       character.xp += invItem.item.effectValue || 0
       successMessage = `${invItem.item.name} utilise: +${invItem.item.effectValue || 0} XP`
-      if (character.xp >= character.level * 100) {
-        character.levelUp()
+      if (character.applyLevelUps()) {
         await CompanionService.refillHpAfterLevelUp(character)
       }
       await character.save()

@@ -12,6 +12,7 @@ import CompanionService from '#services/companion_service'
 import TalentService from '#services/talent_service'
 import DailyMissionService from '#services/daily_mission_service'
 import QuestService from '#services/quest_service'
+import EnemyCodexService from '#services/enemy_codex_service'
 import transmit from '@adonisjs/transmit/services/main'
 import { DateTime } from 'luxon'
 
@@ -151,6 +152,8 @@ export default class CombatService {
       enemiesDefeated: 0,
       pendingRewards: '{}',
     })
+
+    await EnemyCodexService.recordEncounterForRun(null, character.id, enemy.id)
 
     return { run, enemy, floor }
   }
@@ -303,8 +306,7 @@ export default class CombatService {
       character.credits += bucket.credits
       character.xp += bucket.xp
 
-      while (character.xp >= character.level * 100) {
-        character.levelUp()
+      if (character.applyLevelUps()) {
         await CompanionService.refillHpAfterLevelUp(character)
       }
 
@@ -724,6 +726,7 @@ export default class CombatService {
 
       // Loot roll
       const loot = await this.rollLoot(enemy.id)
+      await EnemyCodexService.recordDefeatForRun(run.partyId, character.id, enemy.id)
       this.queuePendingRewards(run, character.id, {
         creditsReward,
         xpReward: enemy.xpReward,
@@ -750,6 +753,7 @@ export default class CombatService {
           if (boss) {
             run.currentEnemyId = boss.id
             run.currentEnemyHp = boss.hp
+            await EnemyCodexService.recordEncounterForRun(run.partyId, character.id, boss.id)
             log.push({ action: 'boss_spawn', bossName: boss.name })
           } else {
             await this.claimPendingRewards(run)
@@ -789,6 +793,7 @@ export default class CombatService {
         const nextEnemy = await this.getRandomFloorEnemy(floor)
         run.currentEnemyId = nextEnemy.id
         run.currentEnemyHp = nextEnemy.hp
+        await EnemyCodexService.recordEncounterForRun(run.partyId, character.id, nextEnemy.id)
         log.push({ action: 'new_enemy', enemyName: nextEnemy.name, enemyHp: nextEnemy.hp })
       }
 
@@ -1563,10 +1568,11 @@ export default class CombatService {
       Math.random() * (enemy.creditsRewardMax - enemy.creditsRewardMin) + enemy.creditsRewardMin
     )
 
-    const loot = await this.rollLoot(enemy.id)
-    this.queuePendingRewards(run, character.id, {
-      creditsReward,
-      xpReward: enemy.xpReward,
+      const loot = await this.rollLoot(enemy.id)
+      await EnemyCodexService.recordDefeatForRun(run.partyId, character.id, enemy.id)
+      this.queuePendingRewards(run, character.id, {
+        creditsReward,
+        xpReward: enemy.xpReward,
       loot,
     })
     log.push({
@@ -1590,6 +1596,7 @@ export default class CombatService {
         if (boss) {
           run.currentEnemyId = boss.id
           run.currentEnemyHp = boss.hp
+          await EnemyCodexService.recordEncounterForRun(run.partyId, character.id, boss.id)
           log.push({ action: 'boss_spawn', bossName: boss.name })
         } else {
           await this.claimPendingRewards(run)
@@ -1641,6 +1648,7 @@ export default class CombatService {
       const nextEnemy = await this.getRandomFloorEnemy(floor)
       run.currentEnemyId = nextEnemy.id
       run.currentEnemyHp = nextEnemy.hp
+      await EnemyCodexService.recordEncounterForRun(run.partyId, character.id, nextEnemy.id)
       log.push({ action: 'new_enemy', enemyName: nextEnemy.name, enemyHp: nextEnemy.hp })
     }
 

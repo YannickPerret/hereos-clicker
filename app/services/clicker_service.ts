@@ -188,10 +188,8 @@ export default class ClickerService {
     character.xp += xpGained
 
     // Level up check
-    const xpForNextLevel = character.level * 100
     let leveledUp = false
-    if (character.xp >= xpForNextLevel) {
-      character.levelUp()
+    if (character.applyLevelUps()) {
       await CompanionService.refillHpAfterLevelUp(character)
       leveledUp = true
     }
@@ -231,7 +229,7 @@ export default class ClickerService {
       totalClicks: character.totalClicks,
       level: character.level,
       xp: character.xp,
-      xpForNextLevel: character.level * 100,
+      xpForNextLevel: character.getXpForNextLevel(),
       creditsPerClick: effectiveCpc,
       creditsPerSecond: effectiveCps,
       talentPoints: character.talentPoints,

@@ -35,14 +35,15 @@ export default class extends BaseSeeder {
       { enemyName: 'Mech Walker', itemName: 'Neural Click Matrix', dropChance: 0.1 },
       { enemyName: 'Mech Walker', itemName: 'Phoenix Serum', dropChance: 0.15 },
 
-      // Tier 4 bosses drop epic/legendary items
-      { enemyName: 'ARCHON - Rogue Superintelligence', itemName: 'Void Cannon', dropChance: 0.2 },
-      { enemyName: 'ARCHON - Rogue Superintelligence', itemName: 'Quantum Consciousness', dropChance: 0.15 },
-      { enemyName: 'Chrome Dragon', itemName: 'Quantum Shield Matrix', dropChance: 0.2 },
-      { enemyName: 'Chrome Dragon', itemName: 'Quantum Tap Interface', dropChance: 0.15 },
-      { enemyName: 'The Void King', itemName: 'OMEGA Protocol', dropChance: 0.1 },
-      { enemyName: 'The Void King', itemName: 'Ghost Shell', dropChance: 0.1 },
-      { enemyName: 'The Void King', itemName: 'Singularity Core', dropChance: 0.08 },
+      // Tier 4 bosses: chase starts here, but much slower
+      { enemyName: 'ARCHON - Rogue Superintelligence', itemName: 'Void Cannon', dropChance: 0.04 },
+      { enemyName: 'ARCHON - Rogue Superintelligence', itemName: 'Quantum Consciousness', dropChance: 0.025 },
+      { enemyName: 'Chrome Dragon', itemName: 'Quantum Shield Matrix', dropChance: 0.04 },
+      { enemyName: 'Chrome Dragon', itemName: 'Quantum Tap Interface', dropChance: 0.025 },
+      { enemyName: 'The Void King', itemName: 'QianT Synapse Rail', dropChance: 0.06 },
+      { enemyName: 'The Void King', itemName: 'OMEGA Protocol', dropChance: 0.006 },
+      { enemyName: 'The Void King', itemName: 'Ghost Shell', dropChance: 0.006 },
+      { enemyName: 'The Void King', itemName: 'Singularity Core', dropChance: 0.005 },
 
       // Tier 5 enemies start dropping the new midgame line
       { enemyName: 'Black ICE Hound', itemName: 'Kiroshi Pulse Sync', dropChance: 0.12 },
@@ -52,25 +53,37 @@ export default class extends BaseSeeder {
       { enemyName: 'Militech Suppressor', itemName: 'Kang Tao Shock Carbine', dropChance: 0.1 },
       { enemyName: 'Militech Suppressor', itemName: 'Trauma Team Ballistic Mesh', dropChance: 0.1 },
 
-      // Tier 6 enemies feed the rare / epic chase
-      { enemyName: 'Arasaka Counter-Intel', itemName: 'Militech Bastion Frame', dropChance: 0.1 },
-      { enemyName: 'Arasaka Counter-Intel', itemName: 'QianT Synapse Rail', dropChance: 0.08 },
-      { enemyName: 'Sandevistan Duelist', itemName: 'QianT Synapse Rail', dropChance: 0.12 },
-      { enemyName: 'Sandevistan Duelist', itemName: 'Mantis Driver Suite', dropChance: 0.06 },
-      { enemyName: 'Cyberpsycho Dragoon', itemName: 'Militech Crusher Custom', dropChance: 0.1 },
-      { enemyName: 'Cyberpsycho Dragoon', itemName: 'Mantis Driver Suite', dropChance: 0.08 },
-      { enemyName: 'Cerberus Siege Frame', itemName: 'Arasaka Revenant Smartgun', dropChance: 0.1 },
-      { enemyName: 'Cerberus Siege Frame', itemName: 'Arasaka Specter Weave', dropChance: 0.08 },
+      // Tier 6 enemies: mostly common/rare, epics become real chase
+      { enemyName: 'Arasaka Counter-Intel', itemName: 'Kang Tao Shock Carbine', dropChance: 0.14 },
+      { enemyName: 'Arasaka Counter-Intel', itemName: 'Trauma Team Ballistic Mesh', dropChance: 0.12 },
+      { enemyName: 'Arasaka Counter-Intel', itemName: 'Militech Bastion Frame', dropChance: 0.05 },
+      { enemyName: 'Arasaka Counter-Intel', itemName: 'QianT Synapse Rail', dropChance: 0.03 },
+      { enemyName: 'Sandevistan Duelist', itemName: 'Sandevistan Lite', dropChance: 0.14 },
+      { enemyName: 'Sandevistan Duelist', itemName: 'QianT Synapse Rail', dropChance: 0.05 },
+      { enemyName: 'Sandevistan Duelist', itemName: 'Mantis Driver Suite', dropChance: 0.008 },
+      { enemyName: 'Cyberpsycho Dragoon', itemName: 'Budget Arms Unity+', dropChance: 0.14 },
+      { enemyName: 'Cyberpsycho Dragoon', itemName: 'Militech Crusher Custom', dropChance: 0.05 },
+      { enemyName: 'Cyberpsycho Dragoon', itemName: 'Mantis Driver Suite', dropChance: 0.01 },
+      { enemyName: 'Cerberus Siege Frame', itemName: 'Trauma Team Ballistic Mesh', dropChance: 0.12 },
+      { enemyName: 'Cerberus Siege Frame', itemName: 'Militech Bastion Frame', dropChance: 0.05 },
+      { enemyName: 'Cerberus Siege Frame', itemName: 'Arasaka Revenant Smartgun', dropChance: 0.01 },
+      { enemyName: 'Cerberus Siege Frame', itemName: 'Arasaka Specter Weave', dropChance: 0.008 },
 
-      // Apex drops
-      { enemyName: 'Blackwall Seraph', itemName: 'Blackwall Breacher', dropChance: 0.08 },
-      { enemyName: 'Blackwall Seraph', itemName: 'Relic Overclock Kernel', dropChance: 0.06 },
-      { enemyName: 'Mikoshi Warden', itemName: 'Mikoshi Nullskin', dropChance: 0.08 },
-      { enemyName: 'Mikoshi Warden', itemName: 'Militech Apogee Sandevistan', dropChance: 0.06 },
-      { enemyName: 'Soulkiller Prime', itemName: 'Blackwall Breacher', dropChance: 0.12 },
-      { enemyName: 'Soulkiller Prime', itemName: 'Mikoshi Nullskin', dropChance: 0.12 },
-      { enemyName: 'Soulkiller Prime', itemName: 'Militech Apogee Sandevistan', dropChance: 0.08 },
-      { enemyName: 'Soulkiller Prime', itemName: 'Relic Overclock Kernel', dropChance: 0.08 },
+      // Apex drops: very low legendary rates, with fallback rare/common items
+      { enemyName: 'Blackwall Seraph', itemName: 'Kiroshi Pulse Sync', dropChance: 0.14 },
+      { enemyName: 'Blackwall Seraph', itemName: 'QianT Synapse Rail', dropChance: 0.05 },
+      { enemyName: 'Blackwall Seraph', itemName: 'Blackwall Breacher', dropChance: 0.004 },
+      { enemyName: 'Blackwall Seraph', itemName: 'Relic Overclock Kernel', dropChance: 0.0025 },
+      { enemyName: 'Mikoshi Warden', itemName: 'Trauma Team Ballistic Mesh', dropChance: 0.12 },
+      { enemyName: 'Mikoshi Warden', itemName: 'Militech Bastion Frame', dropChance: 0.05 },
+      { enemyName: 'Mikoshi Warden', itemName: 'Mikoshi Nullskin', dropChance: 0.003 },
+      { enemyName: 'Mikoshi Warden', itemName: 'Militech Apogee Sandevistan', dropChance: 0.002 },
+      { enemyName: 'Soulkiller Prime', itemName: 'QianT Synapse Rail', dropChance: 0.06 },
+      { enemyName: 'Soulkiller Prime', itemName: 'Militech Crusher Custom', dropChance: 0.05 },
+      { enemyName: 'Soulkiller Prime', itemName: 'Blackwall Breacher', dropChance: 0.006 },
+      { enemyName: 'Soulkiller Prime', itemName: 'Mikoshi Nullskin', dropChance: 0.005 },
+      { enemyName: 'Soulkiller Prime', itemName: 'Militech Apogee Sandevistan', dropChance: 0.004 },
+      { enemyName: 'Soulkiller Prime', itemName: 'Relic Overclock Kernel', dropChance: 0.003 },
     ] as const
 
     for (const entry of entries) {

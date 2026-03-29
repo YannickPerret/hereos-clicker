@@ -118,8 +118,7 @@ export default class DailyMissionService {
         break
       case 'xp':
         character.xp += mission.rewardValue
-        if (character.xp >= character.level * 100) {
-          character.levelUp()
+        if (character.applyLevelUps()) {
           await CompanionService.refillHpAfterLevelUp(character)
         }
         break

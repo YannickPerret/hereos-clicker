@@ -10,6 +10,7 @@ import CharacterPvpSeasonStat from '#models/character_pvp_season_stat'
 import SeasonService from '#services/season_service'
 import CompanionService from '#services/companion_service'
 import BossRushService from '#services/boss_rush_service'
+import EnemyCodexService from '#services/enemy_codex_service'
 import { localize, localizeAll } from '#services/locale_service'
 
 export default class DungeonController {
@@ -138,6 +139,7 @@ export default class DungeonController {
       : null
 
     const floors = await DungeonFloor.query().orderBy('floorNumber', 'asc')
+    const bestiary = await EnemyCodexService.getBestiary(character.id, locale)
 
     // Find active run: own or party
     let activeRun = await DungeonRun.query()
@@ -168,6 +170,7 @@ export default class DungeonController {
         locale,
         ['name', 'description']
       ),
+      bestiary,
       activeRun: activeRun?.serialize() || null,
       bossRush: {
         unlockLevel: 70,

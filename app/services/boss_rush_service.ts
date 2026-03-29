@@ -13,6 +13,7 @@ import CompanionService from '#services/companion_service'
 import TalentService from '#services/talent_service'
 import SeasonService from '#services/season_service'
 import CombatService from '#services/combat_service'
+import EnemyCodexService from '#services/enemy_codex_service'
 
 interface ActiveEffect {
   type: string
@@ -706,6 +707,7 @@ export default class BossRushService {
     const scaled = this.scaleEnemy(enemy, run.currentFloor)
     run.currentEnemyId = enemy.id
     run.currentEnemyHp = scaled.hp
+    await EnemyCodexService.recordEncounterForRun(null, run.characterId, enemy.id)
 
     return { enemy, scaled }
   }
@@ -821,8 +823,7 @@ export default class BossRushService {
       character.credits += bucket.credits
       character.xp += bucket.xp
 
-      while (character.xp >= character.level * 100) {
-        character.levelUp()
+      if (character.applyLevelUps()) {
         await CompanionService.refillHpAfterLevelUp(character)
       }
 

@@ -8,6 +8,7 @@ import DungeonFloor from '#models/dungeon_floor'
 import DungeonRun from '#models/dungeon_run'
 import Enemy from '#models/enemy'
 import ChatChannel from '#models/chat_channel'
+import EnemyCodexService from '#services/enemy_codex_service'
 import transmit from '@adonisjs/transmit/services/main'
 
 export default class PartyController {
@@ -127,6 +128,8 @@ export default class PartyController {
           combatLog: '[]',
           afkPenalties: '{}',
         })
+
+        await EnemyCodexService.recordEncounterForRun(party.id, party.leaderId, enemy.id)
 
         party.status = 'in_dungeon'
         party.dungeonRunId = run.id

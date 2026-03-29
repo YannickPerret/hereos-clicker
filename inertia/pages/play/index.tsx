@@ -2,6 +2,7 @@ import { useForm, router } from '@inertiajs/react'
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import GameLayout from '~/components/layout'
+import { getXpForNextLevel } from '~/lib/leveling'
 
 interface Character {
   id: number
@@ -438,6 +439,8 @@ export default function Play({
     )
   }
 
+  const xpForNextLevel = char ? getXpForNextLevel(char.level) : 1
+
   return (
     <GameLayout>
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -493,13 +496,13 @@ export default function Play({
                   )}
                 </span>
                 <span>
-                  {char.xp} / {char.level * 100}
+                  {char.xp} / {xpForNextLevel}
                 </span>
               </div>
               <div className="h-2 bg-cyber-dark rounded-full overflow-hidden border border-cyber-blue/20">
                 <div
                   className="h-full bg-gradient-to-r from-cyber-blue to-cyber-pink transition-all duration-300"
-                  style={{ width: `${(char.xp / (char.level * 100)) * 100}%` }}
+                  style={{ width: `${Math.min(100, (char.xp / xpForNextLevel) * 100)}%` }}
                 />
               </div>
             </div>

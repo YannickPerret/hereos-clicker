@@ -11,9 +11,37 @@ interface Floor {
   bossEnemyId: number | null
 }
 
+interface BestiaryEntry {
+  id: number
+  tier: number
+  icon: string
+  discovered: boolean
+  encounters: number
+  defeats: number
+  name: string | null
+  description: string | null
+  stats: {
+    hp: number
+    attack: number
+    defense: number
+    critChance: number
+    critDamage: number
+  } | null
+  loot: {
+    id: number
+    name: string
+    description: string
+    rarity: string
+    type: string
+    effectType: string | null
+    effectValue: number | null
+  }[]
+}
+
 interface Props {
   character: { id: number; level: number; hpCurrent: number; hpMax: number }
   floors: Floor[]
+  bestiary: BestiaryEntry[]
   activeRun: { id: number } | null
   bossRush: {
     unlockLevel: number
@@ -24,13 +52,28 @@ interface Props {
   }
 }
 
-export default function DungeonIndex({ character, floors, activeRun, bossRush }: Props) {
+const RARITY_TEXT: Record<string, string> = {
+  common: 'text-gray-400',
+  uncommon: 'text-cyber-green',
+  rare: 'text-cyber-blue',
+  epic: 'text-cyber-purple',
+  legendary: 'text-cyber-yellow',
+}
+
+export default function DungeonIndex({ character, floors, bestiary, activeRun, bossRush }: Props) {
   const { t } = useTranslation(['dungeon', 'common'])
   const page = usePage<{ auth?: { user?: { isGuest?: boolean } | null } }>()
   const isGuest = Boolean(page.props?.auth?.user?.isGuest)
   const bossRushLocked = character.level < bossRush.unlockLevel
   const bossRushUnavailable = !bossRush.isEnabled
   const canEnterBossRush = !bossRushLocked && !bossRushUnavailable
+  const bestiaryByTier = bestiary.reduce<Record<number, BestiaryEntry[]>>((groups, entry) => {
+    if (!groups[entry.tier]) {
+      groups[entry.tier] = []
+    }
+    groups[entry.tier].push(entry)
+    return groups
+  }, {})
 
   if (activeRun) {
     return (
@@ -190,6 +233,122 @@ export default function DungeonIndex({ character, floors, activeRun, bossRush }:
             </div>
           )
         })}
+      </div>
+
+      <div className="mt-10">
+        <div className="mb-5">
+          <div className="text-[10px] uppercase tracking-[0.28em] text-cyber-blue">
+            {t('dungeon:bestiaryEyebrow')}
+          </div>
+          <h2 className="mt-2 text-2xl font-bold tracking-widest text-cyber-blue">
+            {t('dungeon:bestiaryTitle')}
+          </h2>
+          <p className="mt-2 max-w-3xl text-sm text-gray-500">{t('dungeon:bestiaryDescription')}</p>
+        </div>
+
+        <div className="space-y-6">
+          {Object.entries(bestiaryByTier).map(([tier, entries]) => (
+            <section key={tier} className="rounded-lg border border-gray-800 bg-cyber-dark/60 p-4">
+              <div className="mb-4 flex items-center justify-between border-b border-gray-800 pb-3">
+                <h3 className="text-sm font-bold uppercase tracking-[0.24em] text-cyber-yellow">
+                  {t('dungeon:tierLabel', { tier })}
+                </h3>
+                <span className="text-xs text-gray-600">
+                  {entries.filter((entry) => entry.discovered).length}/{entries.length} {t('dungeon:discovered')}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                {entries.map((entry) => (
+                  <div
+                    key={entry.id}
+                    className={`rounded-lg border p-4 ${
+                      entry.discovered
+                        ? 'border-cyber-blue/20 bg-cyber-black/70'
+                        : 'border-gray-800 bg-cyber-black/40'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div
+                          className={`text-xs uppercase tracking-[0.22em] ${
+                            entry.discovered ? 'text-cyber-blue' : 'text-gray-700'
+                          }`}
+                        >
+                          {entry.discovered ? t('dungeon:discovered') : t('dungeon:undiscovered')}
+                        </div>
+                        <h4
+                          className={`mt-1 text-lg font-bold tracking-wide ${
+                            entry.discovered ? 'text-white' : 'text-gray-500'
+                          }`}
+                        >
+                          {entry.discovered ? entry.name : t('dungeon:unknownEnemy')}
+                        </h4>
+                      </div>
+                      <div className="text-right text-[11px] text-gray-500">
+                        <div>{t('dungeon:encounters', { count: entry.encounters })}</div>
+                        <div>{t('dungeon:defeats', { count: entry.defeats })}</div>
+                      </div>
+                    </div>
+
+                    <p className={`mt-3 text-sm ${entry.discovered ? 'text-gray-400' : 'text-gray-700'}`}>
+                      {entry.discovered ? entry.description : t('dungeon:unknownEnemyDescription')}
+                    </p>
+
+                    {entry.stats ? (
+                      <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
+                        <div className="rounded border border-gray-800 bg-cyber-dark/70 px-3 py-2 text-gray-400">
+                          HP <span className="ml-2 font-bold text-cyber-green">{entry.stats.hp}</span>
+                        </div>
+                        <div className="rounded border border-gray-800 bg-cyber-dark/70 px-3 py-2 text-gray-400">
+                          ATK <span className="ml-2 font-bold text-cyber-red">{entry.stats.attack}</span>
+                        </div>
+                        <div className="rounded border border-gray-800 bg-cyber-dark/70 px-3 py-2 text-gray-400">
+                          DEF <span className="ml-2 font-bold text-cyber-blue">{entry.stats.defense}</span>
+                        </div>
+                        <div className="rounded border border-gray-800 bg-cyber-dark/70 px-3 py-2 text-gray-400">
+                          CRIT{' '}
+                          <span className="ml-2 font-bold text-cyber-yellow">
+                            {entry.stats.critChance}% / {entry.stats.critDamage}%
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mt-4 rounded border border-gray-800 bg-cyber-dark/50 px-3 py-3 text-xs text-gray-700">
+                        {t('dungeon:meetToReveal')}
+                      </div>
+                    )}
+
+                    <div className="mt-4 border-t border-gray-800 pt-4">
+                      <div className="mb-2 text-[10px] uppercase tracking-[0.24em] text-gray-500">
+                        {t('dungeon:lootTable')}
+                      </div>
+
+                      {entry.discovered ? (
+                        entry.loot.length > 0 ? (
+                          <div className="flex flex-wrap gap-2">
+                            {entry.loot.map((loot) => (
+                              <span
+                                key={loot.id}
+                                className={`rounded border border-gray-800 bg-cyber-dark/70 px-2 py-1 text-xs ${RARITY_TEXT[loot.rarity] || 'text-white'}`}
+                              >
+                                {loot.name}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-xs text-gray-600">{t('dungeon:noKnownLoot')}</div>
+                        )
+                      ) : (
+                        <div className="text-xs text-gray-700">{t('dungeon:lootHidden')}</div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
       </div>
     </GameLayout>
   )
