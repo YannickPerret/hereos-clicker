@@ -14,6 +14,8 @@
   },
   "searching": "[ SEARCHING... ]",
   "matchFound": "[ MATCH FOUND ]",
+  "browserMatchFoundTitle": "HEREOS PvP match found",
+  "browserMatchFoundBody": "Your match is ready. Return now to accept it before the timer expires.",
   "joinFight": "[ JOIN FIGHT ]",
   "cancelSearch": "[ CANCEL SEARCH ]",
   "acceptMatch": "[ ACCEPT ]",

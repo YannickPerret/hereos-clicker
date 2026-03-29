@@ -14,6 +14,8 @@
   },
   "searching": "[ RECHERCHE EN COURS... ]",
   "matchFound": "[ MATCH TROUVE ]",
+  "browserMatchFoundTitle": "HEREOS match PvP trouve",
+  "browserMatchFoundBody": "Ton match est pret. Reviens vite pour l'accepter avant la fin du compteur.",
   "joinFight": "[ REJOINDRE COMBAT ]",
   "cancelSearch": "[ ANNULER LA RECHERCHE ]",
   "acceptMatch": "[ ACCEPTER ]",

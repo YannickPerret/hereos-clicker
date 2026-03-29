@@ -1,5 +1,5 @@
 import { router, usePage } from '@inertiajs/react'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import GameLayout from '~/components/layout'
 
@@ -112,11 +112,28 @@ export default function PvpArena({
   }>()
   const activeSeason = props.season?.active ?? null
   const [now, setNow] = useState(() => Date.now())
+  const readyCheckNotificationRef = useRef<Notification | null>(null)
+  const notifiedReadyCheckIdRef = useRef<number | null>(null)
 
   const readyCheckSecondsLeft = useMemo(() => {
     if (!activeMatch?.acceptDeadlineAt) return 0
     return Math.max(0, Math.ceil((activeMatch.acceptDeadlineAt - now) / 1000))
   }, [activeMatch?.acceptDeadlineAt, now])
+
+  const requestBrowserNotifications = useCallback(() => {
+    if (typeof window === 'undefined' || !('Notification' in window)) return
+    if (Notification.permission !== 'default') return
+
+    void Notification.requestPermission().catch(() => {})
+  }, [])
+
+  const startQueue = useCallback(
+    (mode: QueueCard['mode']) => {
+      requestBrowserNotifications()
+      router.post('/pvp/queue', { mode })
+    },
+    [requestBrowserNotifications]
+  )
 
   useEffect(() => {
     if (!activeMatch || !['waiting', 'ready_check'].includes(activeMatch.status)) return
@@ -144,9 +161,52 @@ export default function PvpArena({
 
   useEffect(() => {
     if (activeMatch?.status === 'in_progress') {
+      readyCheckNotificationRef.current?.close()
+      readyCheckNotificationRef.current = null
       router.visit(`/pvp/match/${activeMatch.id}`)
     }
   }, [activeMatch?.id, activeMatch?.status])
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof document === 'undefined' || !('Notification' in window)) return
+
+    if (activeMatch?.status !== 'ready_check') {
+      readyCheckNotificationRef.current?.close()
+      readyCheckNotificationRef.current = null
+
+      if (activeMatch?.status !== 'ready_check') {
+        notifiedReadyCheckIdRef.current = null
+      }
+      return
+    }
+
+    if (document.visibilityState === 'visible') return
+    if (Notification.permission !== 'granted') return
+    if (notifiedReadyCheckIdRef.current === activeMatch.id) return
+
+    const notification = new Notification(t('pvp:browserMatchFoundTitle'), {
+      body: t('pvp:browserMatchFoundBody'),
+      tag: `pvp-ready-${activeMatch.id}`,
+      requireInteraction: true,
+    })
+
+    notification.onclick = () => {
+      window.focus()
+      router.visit('/pvp')
+      notification.close()
+    }
+
+    readyCheckNotificationRef.current?.close()
+    readyCheckNotificationRef.current = notification
+    notifiedReadyCheckIdRef.current = activeMatch.id
+  }, [activeMatch?.id, activeMatch?.status, t])
+
+  useEffect(() => {
+    return () => {
+      readyCheckNotificationRef.current?.close()
+      readyCheckNotificationRef.current = null
+    }
+  }, [])
 
   return (
     <GameLayout>
@@ -361,7 +421,7 @@ export default function PvpArena({
                 )}
 
                 <button
-                  onClick={() => router.post('/pvp/queue', { mode: card.mode })}
+                  onClick={() => startQueue(card.mode)}
                   disabled={!card.canQueue || !!activeMatch}
                   className={`w-full rounded border py-2 text-xs font-bold uppercase tracking-widest transition-all ${
                     card.canQueue && !activeMatch
