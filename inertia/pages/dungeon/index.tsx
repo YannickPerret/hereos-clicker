@@ -248,11 +248,7 @@ export default function DungeonIndex({ character, floors, bestiary, activeRun, b
 
         <div className="space-y-4">
           {Object.entries(bestiaryByTier).map(([tier, entries]) => (
-            <details
-              key={tier}
-              open={Number(tier) === 1}
-              className="group rounded-lg border border-gray-800 bg-cyber-dark/60 p-4"
-            >
+            <details key={tier} className="group rounded-lg border border-gray-800 bg-cyber-dark/60 p-4">
               <summary className="flex cursor-pointer list-none items-center justify-between gap-4 border-b border-gray-800 pb-3 marker:hidden">
                 <div className="flex items-center gap-3">
                   <span className="text-sm font-bold uppercase tracking-[0.24em] text-cyber-yellow">
