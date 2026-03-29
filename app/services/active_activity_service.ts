@@ -1,12 +1,13 @@
 import Character from '#models/character'
 import PartyMember from '#models/party_member'
 import DungeonRun from '#models/dungeon_run'
+import BossRushRun from '#models/boss_rush_run'
 import IsoDungeonRun from '#models/iso_dungeon_run'
 import PvpMatchParticipant from '#models/pvp_match_participant'
 
 export type ActiveActivity = {
   type: 'dungeon' | 'pvp'
-  mode: 'dungeon' | 'iso_dungeon' | 'pvp'
+  mode: 'dungeon' | 'iso_dungeon' | 'boss_rush' | 'pvp'
   returnPath: string
 }
 
@@ -67,6 +68,20 @@ export default class ActiveActivityService {
         type: 'dungeon',
         mode: 'iso_dungeon',
         returnPath: `/iso-dungeon/run/${isoRun.id}`,
+      }
+    }
+
+    const bossRushRun = await BossRushRun.query()
+      .where('characterId', characterId)
+      .where('status', 'in_progress')
+      .orderBy('id', 'desc')
+      .first()
+
+    if (bossRushRun) {
+      return {
+        type: 'dungeon',
+        mode: 'boss_rush',
+        returnPath: `/boss-rush/run/${bossRushRun.id}`,
       }
     }
 

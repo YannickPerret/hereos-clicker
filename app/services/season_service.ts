@@ -2,6 +2,7 @@ import { DateTime } from 'luxon'
 import Season from '#models/season'
 import Character from '#models/character'
 import CharacterPvpSeasonStat from '#models/character_pvp_season_stat'
+import CharacterBossRushSeasonStat from '#models/character_boss_rush_season_stat'
 
 export interface SeasonSummary {
   id: number
@@ -19,6 +20,7 @@ export interface SeasonSummary {
   endsAt: string | null
   isRankedPvpEnabled: boolean
   isWorldBossEnabled: boolean
+  isBossRushEnabled: boolean
   isPlayerMarketEnabled: boolean
   isBlackMarketBonusEnabled: boolean
 }
@@ -43,6 +45,7 @@ export interface SeasonPayload {
   sortOrder: number
   isRankedPvpEnabled: boolean
   isWorldBossEnabled: boolean
+  isBossRushEnabled: boolean
   isPlayerMarketEnabled: boolean
   isBlackMarketBonusEnabled: boolean
   startsAt: DateTime | null
@@ -80,6 +83,15 @@ export default class SeasonService {
     return activeSeason
   }
 
+  static async getCurrentBossRushSeason() {
+    const activeSeason = await this.getActiveSeason()
+    if (!activeSeason || !activeSeason.isBossRushEnabled) {
+      return null
+    }
+
+    return activeSeason
+  }
+
   static serializeSummary(season: Season | null): SeasonSummary | null {
     if (!season) {
       return null
@@ -101,6 +113,7 @@ export default class SeasonService {
       endsAt: season.endsAt?.toISO() ?? null,
       isRankedPvpEnabled: season.isRankedPvpEnabled,
       isWorldBossEnabled: season.isWorldBossEnabled,
+      isBossRushEnabled: season.isBossRushEnabled,
       isPlayerMarketEnabled: season.isPlayerMarketEnabled,
       isBlackMarketBonusEnabled: season.isBlackMarketBonusEnabled,
     }
@@ -125,6 +138,26 @@ export default class SeasonService {
     return { credits: 0, tier: null }
   }
 
+  static calculateBossRushReward(
+    rank: number | null,
+    bestFloor: number,
+    totalBossesKilled: number
+  ): SeasonRewardSummary {
+    if (!rank || bestFloor <= 0) {
+      return { credits: 0, tier: null }
+    }
+
+    if (rank === 1) return { credits: 12000, tier: 'Overlord' }
+    if (rank <= 3) return { credits: 9000, tier: 'Apex' }
+    if (rank <= 10) return { credits: 6000, tier: 'Elite' }
+    if (rank <= 50) return { credits: 3000, tier: 'Veteran' }
+    if (bestFloor >= 25) return { credits: 1800, tier: 'Breaker' }
+    if (bestFloor >= 15 || totalBossesKilled >= 25) return { credits: 900, tier: 'Climber' }
+    if (bestFloor >= 8) return { credits: 350, tier: 'Participant' }
+
+    return { credits: 0, tier: null }
+  }
+
   static async getOrCreatePvpSeasonStat(character: Character, season: Season) {
     let stat = await CharacterPvpSeasonStat.query()
       .where('characterId', character.id)
@@ -141,6 +174,30 @@ export default class SeasonService {
         wins: 0,
         losses: 0,
         gamesPlayed: 0,
+        finalRank: null,
+        rewardCredits: 0,
+        rewardTier: null,
+        rewardClaimed: false,
+        finalizedAt: null,
+      })
+    }
+
+    return stat
+  }
+
+  static async getOrCreateBossRushSeasonStat(character: Character, season: Season) {
+    let stat = await CharacterBossRushSeasonStat.query()
+      .where('characterId', character.id)
+      .where('seasonId', season.id)
+      .first()
+
+    if (!stat) {
+      stat = await CharacterBossRushSeasonStat.create({
+        characterId: character.id,
+        seasonId: season.id,
+        bestFloor: 0,
+        runsPlayed: 0,
+        totalBossesKilled: 0,
         finalRank: null,
         rewardCredits: 0,
         rewardTier: null,
@@ -255,6 +312,42 @@ export default class SeasonService {
       rank += 1
     }
 
+    const bossRushStats = await CharacterBossRushSeasonStat.query()
+      .where('seasonId', season.id)
+      .whereHas('character', (query) =>
+        query.whereHas('user', (userQuery) => userQuery.where('isGuest', false))
+      )
+      .orderBy('bestFloor', 'desc')
+      .orderBy('totalBossesKilled', 'desc')
+      .orderBy('updatedAt', 'asc')
+      .orderBy('characterId', 'asc')
+
+    let bossRushRank = 1
+    for (const stat of bossRushStats) {
+      if (stat.bestFloor <= 0) {
+        stat.finalRank = null
+        stat.rewardCredits = 0
+        stat.rewardTier = null
+        stat.rewardClaimed = false
+        stat.finalizedAt = DateTime.now()
+        await stat.save()
+        continue
+      }
+
+      const reward = this.calculateBossRushReward(
+        bossRushRank,
+        stat.bestFloor,
+        stat.totalBossesKilled
+      )
+      stat.finalRank = bossRushRank
+      stat.rewardCredits = reward.credits
+      stat.rewardTier = reward.tier
+      stat.rewardClaimed = reward.credits <= 0
+      stat.finalizedAt = DateTime.now()
+      await stat.save()
+      bossRushRank += 1
+    }
+
     season.status = 'ended'
     season.endsAt = season.endsAt || DateTime.now()
     await season.save()
@@ -307,6 +400,7 @@ export default class SeasonService {
       sortOrder: Number(input.sortOrder) || 0,
       isRankedPvpEnabled: this.toBoolean(input.isRankedPvpEnabled, true),
       isWorldBossEnabled: this.toBoolean(input.isWorldBossEnabled, false),
+      isBossRushEnabled: this.toBoolean(input.isBossRushEnabled, false),
       isPlayerMarketEnabled: this.toBoolean(input.isPlayerMarketEnabled, false),
       isBlackMarketBonusEnabled: this.toBoolean(input.isBlackMarketBonusEnabled, false),
       startsAt: this.toDateTime(input.startsAt),

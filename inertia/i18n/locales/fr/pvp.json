@@ -8,6 +8,7 @@
   "features": {
     "ranked": "PvP ranked",
     "worldBoss": "Boss mondial",
+    "bossRush": "Boss Rush",
     "playerMarket": "Marche joueur",
     "blackMarketBonus": "Bonus marche noir"
   },

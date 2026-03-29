@@ -62,6 +62,9 @@ export default class Season extends BaseModel {
   declare isWorldBossEnabled: boolean
 
   @column()
+  declare isBossRushEnabled: boolean
+
+  @column()
   declare isPlayerMarketEnabled: boolean
 
   @column()

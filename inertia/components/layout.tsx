@@ -67,8 +67,10 @@ export default function GameLayout({ children }: { children: ReactNode }) {
   const currentPath = typeof page.url === 'string' ? page.url.split('?')[0] : ''
   const isPartyPage = currentPath.startsWith('/party')
   const isDungeonRunPage = currentPath.startsWith('/dungeon/run/')
+  const isBossRushRunPage = currentPath.startsWith('/boss-rush/run/')
   const isIsoDungeonRunPage = currentPath.startsWith('/iso-dungeon/run/')
   const isPvpMatchPage = currentPath.startsWith('/pvp/match/')
+  const activeSeason = page.props?.season?.active || null
   const isOnActiveActivity = Boolean(
     activeActivity?.returnPath && currentPath === activeActivity.returnPath
   )
@@ -133,7 +135,7 @@ export default function GameLayout({ children }: { children: ReactNode }) {
   }, [errors?.message, submittingReport])
 
   useEffect(() => {
-    if (!activePartyId || isPartyPage || isDungeonRunPage || isIsoDungeonRunPage) {
+    if (!activePartyId || isPartyPage || isDungeonRunPage || isBossRushRunPage || isIsoDungeonRunPage) {
       setPartyCountdown(null)
       return
     }
@@ -188,6 +190,7 @@ export default function GameLayout({ children }: { children: ReactNode }) {
     }
   }, [
     activePartyId,
+    isBossRushRunPage,
     currentPath,
     isDungeonRunPage,
     isIsoDungeonRunPage,
@@ -235,7 +238,9 @@ export default function GameLayout({ children }: { children: ReactNode }) {
     const message =
       activeActivity.type === 'pvp'
         ? t('activityBanner.pvpMessage')
-        : t('activityBanner.dungeonMessage')
+        : activeActivity.mode === 'boss_rush'
+          ? t('activityBanner.bossRushMessage')
+          : t('activityBanner.dungeonMessage')
 
     if (!isOnActiveActivity) {
       router.visit(activeActivity.returnPath)
@@ -404,6 +409,7 @@ export default function GameLayout({ children }: { children: ReactNode }) {
             {activeActivity &&
               !isOnActiveActivity &&
               !isDungeonRunPage &&
+              !isBossRushRunPage &&
               !isIsoDungeonRunPage &&
               !isPvpMatchPage && (
                 <div className="mb-6 rounded-xl border border-cyber-blue/35 bg-cyber-blue/10 px-4 py-4">
@@ -415,7 +421,9 @@ export default function GameLayout({ children }: { children: ReactNode }) {
                       <div className="mt-1 text-sm text-gray-300">
                         {activeActivity.type === 'pvp'
                           ? t('activityBanner.pvpMessage')
-                          : t('activityBanner.dungeonMessage')}
+                          : activeActivity.mode === 'boss_rush'
+                            ? t('activityBanner.bossRushMessage')
+                            : t('activityBanner.dungeonMessage')}
                       </div>
                     </div>
                     <Link
@@ -424,7 +432,9 @@ export default function GameLayout({ children }: { children: ReactNode }) {
                     >
                       {activeActivity.type === 'pvp'
                         ? t('activityBanner.returnPvp')
-                        : t('activityBanner.returnDungeon')}
+                        : activeActivity.mode === 'boss_rush'
+                          ? t('activityBanner.returnBossRush')
+                          : t('activityBanner.returnDungeon')}
                     </Link>
                   </div>
                 </div>

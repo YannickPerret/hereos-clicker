@@ -104,6 +104,7 @@ export default function PvpArena({
         endsAt: string | null
         isRankedPvpEnabled: boolean
         isWorldBossEnabled: boolean
+        isBossRushEnabled: boolean
         isPlayerMarketEnabled: boolean
         isBlackMarketBonusEnabled: boolean
       } | null
@@ -192,6 +193,7 @@ export default function PvpArena({
                 <div className="flex flex-wrap justify-end gap-2 text-[10px] uppercase tracking-widest">
                   {activeSeason.isRankedPvpEnabled && <span className="rounded border border-cyber-red/40 px-2 py-1 text-cyber-red">{t('pvp:features.ranked')}</span>}
                   {activeSeason.isWorldBossEnabled && <span className="rounded border border-cyber-green/40 px-2 py-1 text-cyber-green">{t('pvp:features.worldBoss')}</span>}
+                  {activeSeason.isBossRushEnabled && <span className="rounded border border-cyber-purple/40 px-2 py-1 text-cyber-purple">{t('pvp:features.bossRush')}</span>}
                   {activeSeason.isPlayerMarketEnabled && <span className="rounded border border-cyber-blue/40 px-2 py-1 text-cyber-blue">{t('pvp:features.playerMarket')}</span>}
                   {activeSeason.isBlackMarketBonusEnabled && <span className="rounded border border-cyber-yellow/40 px-2 py-1 text-cyber-yellow">{t('pvp:features.blackMarketBonus')}</span>}
                 </div>

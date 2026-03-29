@@ -18,6 +18,7 @@ interface SeasonEntry {
   sortOrder: number
   isRankedPvpEnabled: boolean
   isWorldBossEnabled: boolean
+  isBossRushEnabled: boolean
   isPlayerMarketEnabled: boolean
   isBlackMarketBonusEnabled: boolean
   startsAt: string | null
@@ -54,6 +55,7 @@ const emptyForm = {
   sortOrder: '0',
   isRankedPvpEnabled: true,
   isWorldBossEnabled: false,
+  isBossRushEnabled: false,
   isPlayerMarketEnabled: false,
   isBlackMarketBonusEnabled: false,
   startsAt: '',
@@ -95,6 +97,7 @@ function toForm(season: SeasonEntry) {
     sortOrder: String(season.sortOrder),
     isRankedPvpEnabled: season.isRankedPvpEnabled,
     isWorldBossEnabled: season.isWorldBossEnabled,
+    isBossRushEnabled: season.isBossRushEnabled,
     isPlayerMarketEnabled: season.isPlayerMarketEnabled,
     isBlackMarketBonusEnabled: season.isBlackMarketBonusEnabled,
     startsAt: toDatetimeLocalValue(season.startsAt),
@@ -119,6 +122,7 @@ export default function AdminSeasons({ seasons, activeSeason }: Props) {
     key:
       | 'isRankedPvpEnabled'
       | 'isWorldBossEnabled'
+      | 'isBossRushEnabled'
       | 'isPlayerMarketEnabled'
       | 'isBlackMarketBonusEnabled',
     checked: boolean
@@ -312,6 +316,14 @@ export default function AdminSeasons({ seasons, activeSeason }: Props) {
                 <label className="flex items-center gap-2">
                   <input
                     type="checkbox"
+                    checked={newSeason.isBossRushEnabled}
+                    onChange={(e) => toggleField('create', 'isBossRushEnabled', e.target.checked)}
+                  />
+                  Boss Rush
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
                     checked={newSeason.isPlayerMarketEnabled}
                     onChange={(e) => toggleField('create', 'isPlayerMarketEnabled', e.target.checked)}
                   />
@@ -395,6 +407,7 @@ export default function AdminSeasons({ seasons, activeSeason }: Props) {
               <div className="mb-3 flex flex-wrap gap-2 text-[10px] uppercase tracking-widest">
                 {season.isRankedPvpEnabled && <span className="rounded border border-cyber-red/40 px-2 py-1 text-cyber-red">PvP</span>}
                 {season.isWorldBossEnabled && <span className="rounded border border-cyber-green/40 px-2 py-1 text-cyber-green">Boss</span>}
+                {season.isBossRushEnabled && <span className="rounded border border-cyber-purple/40 px-2 py-1 text-cyber-purple">Boss Rush</span>}
                 {season.isPlayerMarketEnabled && <span className="rounded border border-cyber-blue/40 px-2 py-1 text-cyber-blue">Market</span>}
                 {season.isBlackMarketBonusEnabled && <span className="rounded border border-cyber-yellow/40 px-2 py-1 text-cyber-yellow">Black market</span>}
                 <span className="rounded border border-gray-800 px-2 py-1 text-gray-500">
@@ -535,6 +548,14 @@ export default function AdminSeasons({ seasons, activeSeason }: Props) {
                         onChange={(e) => toggleField('edit', 'isWorldBossEnabled', e.target.checked)}
                       />
                       Boss mondial
+                    </label>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={editSeason.isBossRushEnabled}
+                        onChange={(e) => toggleField('edit', 'isBossRushEnabled', e.target.checked)}
+                      />
+                      Boss Rush
                     </label>
                     <label className="flex items-center gap-2">
                       <input

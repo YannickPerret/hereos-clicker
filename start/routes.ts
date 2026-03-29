@@ -8,6 +8,7 @@ const InventoryController = () => import('#controllers/inventory_controller')
 const ShopController = () => import('#controllers/shop_controller')
 const BlackMarketController = () => import('#controllers/black_market_controller')
 const DungeonController = () => import('#controllers/dungeon_controller')
+const BossRushController = () => import('#controllers/boss_rush_controller')
 const TalentController = () => import('#controllers/talent_controller')
 const PartyController = () => import('#controllers/party_controller')
 const PvpController = () => import('#controllers/pvp_controller')
@@ -89,6 +90,17 @@ router
     router.post('/dungeon/run/:runId/skill', [DungeonController, 'useSkill'])
     router.post('/dungeon/run/:runId/use-item', [DungeonController, 'useItem'])
     router.post('/dungeon/run/:runId/flee', [DungeonController, 'flee'])
+
+    // Boss Rush
+    router.get('/boss-rush', [BossRushController, 'index'])
+    router.post('/boss-rush/start', [BossRushController, 'start'])
+    router.get('/boss-rush/run/:runId', [BossRushController, 'show'])
+    router.get('/boss-rush/run/:runId/state', [BossRushController, 'state'])
+    router.post('/boss-rush/run/:runId/attack', [BossRushController, 'attack'])
+    router.post('/boss-rush/run/:runId/skill', [BossRushController, 'useSkill'])
+    router.post('/boss-rush/run/:runId/use-item', [BossRushController, 'useItem'])
+    router.post('/boss-rush/run/:runId/flee', [BossRushController, 'flee'])
+    router.post('/boss-rush/seasons/:statId/claim', [BossRushController, 'claimSeasonReward'])
 
     // Talents
     router.get('/talents', [TalentController, 'index'])

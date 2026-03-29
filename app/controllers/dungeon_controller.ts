@@ -9,6 +9,7 @@ import CombatService from '#services/combat_service'
 import CharacterPvpSeasonStat from '#models/character_pvp_season_stat'
 import SeasonService from '#services/season_service'
 import CompanionService from '#services/companion_service'
+import BossRushService from '#services/boss_rush_service'
 import { localize, localizeAll } from '#services/locale_service'
 
 export default class DungeonController {
@@ -130,6 +131,11 @@ export default class DungeonController {
   async index({ inertia, auth, locale }: HttpContext) {
     const character = await Character.query().where('userId', auth.user!.id).firstOrFail()
     const companionBonuses = await CompanionService.getActiveBonuses(character.id)
+    const bossRushSeason = await SeasonService.getCurrentBossRushSeason().catch(() => null)
+    const bossRushRun = await BossRushService.getActiveRun(character.id).catch(() => null)
+    const bossRushSeasonStat = bossRushSeason
+      ? await SeasonService.getOrCreateBossRushSeasonStat(character, bossRushSeason).catch(() => null)
+      : null
 
     const floors = await DungeonFloor.query().orderBy('floorNumber', 'asc')
 
@@ -163,6 +169,17 @@ export default class DungeonController {
         ['name', 'description']
       ),
       activeRun: activeRun?.serialize() || null,
+      bossRush: {
+        unlockLevel: 70,
+        isEnabled: Boolean(bossRushSeason),
+        activeRun: bossRushRun?.serialize() || null,
+        seasonName: bossRushSeason
+          ? locale === 'en'
+            ? bossRushSeason.nameEn || bossRushSeason.name
+            : bossRushSeason.name
+          : null,
+        bestFloor: bossRushSeasonStat?.bestFloor || 0,
+      },
     })
   }
 

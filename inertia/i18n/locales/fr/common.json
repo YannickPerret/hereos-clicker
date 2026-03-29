@@ -8,6 +8,7 @@
     "blackMarket": "MARCHE NOIR",
     "party": "GROUPE",
     "dungeon": "DONJON",
+    "bossRush": "BOSS RUSH",
     "dungeon25d": "DONJON 2.5D",
     "pvp": "PVP",
     "forum": "FORUM",
@@ -32,8 +33,10 @@
   "activityBanner": {
     "title": "Activite en cours",
     "dungeonMessage": "Un donjon est en cours. Clique ici pour y retourner.",
+    "bossRushMessage": "Un Boss Rush est en cours. Clique ici pour y retourner.",
     "pvpMessage": "Un match PvP est en cours. Clique ici pour y retourner.",
     "returnDungeon": "Retourner au donjon",
+    "returnBossRush": "Retourner au Boss Rush",
     "returnPvp": "Retourner au PvP"
   },
   "logout": "DECONNEXION",

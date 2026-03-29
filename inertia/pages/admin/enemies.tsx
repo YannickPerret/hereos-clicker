@@ -34,6 +34,14 @@ const TIER_COLORS: Record<number, string> = {
   1: 'text-gray-400', 2: 'text-cyber-blue', 3: 'text-cyber-purple', 4: 'text-cyber-yellow',
 }
 
+const RARITY_TEXT: Record<string, string> = {
+  common: 'text-gray-400',
+  uncommon: 'text-cyber-green',
+  rare: 'text-cyber-blue',
+  epic: 'text-cyber-purple',
+  legendary: 'text-cyber-yellow',
+}
+
 export default function AdminEnemies({ enemies, items }: Props) {
   const { props } = usePage<{ errors?: { message?: string }; success?: string }>()
   const [editId, setEditId] = useState<number | null>(null)
@@ -43,6 +51,7 @@ export default function AdminEnemies({ enemies, items }: Props) {
   const [newLootChance, setNewLootChance] = useState('0.1')
   const [showCreate, setShowCreate] = useState(false)
   const [newEnemy, setNewEnemy] = useState({ name: '', description: '', hp: '50', attack: '10', defense: '5', xpReward: '10', creditsRewardMin: '5', creditsRewardMax: '15', tier: '1', critChance: '5', critDamage: '150' })
+  const itemRarityById = Object.fromEntries(items.map((item) => [item.id, item.rarity]))
 
   const startEdit = (enemy: EnemyEntry) => {
     setEditId(enemy.id)
@@ -209,10 +218,13 @@ export default function AdminEnemies({ enemies, items }: Props) {
                       <div className="space-y-1">
                         {enemy.loot.map((l) => (
                           <div key={l.id} className="flex items-center justify-between bg-cyber-black/50 rounded px-2 py-1">
-                            <span className="text-[10px] text-white">{l.itemName}</span>
+                            <span className={`text-[10px] font-bold ${RARITY_TEXT[itemRarityById[l.itemId]] || 'text-white'}`}>
+                              {l.itemName}
+                            </span>
                             <div className="flex items-center gap-2">
                               <span className="text-[10px] text-cyber-yellow">{(l.dropChance * 100).toFixed(1)}%</span>
                               <form onSubmit={(e) => { e.preventDefault(); const fd = new FormData(e.currentTarget); router.post(`/admin/loot/${l.id}/update`, { dropChance: fd.get('dropChance') }) }} className="flex items-center gap-1">
+                                <span className="text-[9px] uppercase text-gray-600">Drop %</span>
                                 <input type="number" name="dropChance" defaultValue={l.dropChance} step="0.01" min="0" max="1" className="w-16 bg-cyber-black border border-gray-800 rounded px-1 py-0.5 text-[10px] text-white focus:outline-none" />
                                 <button type="submit" className="text-[9px] text-cyber-green">OK</button>
                               </form>
@@ -225,9 +237,10 @@ export default function AdminEnemies({ enemies, items }: Props) {
 
                     {lootAddId === enemy.id && (
                       <form onSubmit={(e) => { e.preventDefault(); router.post(`/admin/enemies/${enemy.id}/add-loot`, { itemId: newLootItemId, dropChance: newLootChance }); setLootAddId(null) }} className="mt-2 flex items-center gap-2">
-                        <select value={newLootItemId} onChange={(e) => setNewLootItemId(Number(e.target.value))} className="flex-1 bg-cyber-black border border-gray-800 rounded px-2 py-1 text-[10px] text-white focus:outline-none">
-                          {items.map((i) => <option key={i.id} value={i.id}>{i.name} ({i.rarity})</option>)}
+                        <select value={newLootItemId} onChange={(e) => setNewLootItemId(Number(e.target.value))} className={`flex-1 bg-cyber-black border border-gray-800 rounded px-2 py-1 text-[10px] focus:outline-none ${RARITY_TEXT[itemRarityById[newLootItemId]] || 'text-white'}`}>
+                          {items.map((i) => <option key={i.id} value={i.id}>{i.name} [{i.rarity}]</option>)}
                         </select>
+                        <span className="text-[9px] uppercase text-gray-600">Drop %</span>
                         <input type="number" value={newLootChance} onChange={(e) => setNewLootChance(e.target.value)} step="0.01" min="0" max="1" placeholder="0.10" className="w-20 bg-cyber-black border border-gray-800 rounded px-2 py-1 text-[10px] text-white focus:outline-none" />
                         <button type="submit" className="text-[10px] px-2 py-1 rounded border border-cyber-green/30 text-cyber-green hover:bg-cyber-green/10">Ajouter</button>
                       </form>

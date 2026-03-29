@@ -8,6 +8,7 @@
     "blackMarket": "BLACK MARKET",
     "party": "PARTY",
     "dungeon": "DUNGEON",
+    "bossRush": "BOSS RUSH",
     "dungeon25d": "DUNGEON 2.5D",
     "pvp": "PVP",
     "forum": "FORUM",
@@ -32,8 +33,10 @@
   "activityBanner": {
     "title": "Activity in progress",
     "dungeonMessage": "A dungeon run is active. Click here to return to it.",
+    "bossRushMessage": "A Boss Rush run is active. Click here to return to it.",
     "pvpMessage": "A PvP match is active. Click here to return to it.",
     "returnDungeon": "Return to dungeon",
+    "returnBossRush": "Return to Boss Rush",
     "returnPvp": "Return to PvP"
   },
   "logout": "LOGOUT",

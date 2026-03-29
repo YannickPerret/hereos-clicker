@@ -6,6 +6,7 @@
   "features": {
     "pvpLadder": "Ladder PvP",
     "worldBoss": "Boss mondial",
+    "bossRush": "Boss Rush",
     "playerMarket": "Marche joueur"
   },
   "globalRanking": "Classement Global",
