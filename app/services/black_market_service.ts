@@ -1,6 +1,7 @@
 import BlackMarketCatalogEntry from '#models/black_market_catalog_entry'
 import BlackMarketCleaner from '#models/black_market_cleaner'
 import BlackMarketDeal from '#models/black_market_deal'
+import BlackMarketPlayerListing from '#models/black_market_player_listing'
 import BlackMarketSetting from '#models/black_market_setting'
 import Character from '#models/character'
 import CharacterBlackMarketProfile from '#models/character_black_market_profile'
@@ -10,29 +11,38 @@ import TalentService from '#services/talent_service'
 
 export type VendorKey = 'ghostline' | 'rook' | 'velvet'
 
-export const BLACK_MARKET_VENDORS: Record<VendorKey, { name: string; tagline: string; description: string; specialties: string[] }> = {
+export const BLACK_MARKET_VENDORS: Record<
+  VendorKey,
+  { name: string; tagline: string; description: string; specialties: string[] }
+> = {
   ghostline: {
     name: 'Ghostline',
     tagline: 'Daemons, spikes, forbidden firmware',
-    description: 'A whisper broker who moves black ICE, ghostware, and implants nobody should install twice.',
+    description:
+      'A whisper broker who moves black ICE, ghostware, and implants nobody should install twice.',
     specialties: ['Programmes interdits', 'Implants netrunner', 'Upgrades furtifs'],
   },
   rook: {
     name: 'Rook',
     tagline: 'Stolen crates, live weapons, hard chrome',
-    description: 'A convoy hijacker turned fixer. If it was locked in a Militech container, Rook can price it.',
+    description:
+      'A convoy hijacker turned fixer. If it was locked in a Militech container, Rook can price it.',
     specialties: ['Armes lourdes', 'Blindages corpo', 'Chrome de combat'],
   },
   velvet: {
     name: 'Velvet Circuit',
     tagline: 'Fashion crime, forged IDs, designer contraband',
-    description: 'Luxury contraband for runners who want to look expensive while doing illegal things.',
+    description:
+      'Luxury contraband for runners who want to look expensive while doing illegal things.',
     specialties: ['Vetements rares', 'Stims premium', 'Badges contrefaits'],
   },
 }
 
 const DEFAULT_MIN_LEVEL = 12
 const DEFAULT_ROTATION_HOURS = 12
+const DEFAULT_PLAYER_LISTING_TAX_PER_ITEM = 2500
+const DEFAULT_PLAYER_LISTING_MIN_DURATION_HOURS = 6
+const DEFAULT_PLAYER_LISTING_MAX_DURATION_HOURS = 72
 const SLOTS_PER_VENDOR = 4
 const VENDOR_ORDER = Object.keys(BLACK_MARKET_VENDORS) as VendorKey[]
 
@@ -65,6 +75,41 @@ export default class BlackMarketService {
     return Math.max(1, Number(value?.value || DEFAULT_ROTATION_HOURS) || DEFAULT_ROTATION_HOURS)
   }
 
+  static async getPlayerListingTaxPerItem() {
+    const value = await BlackMarketSetting.query()
+      .where('key', 'player_listing_tax_per_item')
+      .first()
+    return Math.max(
+      0,
+      Number(value?.value || DEFAULT_PLAYER_LISTING_TAX_PER_ITEM) ||
+        DEFAULT_PLAYER_LISTING_TAX_PER_ITEM
+    )
+  }
+
+  static async getPlayerListingMinDurationHours() {
+    const value = await BlackMarketSetting.query()
+      .where('key', 'player_listing_min_duration_hours')
+      .first()
+    return Math.max(
+      1,
+      Number(value?.value || DEFAULT_PLAYER_LISTING_MIN_DURATION_HOURS) ||
+        DEFAULT_PLAYER_LISTING_MIN_DURATION_HOURS
+    )
+  }
+
+  static async getPlayerListingMaxDurationHours() {
+    const minDuration = await this.getPlayerListingMinDurationHours()
+    const value = await BlackMarketSetting.query()
+      .where('key', 'player_listing_max_duration_hours')
+      .first()
+
+    return Math.max(
+      minDuration,
+      Number(value?.value || DEFAULT_PLAYER_LISTING_MAX_DURATION_HOURS) ||
+        DEFAULT_PLAYER_LISTING_MAX_DURATION_HOURS
+    )
+  }
+
   static getVendorDefinitions() {
     return BLACK_MARKET_VENDORS
   }
@@ -88,10 +133,10 @@ export default class BlackMarketService {
 
   private static async getAllVendorRotationWindows(now = Date.now()) {
     const windows = await Promise.all(
-      VENDOR_ORDER.map(async (vendorKey) => [
-        vendorKey,
-        await this.getVendorRotationWindow(vendorKey, now),
-      ] as const)
+      VENDOR_ORDER.map(
+        async (vendorKey) =>
+          [vendorKey, await this.getVendorRotationWindow(vendorKey, now)] as const
+      )
     )
 
     return new Map(windows)
@@ -115,7 +160,7 @@ export default class BlackMarketService {
     const elapsedHours = Math.floor((now - lastDecayAt) / (60 * 60 * 1000))
 
     if (elapsedHours > 0) {
-      profile.heat = Math.max(0, profile.heat - (elapsedHours * 3))
+      profile.heat = Math.max(0, profile.heat - elapsedHours * 3)
       profile.lastHeatDecayAt = now
       await profile.save()
     }
@@ -127,10 +172,12 @@ export default class BlackMarketService {
     const records: CharacterBlackMarketReputation[] = []
 
     for (const vendorKey of Object.keys(BLACK_MARKET_VENDORS) as VendorKey[]) {
-      records.push(await CharacterBlackMarketReputation.firstOrCreate(
-        { characterId, vendorKey },
-        { reputation: 0 }
-      ))
+      records.push(
+        await CharacterBlackMarketReputation.firstOrCreate(
+          { characterId, vendorKey },
+          { reputation: 0 }
+        )
+      )
     }
 
     return new Map(records.map((record) => [record.vendorKey as VendorKey, record]))
@@ -154,11 +201,19 @@ export default class BlackMarketService {
       .map((picked, index) => ({ entry: picked.entry, slot: index + 1 }))
   }
 
-  private static getPriceContext(basePrice: number, heat: number, reputation: number, shopDiscount: number) {
+  private static getPriceContext(
+    basePrice: number,
+    heat: number,
+    reputation: number,
+    shopDiscount: number
+  ) {
     const heatMarkup = this.getHeatState(heat).markupPercent
     const reputationDiscount = Math.min(18, Math.floor(reputation / 5))
     const talentDiscount = Math.min(12, Math.floor(shopDiscount * 0.5))
-    const finalMultiplier = Math.max(0.55, (100 + heatMarkup - reputationDiscount - talentDiscount) / 100)
+    const finalMultiplier = Math.max(
+      0.55,
+      (100 + heatMarkup - reputationDiscount - talentDiscount) / 100
+    )
     const finalPrice = Math.max(1000, Math.floor(basePrice * finalMultiplier))
 
     return {
@@ -175,6 +230,177 @@ export default class BlackMarketService {
 
   private static getRepMilestones() {
     return [5, 12, 20, 35]
+  }
+
+  private static getMinimumAuctionBid(listing: BlackMarketPlayerListing) {
+    const openingBid = Math.max(1, listing.startingBid || 1)
+
+    if (!listing.currentBid || listing.currentBid <= 0) {
+      return openingBid
+    }
+
+    return listing.currentBid + Math.max(1, Math.ceil(listing.currentBid * 0.05))
+  }
+
+  private static async addInventoryStock(characterId: number, itemId: number, quantity: number) {
+    if (quantity <= 0) {
+      return
+    }
+
+    const existing = await InventoryItem.query()
+      .where('characterId', characterId)
+      .where('itemId', itemId)
+      .where('isEquipped', false)
+      .first()
+
+    if (existing) {
+      existing.quantity += quantity
+      await existing.save()
+      return
+    }
+
+    await InventoryItem.create({
+      characterId,
+      itemId,
+      quantity,
+      isEquipped: false,
+    })
+  }
+
+  private static async settleExpiredPlayerListings(now = Date.now()) {
+    const expiredListings = await BlackMarketPlayerListing.query()
+      .where('status', 'active')
+      .where('endsAt', '<=', now)
+      .orderBy('endsAt', 'asc')
+      .orderBy('id', 'asc')
+
+    for (const listing of expiredListings) {
+      const seller = await Character.find(listing.sellerCharacterId)
+
+      if (
+        listing.listingType === 'auction' &&
+        listing.currentBidderCharacterId &&
+        (listing.currentBid || 0) > 0
+      ) {
+        await this.addInventoryStock(
+          listing.currentBidderCharacterId,
+          listing.itemId,
+          listing.quantityAvailable
+        )
+
+        if (seller) {
+          seller.credits += listing.currentBid || 0
+          await seller.save()
+        }
+
+        listing.quantityAvailable = 0
+        listing.status = 'sold'
+        await listing.save()
+        continue
+      }
+
+      if (seller && listing.quantityAvailable > 0) {
+        await this.addInventoryStock(seller.id, listing.itemId, listing.quantityAvailable)
+      }
+
+      listing.quantityAvailable = 0
+      listing.status = 'expired'
+      await listing.save()
+    }
+  }
+
+  private static async getPlayerMarketState(character: Character) {
+    const now = Date.now()
+    const [taxPerItem, minDurationHours, maxDurationHours, listings, inventory] = await Promise.all(
+      [
+        this.getPlayerListingTaxPerItem(),
+        this.getPlayerListingMinDurationHours(),
+        this.getPlayerListingMaxDurationHours(),
+        BlackMarketPlayerListing.query()
+          .where('status', 'active')
+          .where('endsAt', '>', now)
+          .preload('item')
+          .preload('seller')
+          .preload('currentBidder')
+          .orderBy('endsAt', 'asc')
+          .orderBy('id', 'desc'),
+        InventoryItem.query()
+          .where('characterId', character.id)
+          .where('quantity', '>', 0)
+          .where('isEquipped', false)
+          .preload('item')
+          .orderBy('quantity', 'desc')
+          .orderBy('id', 'asc'),
+      ]
+    )
+
+    const serializedListings = listings.map((listing) => ({
+      id: listing.id,
+      sellerCharacterId: listing.sellerCharacterId,
+      listingType: listing.listingType,
+      status: listing.status,
+      quantityTotal: listing.quantityTotal,
+      quantityAvailable: listing.quantityAvailable,
+      pricePerItem: listing.pricePerItem,
+      startingBid: listing.startingBid,
+      currentBid: listing.currentBid,
+      bidCount: listing.bidCount,
+      listingTax: listing.listingTax,
+      startsAt: listing.startsAt,
+      endsAt: listing.endsAt,
+      minNextBid: listing.listingType === 'auction' ? this.getMinimumAuctionBid(listing) : null,
+      canBuy:
+        listing.listingType === 'direct' &&
+        listing.sellerCharacterId !== character.id &&
+        listing.quantityAvailable > 0,
+      canBid:
+        listing.listingType === 'auction' &&
+        listing.sellerCharacterId !== character.id &&
+        listing.quantityAvailable > 0,
+      canCancel:
+        listing.sellerCharacterId === character.id &&
+        (listing.listingType !== 'auction' || !listing.currentBidderCharacterId),
+      isOwnListing: listing.sellerCharacterId === character.id,
+      isHighestBidder:
+        listing.listingType === 'auction' && listing.currentBidderCharacterId === character.id,
+      seller: {
+        id: listing.seller.id,
+        name: listing.seller.name,
+      },
+      currentBidder:
+        listing.currentBidder && listing.currentBidderCharacterId
+          ? {
+              id: listing.currentBidder.id,
+              name: listing.currentBidder.name,
+            }
+          : null,
+      item: listing.item.serialize(),
+    }))
+
+    return {
+      config: {
+        taxPerItem,
+        minDurationHours,
+        maxDurationHours,
+        defaultDurationHours: Math.min(maxDurationHours, Math.max(minDurationHours, 24)),
+      },
+      listings: serializedListings,
+      myListings: serializedListings.filter(
+        (listing) => listing.sellerCharacterId === character.id
+      ),
+      inventory: inventory.map((entry) => ({
+        inventoryItemId: entry.id,
+        quantity: entry.quantity,
+        item: entry.item.serialize(),
+      })),
+      stats: {
+        activeListings: serializedListings.length,
+        directListings: serializedListings.filter((listing) => listing.listingType === 'direct')
+          .length,
+        auctionListings: serializedListings.filter((listing) => listing.listingType === 'auction')
+          .length,
+      },
+    }
   }
 
   private static async ensureRotation() {
@@ -211,31 +437,38 @@ export default class BlackMarketService {
   }
 
   static async getMarketState(character: Character) {
+    await this.settleExpiredPlayerListings()
     await this.ensureRotation()
+    await character.refresh()
 
-    const [vendorWindows, profile, reputationMap, talentBonuses, cleaners] = await Promise.all([
-      this.getAllVendorRotationWindows(),
-      this.ensureProfile(character),
-      this.ensureReputations(character.id),
-      TalentService.getCharacterBonuses(character.id),
-      BlackMarketCleaner.query().where('isActive', true).orderBy('sortOrder', 'asc').orderBy('id', 'asc'),
-    ])
-    const deals = (
-      await Promise.all(
-        VENDOR_ORDER.map(async (vendorKey) => {
-          const window = vendorWindows.get(vendorKey)!
-          return BlackMarketDeal.query()
-            .where('vendorKey', vendorKey)
-            .where('rotationKey', window.rotationKey)
-            .preload('item')
-            .orderBy('slot', 'asc')
-        })
-      )
-    ).flat()
+    const [vendorWindows, profile, reputationMap, talentBonuses, cleaners, playerMarket] =
+      await Promise.all([
+        this.getAllVendorRotationWindows(),
+        this.ensureProfile(character),
+        this.ensureReputations(character.id),
+        TalentService.getCharacterBonuses(character.id),
+        BlackMarketCleaner.query()
+          .where('isActive', true)
+          .orderBy('sortOrder', 'asc')
+          .orderBy('id', 'asc'),
+        this.getPlayerMarketState(character),
+      ])
+    const dealGroups = await Promise.all(
+      VENDOR_ORDER.map(async (vendorKey) => {
+        const window = vendorWindows.get(vendorKey)!
+        return BlackMarketDeal.query()
+          .where('vendorKey', vendorKey)
+          .where('rotationKey', window.rotationKey)
+          .preload('item')
+          .orderBy('slot', 'asc')
+      })
+    )
+    const deals = dealGroups.flat()
 
     const heatState = this.getHeatState(profile.heat)
-    const nextRefresh = [...vendorWindows.entries()]
-      .sort((left, right) => left[1].endsAt - right[1].endsAt)[0]
+    const nextRefresh = [...vendorWindows.entries()].sort(
+      (left, right) => left[1].endsAt - right[1].endsAt
+    )[0]
 
     const vendors = VENDOR_ORDER.map((vendorKey) => {
       const reputation = reputationMap.get(vendorKey)?.reputation || 0
@@ -244,8 +477,15 @@ export default class BlackMarketService {
       const vendorDeals = deals
         .filter((deal) => deal.vendorKey === vendorKey)
         .map((deal) => {
-          const price = this.getPriceContext(deal.price, profile.heat, reputation, talentBonuses.shopDiscount)
-          const hasSpecLock = Boolean(deal.requiredSpec && deal.requiredSpec !== character.chosenSpec)
+          const price = this.getPriceContext(
+            deal.price,
+            profile.heat,
+            reputation,
+            talentBonuses.shopDiscount
+          )
+          const hasSpecLock = Boolean(
+            deal.requiredSpec && deal.requiredSpec !== character.chosenSpec
+          )
           const missingRep = Math.max(0, deal.reputationRequired - reputation)
           const lockedReason = hasSpecLock
             ? `Reserve ${SPEC_LABELS[deal.requiredSpec || ''] || deal.requiredSpec}`
@@ -260,7 +500,9 @@ export default class BlackMarketService {
             heatValue: deal.heatValue,
             reputationRequired: deal.reputationRequired,
             requiredSpec: deal.requiredSpec,
-            requiredSpecLabel: deal.requiredSpec ? (SPEC_LABELS[deal.requiredSpec] || deal.requiredSpec) : null,
+            requiredSpecLabel: deal.requiredSpec
+              ? SPEC_LABELS[deal.requiredSpec] || deal.requiredSpec
+              : null,
             featured: deal.featured,
             price: price.finalPrice,
             basePrice: deal.price,
@@ -306,6 +548,7 @@ export default class BlackMarketService {
         price: this.getCleanerPrice(cleaner.basePrice, profile.heat),
         disabled: profile.heat <= 0,
       })),
+      playerMarket,
       nightMarketLive: vendors.some((vendor) => vendor.deals.some((deal) => deal.featured)),
       rotationKey: nextRefresh?.[1].rotationKey || 0,
     }
@@ -316,10 +559,7 @@ export default class BlackMarketService {
 
     const vendorWindows = await this.getAllVendorRotationWindows()
     const quantity = Math.max(1, Math.floor(requestedQuantity || 1))
-    const deal = await BlackMarketDeal.query()
-      .where('id', dealId)
-      .preload('item')
-      .firstOrFail()
+    const deal = await BlackMarketDeal.query().where('id', dealId).preload('item').firstOrFail()
     const activeWindow = vendorWindows.get(deal.vendorKey as VendorKey)
 
     if (!activeWindow || deal.rotationKey !== activeWindow.rotationKey) {
@@ -336,18 +576,27 @@ export default class BlackMarketService {
     const reputation = reputationEntry?.reputation || 0
 
     if (deal.requiredSpec && deal.requiredSpec !== character.chosenSpec) {
-      throw new Error(`Cette offre est reservee aux ${SPEC_LABELS[deal.requiredSpec] || deal.requiredSpec}`)
+      throw new Error(
+        `Cette offre est reservee aux ${SPEC_LABELS[deal.requiredSpec] || deal.requiredSpec}`
+      )
     }
 
     if (reputation < deal.reputationRequired) {
-      throw new Error(`Reputation ${deal.reputationRequired} requise chez ${BLACK_MARKET_VENDORS[deal.vendorKey as VendorKey].name}`)
+      throw new Error(
+        `Reputation ${deal.reputationRequired} requise chez ${BLACK_MARKET_VENDORS[deal.vendorKey as VendorKey].name}`
+      )
     }
 
     if (deal.stock < quantity) {
       throw new Error('Stock insuffisant')
     }
 
-    const price = this.getPriceContext(deal.price, profile.heat, reputation, talentBonuses.shopDiscount)
+    const price = this.getPriceContext(
+      deal.price,
+      profile.heat,
+      reputation,
+      talentBonuses.shopDiscount
+    )
     const totalPrice = price.finalPrice * quantity
 
     if (character.credits < totalPrice) {
@@ -357,22 +606,7 @@ export default class BlackMarketService {
     character.credits -= totalPrice
     deal.stock -= quantity
 
-    const existing = await InventoryItem.query()
-      .where('characterId', character.id)
-      .where('itemId', deal.itemId)
-      .first()
-
-    if (existing) {
-      existing.quantity += quantity
-      await existing.save()
-    } else {
-      await InventoryItem.create({
-        characterId: character.id,
-        itemId: deal.itemId,
-        quantity,
-        isEquipped: false,
-      })
-    }
+    await this.addInventoryStock(character.id, deal.itemId, quantity)
 
     const heatGain = deal.heatValue * quantity
     profile.heat = Math.min(150, profile.heat + heatGain)
@@ -395,6 +629,235 @@ export default class BlackMarketService {
       heatGain,
       reputationGain,
       vendorName: BLACK_MARKET_VENDORS[deal.vendorKey as VendorKey].name,
+    }
+  }
+
+  static async createPlayerListing(
+    character: Character,
+    inventoryItemId: number,
+    requestedQuantity: number,
+    listingType: 'direct' | 'auction',
+    requestedPrice: number,
+    requestedDurationHours: number
+  ) {
+    await this.settleExpiredPlayerListings()
+
+    const inventoryItem = await InventoryItem.query()
+      .where('id', inventoryItemId)
+      .where('characterId', character.id)
+      .where('isEquipped', false)
+      .preload('item')
+      .firstOrFail()
+
+    if (inventoryItem.quantity <= 0) {
+      throw new Error('Item indisponible')
+    }
+
+    const quantity = Math.max(
+      1,
+      Math.min(inventoryItem.quantity, Math.floor(requestedQuantity || 1))
+    )
+    const price = Math.max(1, Math.floor(requestedPrice || 1))
+    const minDurationHours = await this.getPlayerListingMinDurationHours()
+    const maxDurationHours = await this.getPlayerListingMaxDurationHours()
+    const durationHours = Math.max(
+      minDurationHours,
+      Math.min(maxDurationHours, Math.floor(requestedDurationHours || minDurationHours))
+    )
+    const listingTax = (await this.getPlayerListingTaxPerItem()) * quantity
+
+    if (character.credits < listingTax) {
+      throw new Error('Credits insuffisants pour payer la taxe de mise en vente')
+    }
+
+    character.credits -= listingTax
+    inventoryItem.quantity -= quantity
+
+    if (inventoryItem.quantity <= 0) {
+      await inventoryItem.delete()
+    } else {
+      await inventoryItem.save()
+    }
+
+    const now = Date.now()
+    const listing = await BlackMarketPlayerListing.create({
+      sellerCharacterId: character.id,
+      itemId: inventoryItem.itemId,
+      listingType,
+      quantityTotal: quantity,
+      quantityAvailable: quantity,
+      pricePerItem: listingType === 'direct' ? price : null,
+      startingBid: listingType === 'auction' ? price : null,
+      currentBid: null,
+      currentBidderCharacterId: null,
+      bidCount: 0,
+      listingTax,
+      status: 'active',
+      startsAt: now,
+      endsAt: now + durationHours * 60 * 60 * 1000,
+    })
+
+    await character.save()
+
+    return {
+      listingId: listing.id,
+      itemName: inventoryItem.item.name,
+      quantity,
+      listingType,
+      listingTax,
+      durationHours,
+    }
+  }
+
+  static async buyPlayerListing(
+    character: Character,
+    listingId: number,
+    requestedQuantity: number
+  ) {
+    await this.settleExpiredPlayerListings()
+
+    const listing = await BlackMarketPlayerListing.query()
+      .where('id', listingId)
+      .where('status', 'active')
+      .where('listingType', 'direct')
+      .preload('item')
+      .preload('seller')
+      .firstOrFail()
+
+    if (listing.sellerCharacterId === character.id) {
+      throw new Error('Impossible d acheter sa propre annonce')
+    }
+
+    if (listing.endsAt <= Date.now()) {
+      throw new Error('Annonce expiree')
+    }
+
+    const quantity = Math.max(
+      1,
+      Math.min(listing.quantityAvailable, Math.floor(requestedQuantity || 1))
+    )
+
+    if (listing.quantityAvailable < quantity) {
+      throw new Error('Quantite indisponible')
+    }
+
+    const totalPrice = Math.max(1, listing.pricePerItem || 0) * quantity
+    if (character.credits < totalPrice) {
+      throw new Error('Not enough credits')
+    }
+
+    const seller = await Character.findOrFail(listing.sellerCharacterId)
+
+    character.credits -= totalPrice
+    seller.credits += totalPrice
+    listing.quantityAvailable -= quantity
+
+    if (listing.quantityAvailable <= 0) {
+      listing.quantityAvailable = 0
+      listing.status = 'sold'
+    }
+
+    await this.addInventoryStock(character.id, listing.itemId, quantity)
+    await character.save()
+    await seller.save()
+    await listing.save()
+
+    return {
+      itemName: listing.item.name,
+      quantity,
+      totalPrice,
+      sellerName: listing.seller.name,
+    }
+  }
+
+  static async placePlayerBid(character: Character, listingId: number, requestedBid: number) {
+    await this.settleExpiredPlayerListings()
+
+    const listing = await BlackMarketPlayerListing.query()
+      .where('id', listingId)
+      .where('status', 'active')
+      .where('listingType', 'auction')
+      .preload('item')
+      .firstOrFail()
+
+    if (listing.sellerCharacterId === character.id) {
+      throw new Error('Impossible d encherir sur sa propre annonce')
+    }
+
+    if (listing.endsAt <= Date.now()) {
+      throw new Error('Enchere terminee')
+    }
+
+    const bidAmount = Math.max(1, Math.floor(requestedBid || 1))
+    const minimumBid = this.getMinimumAuctionBid(listing)
+
+    if (bidAmount < minimumBid) {
+      throw new Error(`Enchere minimale: ${minimumBid} credits`)
+    }
+
+    const previousBidAmount = listing.currentBid || 0
+    const previousBidderId = listing.currentBidderCharacterId
+    const extraRequired =
+      previousBidderId === character.id ? bidAmount - previousBidAmount : bidAmount
+
+    if (extraRequired <= 0) {
+      throw new Error('Le nouveau montant doit etre superieur a votre enchere actuelle')
+    }
+
+    if (character.credits < extraRequired) {
+      throw new Error('Not enough credits')
+    }
+
+    character.credits -= extraRequired
+
+    if (previousBidderId && previousBidderId !== character.id) {
+      const previousBidder = await Character.find(previousBidderId)
+      if (previousBidder) {
+        previousBidder.credits += previousBidAmount
+        await previousBidder.save()
+      }
+    }
+
+    listing.currentBid = bidAmount
+    listing.currentBidderCharacterId = character.id
+    listing.bidCount += 1
+
+    await listing.save()
+    await character.save()
+
+    return {
+      itemName: listing.item.name,
+      bidAmount,
+      endsAt: listing.endsAt,
+    }
+  }
+
+  static async cancelPlayerListing(character: Character, listingId: number) {
+    await this.settleExpiredPlayerListings()
+
+    const listing = await BlackMarketPlayerListing.query()
+      .where('id', listingId)
+      .where('sellerCharacterId', character.id)
+      .where('status', 'active')
+      .preload('item')
+      .firstOrFail()
+
+    if (listing.listingType === 'auction' && listing.currentBidderCharacterId) {
+      throw new Error('Impossible d annuler une enchere avec une offre en cours')
+    }
+
+    if (listing.quantityAvailable > 0) {
+      await this.addInventoryStock(character.id, listing.itemId, listing.quantityAvailable)
+    }
+
+    const returnedQuantity = listing.quantityAvailable
+    listing.quantityAvailable = 0
+    listing.status = 'cancelled'
+    await listing.save()
+
+    return {
+      itemName: listing.item.name,
+      returnedQuantity,
     }
   }
 

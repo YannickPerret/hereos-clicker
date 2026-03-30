@@ -83,6 +83,10 @@ router
         router.get('/black-market', [BlackMarketController, 'index'])
         router.post('/black-market/deals/:id/buy', [BlackMarketController, 'buy'])
         router.post('/black-market/clean', [BlackMarketController, 'clean'])
+        router.post('/black-market/listings', [BlackMarketController, 'createListing'])
+        router.post('/black-market/listings/:id/buy', [BlackMarketController, 'buyListing'])
+        router.post('/black-market/listings/:id/bid', [BlackMarketController, 'bid'])
+        router.post('/black-market/listings/:id/cancel', [BlackMarketController, 'cancelListing'])
       })
       .use(middleware.activityLock())
 

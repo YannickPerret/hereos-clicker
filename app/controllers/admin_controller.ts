@@ -1949,6 +1949,18 @@ export default class AdminController {
         rotationHours: Number(
           settingsMap.get('rotation_hours') || (await BlackMarketService.getRotationHours())
         ),
+        playerListingTaxPerItem: Number(
+          settingsMap.get('player_listing_tax_per_item') ||
+            (await BlackMarketService.getPlayerListingTaxPerItem())
+        ),
+        playerListingMinDurationHours: Number(
+          settingsMap.get('player_listing_min_duration_hours') ||
+            (await BlackMarketService.getPlayerListingMinDurationHours())
+        ),
+        playerListingMaxDurationHours: Number(
+          settingsMap.get('player_listing_max_duration_hours') ||
+            (await BlackMarketService.getPlayerListingMaxDurationHours())
+        ),
       },
       vendors: Object.entries(BlackMarketService.getVendorDefinitions()).map(([key, value]) => ({
         key,
@@ -1966,11 +1978,35 @@ export default class AdminController {
   async updateBlackMarketSettings({ request, response, session }: HttpContext) {
     const minLevel = Math.max(1, Number(request.input('minLevel', 12)) || 12)
     const rotationHours = Math.max(1, Number(request.input('rotationHours', 12)) || 12)
+    const playerListingTaxPerItem = Math.max(
+      0,
+      Number(request.input('playerListingTaxPerItem', 2500)) || 2500
+    )
+    const playerListingMinDurationHours = Math.max(
+      1,
+      Number(request.input('playerListingMinDurationHours', 6)) || 6
+    )
+    const playerListingMaxDurationHours = Math.max(
+      playerListingMinDurationHours,
+      Number(request.input('playerListingMaxDurationHours', 72)) || 72
+    )
 
     await BlackMarketSetting.updateOrCreate({ key: 'min_level' }, { value: String(minLevel) })
     await BlackMarketSetting.updateOrCreate(
       { key: 'rotation_hours' },
       { value: String(rotationHours) }
+    )
+    await BlackMarketSetting.updateOrCreate(
+      { key: 'player_listing_tax_per_item' },
+      { value: String(playerListingTaxPerItem) }
+    )
+    await BlackMarketSetting.updateOrCreate(
+      { key: 'player_listing_min_duration_hours' },
+      { value: String(playerListingMinDurationHours) }
+    )
+    await BlackMarketSetting.updateOrCreate(
+      { key: 'player_listing_max_duration_hours' },
+      { value: String(playerListingMaxDurationHours) }
     )
 
     session.flash('success', 'Configuration globale du marche noir mise a jour')
