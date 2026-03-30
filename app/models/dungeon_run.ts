@@ -50,6 +50,9 @@ export default class DungeonRun extends BaseModel {
   @column()
   declare pendingRewards: string
 
+  @column()
+  declare enemyState: string | null
+
   @column.dateTime({ autoCreate: true })
   declare startedAt: DateTime
 

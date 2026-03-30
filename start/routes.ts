@@ -276,12 +276,25 @@ router
 
     // Enemies & Loot
     router.get('/admin/enemies', [AdminController, 'enemies'])
+    router.get('/admin/enemy-programs', [AdminController, 'enemyPrograms'])
     router.post('/admin/enemies/create', [AdminController, 'createEnemy'])
     router.post('/admin/enemies/:id/update', [AdminController, 'updateEnemy'])
     router.post('/admin/enemies/:id/delete', [AdminController, 'deleteEnemy'])
     router.post('/admin/enemies/:id/add-loot', [AdminController, 'addLootEntry'])
+    router.post('/admin/enemies/:id/add-program', [AdminController, 'addEnemyProgramAssignment'])
     router.post('/admin/loot/:id/update', [AdminController, 'updateLootEntry'])
     router.post('/admin/loot/:id/delete', [AdminController, 'deleteLootEntry'])
+    router.post(
+      '/admin/enemy-program-assignments/:id/update',
+      [AdminController, 'updateEnemyProgramAssignment']
+    )
+    router.post(
+      '/admin/enemy-program-assignments/:id/delete',
+      [AdminController, 'deleteEnemyProgramAssignment']
+    )
+    router.post('/admin/enemy-programs/create', [AdminController, 'createEnemyProgram'])
+    router.post('/admin/enemy-programs/:id/update', [AdminController, 'updateEnemyProgram'])
+    router.post('/admin/enemy-programs/:id/delete', [AdminController, 'deleteEnemyProgram'])
 
     // Forum
     router.get('/admin/forum', [ForumAdminController, 'index'])

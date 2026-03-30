@@ -92,6 +92,15 @@ export default function AdminDashboard({ currentUser, stats, topCredits, activeS
             <p className="text-xs text-gray-600">Stats ennemis, loot tables, drop chances</p>
           </Link>
           <Link
+            href="/admin/enemy-programs"
+            className="bg-cyber-dark border border-cyber-yellow/30 rounded-lg p-6 hover:border-cyber-yellow/60 hover:bg-cyber-yellow/5 transition-all"
+          >
+            <h3 className="text-sm font-bold text-cyber-yellow tracking-widest mb-1">
+              PROGRAMMES ENNEMIS
+            </h3>
+            <p className="text-xs text-gray-600">Effets de combat, charge, DOT et controle</p>
+          </Link>
+          <Link
             href="/admin/reports"
             className="bg-cyber-dark border border-cyber-orange/30 rounded-lg p-6 hover:border-cyber-orange/60 hover:bg-cyber-orange/5 transition-all"
           >

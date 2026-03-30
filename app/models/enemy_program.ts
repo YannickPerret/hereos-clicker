@@ -1,9 +1,8 @@
 import { BaseModel, column, hasMany } from '@adonisjs/lucid/orm'
 import type { HasMany } from '@adonisjs/lucid/types/relations'
-import EnemyLootTable from '#models/enemy_loot_table'
 import EnemyProgramAssignment from '#models/enemy_program_assignment'
 
-export default class Enemy extends BaseModel {
+export default class EnemyProgram extends BaseModel {
   @column({ isPrimary: true })
   declare id: number
 
@@ -20,38 +19,32 @@ export default class Enemy extends BaseModel {
   declare descriptionEn: string | null
 
   @column()
-  declare hp: number
+  declare effectType: string
 
   @column()
-  declare attack: number
+  declare effectValue: number
 
   @column()
-  declare defense: number
+  declare duration: number
 
   @column()
-  declare xpReward: number
+  declare cooldown: number
 
   @column()
-  declare creditsRewardMin: number
+  declare chancePercent: number
 
   @column()
-  declare creditsRewardMax: number
+  declare windupTurns: number
 
   @column()
   declare icon: string
 
   @column()
-  declare tier: number
+  declare isActive: boolean
 
   @column()
-  declare critChance: number
-
-  @column()
-  declare critDamage: number
-
-  @hasMany(() => EnemyLootTable)
-  declare lootTable: HasMany<typeof EnemyLootTable>
+  declare sortOrder: number
 
   @hasMany(() => EnemyProgramAssignment)
-  declare programAssignments: HasMany<typeof EnemyProgramAssignment>
+  declare assignments: HasMany<typeof EnemyProgramAssignment>
 }

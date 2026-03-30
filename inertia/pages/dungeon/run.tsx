@@ -46,6 +46,7 @@ interface Props {
     player: {
       attack: number
       defense: number
+      cannotAttack: boolean
     }
     enemy: {
       attack: number
@@ -111,6 +112,10 @@ interface CombatLogEntry {
   creditsLost?: number
   revivedHp?: number
   itemName?: string
+  programName?: string
+  effectType?: string
+  duration?: number
+  turnsLeft?: number
 }
 
 const TIER_COLORS: Record<number, string> = {
@@ -261,6 +266,61 @@ function CombatLog({ log, className = '' }: { log: CombatLogEntry[]; className?:
                   )}
                 </div>
               )
+            case 'enemy_program_use':
+              return (
+                <div
+                  key={i}
+                  className="text-xs p-2 rounded bg-cyber-yellow/10 border border-cyber-yellow/30"
+                >
+                  <span className="text-cyber-yellow font-bold">{entry.programName}</span>
+                  <span className="ml-2 text-gray-300">
+                    {entry.effectType === 'enemy_dot' &&
+                      t('dungeon:enemyProgramDot', {
+                        name: entry.defenderName || t('dungeon:enemy'),
+                        damage: entry.damage || 0,
+                        turns: entry.duration || 1,
+                      })}
+                    {entry.effectType === 'paralyze' &&
+                      t('dungeon:enemyProgramParalyze', {
+                        name: entry.defenderName || t('dungeon:enemy'),
+                        turns: entry.duration || 1,
+                      })}
+                    {entry.effectType === 'attack_lock' &&
+                      t('dungeon:enemyProgramLock', {
+                        name: entry.defenderName || t('dungeon:enemy'),
+                        turns: entry.duration || 1,
+                      })}
+                  </span>
+                </div>
+              )
+            case 'enemy_program_charge':
+              return (
+                <div
+                  key={i}
+                  className="text-xs p-2 rounded bg-cyber-orange/10 border border-cyber-orange/30"
+                >
+                  <span className="text-cyber-orange font-bold">
+                    {t('dungeon:enemyProgramCharge', { program: entry.programName })}
+                  </span>
+                  <span className="ml-2 text-gray-400">
+                    {t('dungeon:enemyProgramChargeTurns', { turns: entry.turnsLeft || 0 })}
+                  </span>
+                </div>
+              )
+            case 'enemy_program_release':
+              return (
+                <div
+                  key={i}
+                  className="text-xs p-2 rounded bg-cyber-red/10 border border-cyber-red/30"
+                >
+                  <span className="text-cyber-red font-bold">
+                    {t('dungeon:enemyProgramRelease', {
+                      program: entry.programName,
+                      name: entry.defenderName || t('dungeon:enemy'),
+                    })}
+                  </span>
+                </div>
+              )
             case 'party_member_down':
               return (
                 <div
@@ -349,10 +409,31 @@ function CombatLog({ log, className = '' }: { log: CombatLogEntry[]; className?:
                   <span className="text-cyber-orange">{entry.message}</span>
                 </div>
               )
+            case 'enemy_program_effect':
+              return (
+                <div key={i} className="text-xs p-2 rounded bg-cyber-red/10">
+                  <span className="text-cyber-red">
+                    {entry.effectType === 'enemy_dot' &&
+                      t('dungeon:enemyDotTick', {
+                        damage: entry.damage || 0,
+                      })}
+                  </span>
+                </div>
+              )
             case 'enemy_stunned':
               return (
                 <div key={i} className="text-xs p-2 rounded bg-cyber-yellow/10">
                   <span className="text-cyber-yellow">{t('dungeon:enemyStunned')}</span>
+                </div>
+              )
+            case 'player_disabled':
+              return (
+                <div key={i} className="text-xs p-2 rounded bg-cyber-orange/10">
+                  <span className="text-cyber-orange">
+                    {entry.effectType === 'paralyze'
+                      ? t('dungeon:playerParalyzedTurn')
+                      : t('dungeon:playerLockedTurn')}
+                  </span>
                 </div>
               )
             case 'item_use':
@@ -440,6 +521,7 @@ export default function DungeonRun({
   const [run, setRun] = useState(initialRun)
   const [enemy, setEnemy] = useState(initialEnemy)
   const [preview, setPreview] = useState(combatPreview)
+  const [activeEffects, setActiveEffects] = useState(initialEffects)
   const [pendingRewards, setPendingRewards] = useState(initialPendingRewards)
   const [partyMembers, setPartyMembers] = useState<
     { id: number; name: string; level: number; hpCurrent: number; hpMax: number }[]
@@ -454,6 +536,7 @@ export default function DungeonRun({
   const isGroupRun = !!run.partyId
   const isMyTurn = !run.partyId || run.currentTurnId === playerCharacter.id
   const isCharacterKo = playerCharacter.hpCurrent <= 0
+  const playerCannotAttack = preview.player.cannotAttack
   const afkPenalties = parseAfkPenalties(run.afkPenalties)
   const currentTurnIsAfk =
     run.currentTurnId !== null && (afkPenalties[String(run.currentTurnId)] || 0) > 0
@@ -485,8 +568,9 @@ export default function DungeonRun({
     setRun(initialRun)
     setEnemy(initialEnemy)
     setPreview(combatPreview)
+    setActiveEffects(initialEffects)
     setPendingRewards(initialPendingRewards)
-  }, [character, initialRun, initialEnemy, combatPreview, initialPendingRewards])
+  }, [character, initialRun, initialEnemy, combatPreview, initialEffects, initialPendingRewards])
 
   useEffect(() => {
     if (previousRunIdRef.current === initialRun.id) return
@@ -520,6 +604,7 @@ export default function DungeonRun({
         setRun(data.run)
         setEnemy(data.currentEnemy)
         setPreview(data.combatPreview)
+        if (data.activeEffects) setActiveEffects(data.activeEffects)
         if (data.pendingRewards) setPendingRewards(data.pendingRewards)
         setGroupLog(data.run.combatLog || [])
         if (data.partyMembers) setPartyMembers(data.partyMembers)
@@ -539,6 +624,19 @@ export default function DungeonRun({
       clearInterval(poll)
     }
   }, [run.id, isGroupRun])
+
+  const visibleEffects = useMemo(
+    () =>
+      activeEffects.filter(
+        (effect) => effect.targetType === 'enemy' || effect.sourceCharId === playerCharacter.id
+      ),
+    [activeEffects, playerCharacter.id]
+  )
+  const blockingEffect = visibleEffects.find(
+    (effect) =>
+      effect.targetType === 'player' &&
+      (effect.type === 'paralyze' || effect.type === 'attack_lock')
+  )
 
   return (
     <GameLayout>
@@ -758,6 +856,13 @@ export default function DungeonRun({
                   {t('dungeon:koMessage')}
                 </div>
               )}
+              {!isCharacterKo && playerCannotAttack && blockingEffect && (
+                <div className="mt-3 rounded border border-cyber-orange/30 bg-cyber-orange/10 px-3 py-2 text-[11px] text-cyber-orange">
+                  {blockingEffect.type === 'paralyze'
+                    ? t('dungeon:playerParalyzed')
+                    : t('dungeon:playerLocked')}
+                </div>
+              )}
             </div>
 
             {/* VS + Actions */}
@@ -771,15 +876,17 @@ export default function DungeonRun({
                   onClick={() =>
                     router.post(`/dungeon/run/${run.id}/attack`, {}, combatActionOptions)
                   }
-                  disabled={(isGroupRun && !isMyTurn) || isCharacterKo}
+                  disabled={(isGroupRun && !isMyTurn) || isCharacterKo || playerCannotAttack}
                   className={`w-full py-3 border font-bold uppercase tracking-widest rounded transition-all text-sm ${
-                    (isGroupRun && !isMyTurn) || isCharacterKo
+                    (isGroupRun && !isMyTurn) || isCharacterKo || playerCannotAttack
                       ? 'bg-gray-900 border-gray-800 text-gray-700 cursor-not-allowed'
                       : 'bg-cyber-red/20 border-cyber-red text-cyber-red hover:bg-cyber-red/30'
                   } ${isMyTurn && isGroupRun ? 'animate-pulse' : ''}`}
                 >
                   {isCharacterKo
                     ? t('dungeon:ko')
+                    : playerCannotAttack
+                      ? t('dungeon:cannotAct')
                     : isGroupRun && !isMyTurn
                       ? t('dungeon:waiting')
                       : t('dungeon:attack')}
@@ -793,7 +900,8 @@ export default function DungeonRun({
                     </div>
                     {skills.map((skill) => {
                       const onCooldown = skill.currentCooldown > 0
-                      const disabled = onCooldown || (isGroupRun && !isMyTurn) || isCharacterKo
+                      const disabled =
+                        onCooldown || (isGroupRun && !isMyTurn) || isCharacterKo || playerCannotAttack
                       return (
                         <CombatSkillTooltip key={skill.id} skill={skill}>
                           <button
@@ -831,12 +939,12 @@ export default function DungeonRun({
                 )}
 
                 {/* Active Effects */}
-                {initialEffects.length > 0 && (
+                {visibleEffects.length > 0 && (
                   <div className="space-y-0.5">
                     <div className="text-[9px] text-gray-600 uppercase tracking-widest text-center">
                       {t('dungeon:activeEffectsLabel')}
                     </div>
-                    {initialEffects.map((eff, i) => (
+                    {visibleEffects.map((eff, i) => (
                       <div
                         key={i}
                         className={`text-[10px] px-2 py-1 rounded border ${
@@ -855,6 +963,9 @@ export default function DungeonRun({
                         {eff.type === 'buff_atk' && t('dungeon:buffAtk', { value: eff.value })}
                         {eff.type === 'buff_def' && t('dungeon:buffDef', { value: eff.value })}
                         {eff.type === 'buff_all' && t('dungeon:buffAll', { value: eff.value })}
+                        {eff.type === 'enemy_dot' && t('dungeon:enemyDot', { value: eff.value })}
+                        {eff.type === 'paralyze' && t('dungeon:paralyzed')}
+                        {eff.type === 'attack_lock' && t('dungeon:attackLocked')}
                         <span className="text-gray-600 ml-1">({eff.turnsLeft}t)</span>
                       </div>
                     ))}

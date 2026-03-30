@@ -4,6 +4,7 @@ import DungeonRun from '#models/dungeon_run'
 import DungeonFloor from '#models/dungeon_floor'
 import InventoryItem from '#models/inventory_item'
 import EnemyLootTable from '#models/enemy_loot_table'
+import EnemyProgramAssignment from '#models/enemy_program_assignment'
 import PartyMember from '#models/party_member'
 import CombatSkill from '#models/combat_skill'
 import CharacterTalent from '#models/character_talent'
@@ -17,11 +18,20 @@ import transmit from '@adonisjs/transmit/services/main'
 import { DateTime } from 'luxon'
 
 interface ActiveEffect {
-  type: string // debuff_def, debuff_atk, buff_atk, buff_def, buff_all, dot, turret, shield, guaranteed_crit, stun
+  type: string // debuff_def, debuff_atk, buff_atk, buff_def, buff_all, dot, turret, shield, guaranteed_crit, stun, enemy_dot, paralyze, attack_lock
   value: number
   turnsLeft: number
   sourceCharId: number
   targetType: 'enemy' | 'player'
+}
+
+interface EnemyState {
+  enemyId: number | null
+  cooldowns: Record<number, number>
+  charge: null | {
+    programId: number
+    turnsLeft: number
+  }
 }
 
 interface CombatLogEntry {
@@ -52,6 +62,12 @@ interface CombatLogEntry {
   creditsLost?: number
   revivedHp?: number
   itemName?: string
+  programName?: string
+  effectType?: string
+  duration?: number
+  turnsLeft?: number
+  stun?: boolean
+  dot?: number
 }
 
 interface PendingRewardItem {
@@ -113,6 +129,7 @@ export default class CombatService {
       if (boss) {
         run.currentEnemyId = boss.id
         run.currentEnemyHp = run.currentEnemyHp > 0 ? run.currentEnemyHp : boss.hp
+        this.resetEnemyState(run, boss.id)
         return boss
       }
     }
@@ -120,6 +137,7 @@ export default class CombatService {
     const fallbackEnemy = await this.getRandomFloorEnemy(floor)
     run.currentEnemyId = fallbackEnemy.id
     run.currentEnemyHp = run.currentEnemyHp > 0 ? run.currentEnemyHp : fallbackEnemy.hp
+    this.resetEnemyState(run, fallbackEnemy.id)
     return fallbackEnemy
   }
 
@@ -151,6 +169,11 @@ export default class CombatService {
       currentEnemyHp: enemy.hp,
       enemiesDefeated: 0,
       pendingRewards: '{}',
+      enemyState: JSON.stringify({
+        enemyId: enemy.id,
+        cooldowns: {},
+        charge: null,
+      }),
     })
 
     await EnemyCodexService.recordEncounterForRun(null, character.id, enemy.id)
@@ -515,12 +538,104 @@ export default class CombatService {
     }
   }
 
+  private static async resolveCharacterDefeat(
+    run: DungeonRun,
+    target: Character,
+    log: CombatLogEntry[]
+  ) {
+    if (target.hpCurrent > 0) {
+      return false
+    }
+
+    if (run.partyId) {
+      log.push({ action: 'party_member_down', defenderId: target.id, defenderName: target.name })
+      await target.save()
+
+      const remainingAliveMembers = await PartyMember.query()
+        .where('partyId', run.partyId)
+        .preload('character')
+
+      const hasAliveMember = remainingAliveMembers.some((member) =>
+        member.characterId === target.id ? target.hpCurrent > 0 : member.character.hpCurrent > 0
+      )
+
+      if (!hasAliveMember) {
+        await this.handlePartyDefeat(run)
+        log.push({
+          action: 'defeat',
+          defenderId: target.id,
+          defenderName: target.name,
+          creditsLost: Math.min(
+            target.credits,
+            Math.floor(target.credits * (this.DEATH_CREDITS_LOSS_PERCENT / 100))
+          ),
+          revivedHp: Math.min(target.hpMax, this.DEATH_REVIVE_HP),
+        })
+      }
+
+      return true
+    }
+
+    run.status = 'defeat'
+    run.endedAt = DateTime.now()
+    this.setPendingRewards(run, {})
+    const penalty = this.applyDeathPenalty(target)
+    log.push({
+      action: 'defeat',
+      defenderId: target.id,
+      defenderName: target.name,
+      creditsLost: penalty.creditsLost,
+      revivedHp: penalty.revivedHp,
+    })
+    await target.save()
+
+    return true
+  }
+
+  private static async finalizeTurn(character: Character, run: DungeonRun, log: CombatLogEntry[]) {
+    if (run.partyId) {
+      const persistentLog = JSON.parse(run.combatLog || '[]')
+      for (const entry of log) {
+        persistentLog.push({ ...entry, characterName: character.name, characterId: character.id })
+      }
+      run.combatLog = JSON.stringify(persistentLog)
+
+      if (run.status === 'in_progress') {
+        const nextTurnId = await this.getNextTurnId(run, character.id)
+        if (nextTurnId) {
+          run.currentTurnId = nextTurnId
+          this.setTurnDeadline(run, nextTurnId)
+        } else {
+          await this.handlePartyDefeat(run)
+        }
+      } else {
+        run.currentTurnId = null
+        run.turnDeadline = null
+      }
+    }
+
+    await run.save()
+
+    const currentEnemy = run.currentEnemyId ? await Enemy.find(run.currentEnemyId) : null
+
+    return {
+      log,
+      run: run.serialize(),
+      character: character.serialize(),
+      currentEnemy: currentEnemy?.serialize() || null,
+    }
+  }
+
   private static async handleEnemyCounterAttack(
     run: DungeonRun,
     enemy: Enemy,
     effects: ActiveEffect[],
     actingCharacter: Character,
-    log: any[]
+    log: CombatLogEntry[],
+    options?: {
+      damageMultiplierPercent?: number
+      programName?: string
+    }
   ) {
     const target = await this.selectEnemyTarget(run, actingCharacter)
     const targetBonuses = await ClickerService.calculateEquipBonuses(target)
@@ -536,6 +651,15 @@ export default class CombatService {
     )
 
     const shielded = this.hasShield(effects, target.id)
+
+    if (options?.programName) {
+      log.push({
+        action: 'enemy_program_release',
+        programName: options.programName,
+        defenderId: target.id,
+        defenderName: target.name,
+      })
+    }
 
     if (shielded) {
       log.push({
@@ -558,7 +682,10 @@ export default class CombatService {
     )
     const rawEnemyAttack = Math.max(1, enemyMods.attack - effectiveDef)
     const enemyVariance = Math.floor(Math.random() * Math.floor(rawEnemyAttack * 0.3))
-    const baseEnemyDamage = rawEnemyAttack + enemyVariance
+    const baseEnemyDamage = Math.max(
+      1,
+      Math.floor(((rawEnemyAttack + enemyVariance) * (options?.damageMultiplierPercent || 100)) / 100)
+    )
     const enemyHit = this.rollCrit(enemy.critChance, enemy.critDamage, baseEnemyDamage)
 
     target.hpCurrent = Math.max(0, target.hpCurrent - enemyHit.damage)
@@ -571,49 +698,153 @@ export default class CombatService {
       defenderName: target.name,
     })
 
-    if (target.hpCurrent <= 0) {
-      if (run.partyId) {
-        log.push({ action: 'party_member_down', defenderId: target.id, defenderName: target.name })
-        await target.save()
-
-        const remainingAliveMembers = await PartyMember.query()
-          .where('partyId', run.partyId)
-          .preload('character')
-
-        const hasAliveMember = remainingAliveMembers.some(
-          (member) => member.character.hpCurrent > 0
-        )
-        if (!hasAliveMember) {
-          await this.handlePartyDefeat(run)
-          log.push({
-            action: 'defeat',
-            defenderId: target.id,
-            defenderName: target.name,
-            creditsLost: Math.min(
-              target.credits,
-              Math.floor(target.credits * (this.DEATH_CREDITS_LOSS_PERCENT / 100))
-            ),
-            revivedHp: Math.min(target.hpMax, this.DEATH_REVIVE_HP),
-          })
-        }
-
-        return effects
-      }
-
-      run.status = 'defeat'
-      run.endedAt = DateTime.now()
-      this.setPendingRewards(run, {})
-      const penalty = this.applyDeathPenalty(target)
-      log.push({
-        action: 'defeat',
-        defenderId: target.id,
-        defenderName: target.name,
-        creditsLost: penalty.creditsLost,
-        revivedHp: penalty.revivedHp,
-      })
+    if (await this.resolveCharacterDefeat(run, target, log)) {
+      return effects
     }
 
     await target.save()
+
+    return effects
+  }
+
+  private static async getEnemyProgramAssignments(enemyId: number) {
+    const assignments = await EnemyProgramAssignment.query()
+      .where('enemyId', enemyId)
+      .preload('program')
+      .orderBy('sortOrder', 'asc')
+      .orderBy('id', 'asc')
+
+    return assignments.filter((assignment) => assignment.program && assignment.program.isActive)
+  }
+
+  private static async handleEnemyTurn(
+    run: DungeonRun,
+    enemy: Enemy,
+    effects: ActiveEffect[],
+    actingCharacter: Character,
+    log: CombatLogEntry[]
+  ) {
+    const enemyMods = this.applyEnemyModifiers(enemy, effects)
+    if (enemyMods.isStunned) {
+      log.push({ action: 'enemy_stunned' })
+      return effects
+    }
+
+    const assignments = await this.getEnemyProgramAssignments(enemy.id)
+    if (assignments.length === 0) {
+      return this.handleEnemyCounterAttack(run, enemy, effects, actingCharacter, log)
+    }
+
+    const enemyState = this.ensureEnemyState(run, enemy.id)
+    this.tickEnemyCooldowns(enemyState)
+
+    if (enemyState.charge) {
+      const chargedProgram = assignments.find(
+        (assignment) => assignment.enemyProgramId === enemyState.charge!.programId
+      )?.program
+
+      if (chargedProgram) {
+        if (enemyState.charge.turnsLeft > 1) {
+          enemyState.charge.turnsLeft -= 1
+          this.setEnemyState(run, enemyState)
+          log.push({
+            action: 'enemy_program_charge',
+            programName: chargedProgram.name,
+            turnsLeft: enemyState.charge.turnsLeft,
+          })
+          return effects
+        }
+
+        enemyState.charge = null
+        this.setEnemyState(run, enemyState)
+        return this.handleEnemyCounterAttack(run, enemy, effects, actingCharacter, log, {
+          damageMultiplierPercent: chargedProgram.effectValue,
+          programName: chargedProgram.name,
+        })
+      }
+
+      enemyState.charge = null
+    }
+
+    const selectedAssignment = assignments.find((assignment) => {
+      const cooldown = enemyState.cooldowns[assignment.enemyProgramId] || 0
+      if (cooldown > 0) return false
+      return Math.random() * 100 < assignment.program.chancePercent
+    })
+
+    if (!selectedAssignment) {
+      this.setEnemyState(run, enemyState)
+      return this.handleEnemyCounterAttack(run, enemy, effects, actingCharacter, log)
+    }
+
+    const program = selectedAssignment.program
+
+    if (program.cooldown > 0) {
+      enemyState.cooldowns[program.id] = program.cooldown
+    }
+
+    if (program.effectType === 'charge_attack') {
+      enemyState.charge = {
+        programId: program.id,
+        turnsLeft: Math.max(1, program.windupTurns),
+      }
+      this.setEnemyState(run, enemyState)
+      log.push({
+        action: 'enemy_program_charge',
+        programName: program.name,
+        turnsLeft: enemyState.charge.turnsLeft,
+      })
+      return effects
+    }
+
+    const target = await this.selectEnemyTarget(run, actingCharacter)
+
+    if (program.effectType === 'dot') {
+      effects = this.upsertTargetedPlayerEffect(effects, {
+        type: 'enemy_dot',
+        value: program.effectValue,
+        turnsLeft: program.duration,
+        sourceCharId: target.id,
+        targetType: 'player',
+      })
+    }
+
+    if (program.effectType === 'paralyze') {
+      effects = this.upsertTargetedPlayerEffect(effects, {
+        type: 'paralyze',
+        value: 0,
+        turnsLeft: program.duration,
+        sourceCharId: target.id,
+        targetType: 'player',
+      })
+    }
+
+    if (program.effectType === 'attack_lock') {
+      effects = this.upsertTargetedPlayerEffect(effects, {
+        type: 'attack_lock',
+        value: 0,
+        turnsLeft: program.duration,
+        sourceCharId: target.id,
+        targetType: 'player',
+      })
+    }
+
+    this.setEnemyState(run, enemyState)
+    this.setEffects(run, effects)
+    log.push({
+      action: 'enemy_program_use',
+      programName: program.name,
+      effectType:
+        program.effectType === 'dot'
+          ? 'enemy_dot'
+          : program.effectType === 'paralyze'
+            ? 'paralyze'
+            : 'attack_lock',
+      damage: program.effectType === 'dot' ? program.effectValue : undefined,
+      duration: program.duration,
+      defenderId: target.id,
+      defenderName: target.name,
+    })
 
     return effects
   }
@@ -656,7 +887,7 @@ export default class CombatService {
     const effectiveCritChance = Math.min(100, character.critChance + bonuses.critChanceBonus)
     let effects = this.getEffects(run)
 
-    const log: any[] = []
+    const log: CombatLogEntry[] = []
 
     // Tick effects (DOTs, turrets)
     const tickResult = this.tickEffects(run, character.id)
@@ -667,6 +898,20 @@ export default class CombatService {
         0,
         run.currentEnemyHp - tickResult.dotDamage - tickResult.turretDamage
       )
+    }
+    if (tickResult.playerDotDamage > 0) {
+      character.hpCurrent = Math.max(0, character.hpCurrent - tickResult.playerDotDamage)
+    }
+
+    this.setEffects(run, effects)
+
+    if (run.currentEnemyHp <= 0) {
+      await character.save()
+      return this.handleEnemyDeath(character, run, enemy, bonuses, log, effects)
+    }
+
+    if (tickResult.playerDotDamage > 0 && (await this.resolveCharacterDefeat(run, character, log))) {
+      return this.finalizeTurn(character, run, log)
     }
 
     // Tick cooldowns
@@ -682,6 +927,21 @@ export default class CombatService {
       effects,
       character.id
     )
+
+    if (playerMods.cannotAttack) {
+      log.push({
+        action: 'player_disabled',
+        effectType: playerMods.isParalyzed ? 'paralyze' : 'attack_lock',
+        defenderId: character.id,
+        defenderName: character.name,
+      })
+
+      effects = await this.handleEnemyTurn(run, enemy, effects, character, log)
+      this.setEffects(run, effects)
+      await character.save()
+
+      return this.finalizeTurn(character, run, log)
+    }
 
     // Player attacks (with talent combat multiplier)
     const rawPlayerAttack = Math.max(
@@ -717,130 +977,15 @@ export default class CombatService {
 
     // Check enemy death
     if (run.currentEnemyHp <= 0) {
-      run.enemiesDefeated += 1
-
-      // Rewards
-      const creditsReward = Math.floor(
-        Math.random() * (enemy.creditsRewardMax - enemy.creditsRewardMin) + enemy.creditsRewardMin
-      )
-
-      // Loot roll
-      const loot = await this.rollLoot(enemy.id)
-      await EnemyCodexService.recordDefeatForRun(run.partyId, character.id, enemy.id)
-      this.queuePendingRewards(run, character.id, {
-        creditsReward,
-        xpReward: enemy.xpReward,
-        loot,
-      })
-
-      log.push({
-        action: 'enemy_defeated',
-        creditsReward,
-        xpReward: enemy.xpReward,
-        loot: loot.map((l) => ({ name: l.name, rarity: l.rarity })),
-      })
-
-      // Track daily missions
-      DailyMissionService.trackProgress(character.id, 'kill').catch(() => {})
-
-      // Check if run complete (3 enemies per floor, or boss)
-      const floor = await DungeonFloor.findOrFail(run.dungeonFloorId)
-
-      if (run.enemiesDefeated >= 3) {
-        if (floor.bossEnemyId && run.enemiesDefeated === 3) {
-          // Spawn boss
-          const boss = await Enemy.find(floor.bossEnemyId)
-          if (boss) {
-            run.currentEnemyId = boss.id
-            run.currentEnemyHp = boss.hp
-            await EnemyCodexService.recordEncounterForRun(run.partyId, character.id, boss.id)
-            log.push({ action: 'boss_spawn', bossName: boss.name })
-          } else {
-            await this.claimPendingRewards(run)
-            run.status = 'victory'
-            run.endedAt = DateTime.now()
-            log.push({ action: 'victory' })
-            DailyMissionService.trackProgress(character.id, 'dungeon_clear').catch(() => {})
-            await this.trackDungeonFloorClearQuest(run, character)
-          }
-        } else {
-          // Victory
-          await this.claimPendingRewards(run)
-          run.status = 'victory'
-          run.endedAt = DateTime.now()
-          log.push({ action: 'victory' })
-          DailyMissionService.trackProgress(character.id, 'dungeon_clear').catch(() => {})
-          await this.trackDungeonFloorClearQuest(run, character)
-          transmit.broadcast('game/notifications', {
-            type: 'dungeon',
-            message: `${character.name} a termine un donjon!`,
-          })
-          // Reset party status if group run
-          if (run.partyId) {
-            const { default: Party } = await import('#models/party')
-            const party = await Party.find(run.partyId)
-            if (party) {
-              party.status = 'waiting'
-              party.dungeonRunId = null
-              party.dungeonFloorId = null
-              party.countdownStart = null
-              await party.save()
-            }
-          }
-        }
-      } else {
-        // Spawn next enemy
-        const nextEnemy = await this.getRandomFloorEnemy(floor)
-        run.currentEnemyId = nextEnemy.id
-        run.currentEnemyHp = nextEnemy.hp
-        await EnemyCodexService.recordEncounterForRun(run.partyId, character.id, nextEnemy.id)
-        log.push({ action: 'new_enemy', enemyName: nextEnemy.name, enemyHp: nextEnemy.hp })
-      }
-
+      await character.save()
+      return this.handleEnemyDeath(character, run, enemy, bonuses, log, effects)
     } else {
-      // Enemy attacks back (unless stunned)
-      if (enemyMods.isStunned) {
-        log.push({ action: 'enemy_stunned', message: "L'ennemi est paralyse!" })
-      } else {
-        effects = await this.handleEnemyCounterAttack(run, enemy, effects, character, log)
-      }
-
+      effects = await this.handleEnemyTurn(run, enemy, effects, character, log)
+      this.setEffects(run, effects)
       await character.save()
     }
 
-    // Update persistent combat log for group runs
-    if (run.partyId) {
-      const persistentLog = JSON.parse(run.combatLog || '[]')
-      for (const entry of log) {
-        persistentLog.push({ ...entry, characterName: character.name, characterId: character.id })
-      }
-      run.combatLog = JSON.stringify(persistentLog)
-
-      // Switch turn to next player (if run still in progress)
-      if (run.status === 'in_progress') {
-        const nextTurnId = await this.getNextTurnId(run, character.id)
-        if (nextTurnId) {
-          run.currentTurnId = nextTurnId
-          this.setTurnDeadline(run, nextTurnId)
-        } else {
-          await this.handlePartyDefeat(run)
-        }
-      } else {
-        run.currentTurnId = null
-        run.turnDeadline = null
-      }
-    }
-
-    await run.save()
-
-    const currentEnemy = run.currentEnemyId ? await Enemy.find(run.currentEnemyId) : null
-
-    return {
-      log,
-      run: run.serialize(),
-      character: character.serialize(),
-      currentEnemy: currentEnemy?.serialize() || null,
-    }
+    return this.finalizeTurn(character, run, log)
   }
 
   private static async validateRunAccess(character: Character, run: DungeonRun) {
@@ -1010,6 +1155,7 @@ export default class CombatService {
       player: {
         attack: Math.floor((playerMods.attack + bonuses.attackBonus) * combatMult),
         defense: Math.floor((playerMods.defense + bonuses.defenseBonus) * combatMult),
+        cannotAttack: playerMods.cannotAttack,
       },
       enemy: null as null | { attack: number; defense: number; isStunned: boolean },
     }
@@ -1061,6 +1207,82 @@ export default class CombatService {
     run.activeEffects = JSON.stringify(effects)
   }
 
+  private static getEnemyState(run: DungeonRun): EnemyState {
+    try {
+      const parsed = JSON.parse(run.enemyState || '{}') as Partial<EnemyState>
+      return {
+        enemyId: typeof parsed.enemyId === 'number' ? parsed.enemyId : null,
+        cooldowns: parsed.cooldowns && typeof parsed.cooldowns === 'object' ? parsed.cooldowns : {},
+        charge:
+          parsed.charge &&
+          typeof parsed.charge.programId === 'number' &&
+          typeof parsed.charge.turnsLeft === 'number'
+            ? {
+                programId: parsed.charge.programId,
+                turnsLeft: parsed.charge.turnsLeft,
+              }
+            : null,
+      }
+    } catch {
+      return {
+        enemyId: null,
+        cooldowns: {},
+        charge: null,
+      }
+    }
+  }
+
+  private static setEnemyState(run: DungeonRun, state: EnemyState) {
+    run.enemyState = JSON.stringify(state)
+  }
+
+  private static ensureEnemyState(run: DungeonRun, enemyId: number): EnemyState {
+    const state = this.getEnemyState(run)
+    if (state.enemyId === enemyId) {
+      return state
+    }
+
+    const resetState = {
+      enemyId,
+      cooldowns: {},
+      charge: null,
+    }
+    this.setEnemyState(run, resetState)
+    return resetState
+  }
+
+  private static resetEnemyState(run: DungeonRun, enemyId: number | null = null) {
+    this.setEnemyState(run, {
+      enemyId,
+      cooldowns: {},
+      charge: null,
+    })
+  }
+
+  private static tickEnemyCooldowns(state: EnemyState) {
+    for (const key of Object.keys(state.cooldowns)) {
+      const programId = Number(key)
+      state.cooldowns[programId] = Math.max(0, state.cooldowns[programId] - 1)
+      if (state.cooldowns[programId] <= 0) {
+        delete state.cooldowns[programId]
+      }
+    }
+  }
+
+  private static upsertTargetedPlayerEffect(effects: ActiveEffect[], nextEffect: ActiveEffect) {
+    return [
+      ...effects.filter(
+        (effect) =>
+          !(
+            effect.targetType === 'player' &&
+            effect.sourceCharId === nextEffect.sourceCharId &&
+            effect.type === nextEffect.type
+          )
+      ),
+      nextEffect,
+    ]
+  }
+
   /** Apply active effects modifiers to enemy stats */
   private static applyEnemyModifiers(
     enemy: { attack: number; defense: number },
@@ -1091,14 +1313,21 @@ export default class CombatService {
   ) {
     let atkBonus = 0
     let defBonus = 0
+    let isParalyzed = false
+    let isAttackLocked = false
     for (const e of effects) {
       if (e.targetType !== 'player' || e.sourceCharId !== charId) continue
       if (e.type === 'buff_atk' || e.type === 'buff_all') atkBonus += e.value
       if (e.type === 'buff_def' || e.type === 'buff_all') defBonus += e.value
+      if (e.type === 'paralyze') isParalyzed = true
+      if (e.type === 'attack_lock') isAttackLocked = true
     }
     return {
       attack: Math.floor(character.attack * (1 + atkBonus / 100)),
       defense: Math.floor(character.defense * (1 + defBonus / 100)),
+      cannotAttack: isParalyzed || isAttackLocked,
+      isParalyzed,
+      isAttackLocked,
     }
   }
 
@@ -1141,17 +1370,23 @@ export default class CombatService {
   /** Tick effects down and apply DOTs/turrets, return log entries */
   private static tickEffects(
     run: DungeonRun,
-    _characterId: number
-  ): { effects: ActiveEffect[]; log: any[]; dotDamage: number; turretDamage: number } {
+    characterId: number
+  ): {
+    effects: ActiveEffect[]
+    log: CombatLogEntry[]
+    dotDamage: number
+    turretDamage: number
+    playerDotDamage: number
+  } {
     let effects = this.getEffects(run)
-    const log: any[] = []
+    const log: CombatLogEntry[] = []
     let dotDamage = 0
     let turretDamage = 0
+    let playerDotDamage = 0
 
     for (const e of effects) {
       if (e.turnsLeft <= 0) continue
 
-      // DOT damages enemy
       if (e.type === 'dot' && e.targetType === 'enemy') {
         dotDamage += e.value
         log.push({
@@ -1172,14 +1407,30 @@ export default class CombatService {
           message: `Tourelle: -${e.value} HP`,
         })
       }
+
+      if (e.type === 'enemy_dot' && e.targetType === 'player' && e.sourceCharId === characterId) {
+        playerDotDamage += e.value
+        log.push({
+          action: 'enemy_program_effect',
+          effectType: 'enemy_dot',
+          damage: e.value,
+          defenderId: characterId,
+        })
+      }
     }
 
-    // Tick down
     effects = effects
-      .map((e) => ({ ...e, turnsLeft: e.turnsLeft - 1 }))
+      .map((e) => {
+        if (e.turnsLeft <= 0) return e
+
+        const shouldTickDown =
+          e.targetType === 'enemy' || (e.targetType === 'player' && e.sourceCharId === characterId)
+
+        return shouldTickDown ? { ...e, turnsLeft: e.turnsLeft - 1 } : e
+      })
       .filter((e) => e.turnsLeft > 0)
 
-    return { effects, log, dotDamage, turretDamage }
+    return { effects, log, dotDamage, turretDamage, playerDotDamage }
   }
 
   /** Use a combat skill */
@@ -1238,7 +1489,7 @@ export default class CombatService {
     const effectiveCritChance = Math.min(100, character.critChance + bonuses.critChanceBonus)
     let effects = this.getEffects(run)
 
-    const log: any[] = []
+    const log: CombatLogEntry[] = []
 
     // Tick effects (DOTs, turrets)
     const tickResult = this.tickEffects(run, character.id)
@@ -1252,6 +1503,20 @@ export default class CombatService {
         run.currentEnemyHp - tickResult.dotDamage - tickResult.turretDamage
       )
     }
+    if (tickResult.playerDotDamage > 0) {
+      character.hpCurrent = Math.max(0, character.hpCurrent - tickResult.playerDotDamage)
+    }
+
+    this.setEffects(run, effects)
+
+    if (run.currentEnemyHp <= 0) {
+      await character.save()
+      return this.handleEnemyDeath(character, run, enemy, bonuses, log, effects)
+    }
+
+    if (tickResult.playerDotDamage > 0 && (await this.resolveCharacterDefeat(run, character, log))) {
+      return this.finalizeTurn(character, run, log)
+    }
 
     // Apply the skill (with talent bonuses)
     const baseAtk = character.attack + talentBonuses.atkFlat
@@ -1261,6 +1526,22 @@ export default class CombatService {
       effects,
       character.id
     )
+
+    if (playerMods.cannotAttack) {
+      log.push({
+        action: 'player_disabled',
+        effectType: playerMods.isParalyzed ? 'paralyze' : 'attack_lock',
+        defenderId: character.id,
+        defenderName: character.name,
+      })
+
+      effects = await this.handleEnemyTurn(run, enemy, effects, character, log)
+      this.setEffects(run, effects)
+      await character.save()
+
+      return this.finalizeTurn(character, run, log)
+    }
+
     const effectiveAtk = Math.floor((playerMods.attack + bonuses.attackBonus) * combatMult)
 
     switch (skill.effectType) {
@@ -1509,48 +1790,12 @@ export default class CombatService {
       return this.handleEnemyDeath(character, run, enemy, bonuses, log, effects)
     }
 
-    // Enemy counter-attack (unless stunned)
-    const enemyMods = this.applyEnemyModifiers(enemy, effects)
-    if (!enemyMods.isStunned) {
-      effects = await this.handleEnemyCounterAttack(run, enemy, effects, character, log)
-    } else {
-      log.push({ action: 'enemy_stunned', message: "L'ennemi est paralyse!" })
-    }
+    effects = await this.handleEnemyTurn(run, enemy, effects, character, log)
+    this.setEffects(run, effects)
 
     await character.save()
 
-    // Group run: persistent log + turn switch
-    if (run.partyId) {
-      const persistentLog = JSON.parse(run.combatLog || '[]')
-      for (const entry of log) {
-        persistentLog.push({ ...entry, characterName: character.name, characterId: character.id })
-      }
-      run.combatLog = JSON.stringify(persistentLog)
-
-      if (run.status === 'in_progress') {
-        const nextTurnId = await this.getNextTurnId(run, character.id)
-        if (nextTurnId) {
-          run.currentTurnId = nextTurnId
-          this.setTurnDeadline(run, nextTurnId)
-        } else {
-          await this.handlePartyDefeat(run)
-        }
-      } else {
-        run.currentTurnId = null
-        run.turnDeadline = null
-      }
-    }
-
-    await run.save()
-
-    const currentEnemy = run.currentEnemyId ? await Enemy.find(run.currentEnemyId) : null
-
-    return {
-      log,
-      run: run.serialize(),
-      character: character.serialize(),
-      currentEnemy: currentEnemy?.serialize() || null,
-    }
+    return this.finalizeTurn(character, run, log)
   }
 
   /** Handle enemy death (shared between attack and useSkill) */
@@ -1559,7 +1804,7 @@ export default class CombatService {
     run: DungeonRun,
     enemy: Enemy,
     _bonuses: any,
-    log: any[],
+    log: CombatLogEntry[],
     effects: ActiveEffect[]
   ) {
     run.enemiesDefeated += 1
@@ -1568,11 +1813,11 @@ export default class CombatService {
       Math.random() * (enemy.creditsRewardMax - enemy.creditsRewardMin) + enemy.creditsRewardMin
     )
 
-      const loot = await this.rollLoot(enemy.id)
-      await EnemyCodexService.recordDefeatForRun(run.partyId, character.id, enemy.id)
-      this.queuePendingRewards(run, character.id, {
-        creditsReward,
-        xpReward: enemy.xpReward,
+    const loot = await this.rollLoot(enemy.id)
+    await EnemyCodexService.recordDefeatForRun(run.partyId, character.id, enemy.id)
+    this.queuePendingRewards(run, character.id, {
+      creditsReward,
+      xpReward: enemy.xpReward,
       loot,
     })
     log.push({
@@ -1589,6 +1834,7 @@ export default class CombatService {
     // Clear enemy-targeted effects on new enemy
     effects = effects.filter((e) => e.targetType !== 'enemy')
     this.setEffects(run, effects)
+    this.resetEnemyState(run)
 
     if (run.enemiesDefeated >= 3) {
       if (floor.bossEnemyId && run.enemiesDefeated === 3) {
@@ -1596,12 +1842,14 @@ export default class CombatService {
         if (boss) {
           run.currentEnemyId = boss.id
           run.currentEnemyHp = boss.hp
+          this.resetEnemyState(run, boss.id)
           await EnemyCodexService.recordEncounterForRun(run.partyId, character.id, boss.id)
           log.push({ action: 'boss_spawn', bossName: boss.name })
         } else {
           await this.claimPendingRewards(run)
           run.status = 'victory'
           run.endedAt = DateTime.now()
+          this.resetEnemyState(run)
           log.push({ action: 'victory' })
           DailyMissionService.trackProgress(character.id, 'dungeon_clear').catch(() => {})
           await this.trackDungeonFloorClearQuest(run, character)
@@ -1625,6 +1873,7 @@ export default class CombatService {
         await this.claimPendingRewards(run)
         run.status = 'victory'
         run.endedAt = DateTime.now()
+        this.resetEnemyState(run)
         log.push({ action: 'victory' })
         DailyMissionService.trackProgress(character.id, 'dungeon_clear').catch(() => {})
         await this.trackDungeonFloorClearQuest(run, character)
@@ -1648,6 +1897,7 @@ export default class CombatService {
       const nextEnemy = await this.getRandomFloorEnemy(floor)
       run.currentEnemyId = nextEnemy.id
       run.currentEnemyHp = nextEnemy.hp
+      this.resetEnemyState(run, nextEnemy.id)
       await EnemyCodexService.recordEncounterForRun(run.partyId, character.id, nextEnemy.id)
       log.push({ action: 'new_enemy', enemyName: nextEnemy.name, enemyHp: nextEnemy.hp })
     }

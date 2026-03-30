@@ -13,6 +13,8 @@ import BlackMarketSetting from '#models/black_market_setting'
 import ShopListing from '#models/shop_listing'
 import Enemy from '#models/enemy'
 import EnemyLootTable from '#models/enemy_loot_table'
+import EnemyProgram from '#models/enemy_program'
+import EnemyProgramAssignment from '#models/enemy_program_assignment'
 import SystemMessage from '#models/system_message'
 import DailyRewardConfig from '#models/daily_reward_config'
 import DailyRewardConfigReward from '#models/daily_reward_config_reward'
@@ -150,6 +152,71 @@ export default class AdminController {
     }
 
     return []
+  }
+
+  private normalizeEnemyProgramInput(
+    request: HttpContext['request'],
+    fallback: Partial<EnemyProgram> = {}
+  ) {
+    const allowedEffectTypes = new Set(['paralyze', 'dot', 'attack_lock', 'charge_attack'])
+    const rawEffectType = String(request.input('effectType', fallback.effectType || 'paralyze')).trim()
+    const effectType = allowedEffectTypes.has(rawEffectType) ? rawEffectType : 'paralyze'
+    const name = String(request.input('name', fallback.name || '')).trim()
+    const description = String(request.input('description', fallback.description || '')).trim()
+    const nameEn = String(request.input('nameEn', fallback.nameEn || '')).trim()
+    const descriptionEn = String(
+      request.input('descriptionEn', fallback.descriptionEn || '')
+    ).trim()
+    const baseValue = Math.max(0, Number(request.input('effectValue', fallback.effectValue || 0)) || 0)
+    const effectValue =
+      effectType === 'dot'
+        ? Math.max(1, baseValue || 8)
+        : effectType === 'charge_attack'
+          ? Math.max(125, baseValue || 250)
+          : 0
+    const durationInput = Math.max(
+      1,
+      Number(request.input('duration', fallback.duration || 1)) || 1
+    )
+    const duration = effectType === 'charge_attack' ? 0 : Math.min(5, durationInput)
+    const cooldown = Math.max(
+      0,
+      Math.min(10, Number(request.input('cooldown', fallback.cooldown || 0)) || 0)
+    )
+    const chancePercent = Math.max(
+      1,
+      Math.min(100, Number(request.input('chancePercent', fallback.chancePercent || 100)) || 100)
+    )
+    const windupTurns =
+      effectType === 'charge_attack'
+        ? Math.max(
+            1,
+            Math.min(4, Number(request.input('windupTurns', fallback.windupTurns || 2)) || 2)
+          )
+        : 0
+    const icon = String(request.input('icon', fallback.icon || 'skull')).trim() || 'skull'
+    const sortOrder = Math.max(
+      1,
+      Number(request.input('sortOrder', fallback.sortOrder || 1)) || 1
+    )
+    const rawIsActive = request.input('isActive', fallback.isActive ?? true)
+    const isActive = rawIsActive === true || rawIsActive === 'true' || rawIsActive === 'on'
+
+    return {
+      name,
+      description,
+      nameEn: nameEn || null,
+      descriptionEn: descriptionEn || null,
+      effectType,
+      effectValue,
+      duration,
+      cooldown,
+      chancePercent,
+      windupTurns,
+      icon,
+      sortOrder,
+      isActive,
+    }
   }
 
   private async normalizeQuestRewards(request: HttpContext['request']) {
@@ -1072,9 +1139,13 @@ export default class AdminController {
   // ── Enemies management ──
 
   async enemies({ inertia }: HttpContext) {
-    const enemies = await Enemy.query().orderBy('tier').orderBy('name')
-    const lootEntries = await EnemyLootTable.query().preload('item')
-    const items = await Item.query().orderBy('name')
+    const [enemies, lootEntries, items, assignments, programs] = await Promise.all([
+      Enemy.query().orderBy('tier').orderBy('name'),
+      EnemyLootTable.query().preload('item'),
+      Item.query().orderBy('name'),
+      EnemyProgramAssignment.query().preload('program').orderBy('sortOrder').orderBy('id'),
+      EnemyProgram.query().orderBy('sortOrder').orderBy('name'),
+    ])
 
     const lootMap: Record<
       number,
@@ -1090,12 +1161,33 @@ export default class AdminController {
       })
     }
 
+    const programMap: Record<number, { id: number; sortOrder: number; program: any }[]> = {}
+    for (const assignment of assignments) {
+      if (!assignment.program) continue
+      if (!programMap[assignment.enemyId]) programMap[assignment.enemyId] = []
+      programMap[assignment.enemyId].push({
+        id: assignment.id,
+        sortOrder: assignment.sortOrder,
+        program: assignment.program.serialize(),
+      })
+    }
+
     return inertia.render('admin/enemies', {
       enemies: enemies.map((e) => ({
         ...e.serialize(),
         loot: lootMap[e.id] || [],
+        programs: programMap[e.id] || [],
       })),
       items: items.map((i) => ({ id: i.id, name: i.name, rarity: i.rarity })),
+      availablePrograms: programs.map((program) => program.serialize()),
+    })
+  }
+
+  async enemyPrograms({ inertia }: HttpContext) {
+    const programs = await EnemyProgram.query().orderBy('sortOrder').orderBy('name')
+
+    return inertia.render('admin/enemy_programs', {
+      programs: programs.map((program) => program.serialize()),
     })
   }
 
@@ -1171,6 +1263,7 @@ export default class AdminController {
     const enemy = await Enemy.findOrFail(params.id)
     const name = enemy.name
     await EnemyLootTable.query().where('enemyId', enemy.id).delete()
+    await EnemyProgramAssignment.query().where('enemyId', enemy.id).delete()
     await enemy.delete()
 
     session.flash('success', `Ennemi "${name}" supprime`)
@@ -1185,6 +1278,42 @@ export default class AdminController {
     await EnemyLootTable.create({ enemyId, itemId, dropChance })
 
     session.flash('success', 'Loot ajoute')
+    return response.redirect('/admin/enemies')
+  }
+
+  async addEnemyProgramAssignment({ params, request, response, session }: HttpContext) {
+    const enemyId = Number(params.id)
+    const enemyProgramId = Number(request.input('enemyProgramId'))
+
+    const [enemy, program] = await Promise.all([Enemy.find(enemyId), EnemyProgram.find(enemyProgramId)])
+
+    if (!enemy || !program) {
+      session.flash('errors', { message: 'Ennemi ou programme introuvable' })
+      return response.redirect('/admin/enemies')
+    }
+
+    const existing = await EnemyProgramAssignment.query()
+      .where('enemyId', enemyId)
+      .where('enemyProgramId', enemyProgramId)
+      .first()
+
+    if (existing) {
+      session.flash('errors', { message: 'Ce programme est deja assigne a cet ennemi' })
+      return response.redirect('/admin/enemies')
+    }
+
+    const lastAssignment = await EnemyProgramAssignment.query()
+      .where('enemyId', enemyId)
+      .orderBy('sortOrder', 'desc')
+      .first()
+
+    await EnemyProgramAssignment.create({
+      enemyId,
+      enemyProgramId,
+      sortOrder: (lastAssignment?.sortOrder || 0) + 1,
+    })
+
+    session.flash('success', `Programme "${program.name}" ajoute a "${enemy.name}"`)
     return response.redirect('/admin/enemies')
   }
 
@@ -1206,6 +1335,62 @@ export default class AdminController {
 
     session.flash('success', 'Loot retire')
     return response.redirect('/admin/enemies')
+  }
+
+  async updateEnemyProgramAssignment({ params, request, response, session }: HttpContext) {
+    const assignment = await EnemyProgramAssignment.findOrFail(params.id)
+    assignment.sortOrder = Math.max(1, Number(request.input('sortOrder', assignment.sortOrder)) || 1)
+    await assignment.save()
+
+    session.flash('success', 'Ordre du programme mis a jour')
+    return response.redirect('/admin/enemies')
+  }
+
+  async deleteEnemyProgramAssignment({ params, response, session }: HttpContext) {
+    const assignment = await EnemyProgramAssignment.findOrFail(params.id)
+    await assignment.delete()
+
+    session.flash('success', 'Programme retire de cet ennemi')
+    return response.redirect('/admin/enemies')
+  }
+
+  async createEnemyProgram({ request, response, session }: HttpContext) {
+    const payload = this.normalizeEnemyProgramInput(request)
+
+    if (!payload.name) {
+      session.flash('errors', { message: 'Le nom du programme est obligatoire' })
+      return response.redirect('/admin/enemy-programs')
+    }
+
+    await EnemyProgram.create(payload)
+
+    session.flash('success', `Programme "${payload.name}" cree`)
+    return response.redirect('/admin/enemy-programs')
+  }
+
+  async updateEnemyProgram({ params, request, response, session }: HttpContext) {
+    const program = await EnemyProgram.findOrFail(params.id)
+    const payload = this.normalizeEnemyProgramInput(request, program)
+
+    if (!payload.name) {
+      session.flash('errors', { message: 'Le nom du programme est obligatoire' })
+      return response.redirect('/admin/enemy-programs')
+    }
+
+    program.merge(payload)
+    await program.save()
+
+    session.flash('success', `Programme "${program.name}" mis a jour`)
+    return response.redirect('/admin/enemy-programs')
+  }
+
+  async deleteEnemyProgram({ params, response, session }: HttpContext) {
+    const program = await EnemyProgram.findOrFail(params.id)
+    const name = program.name
+    await program.delete()
+
+    session.flash('success', `Programme "${name}" supprime`)
+    return response.redirect('/admin/enemy-programs')
   }
 
   // ── System Messages (auto-chat) ──

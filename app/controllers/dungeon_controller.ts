@@ -424,6 +424,7 @@ export default class DungeonController {
         ? localize(currentEnemy.serialize(), locale, ['name', 'description'])
         : null,
       combatPreview,
+      activeEffects: JSON.parse(run.activeEffects || '[]'),
       partyMembers,
     })
   }
