@@ -70,6 +70,7 @@
     "pricePerItem": "Prix par item",
     "startingBid": "Mise de depart",
     "durationHours": "Duree (heures)",
+    "durationOptionLabel": "{{hours}}h • {{tax}}c/item",
     "durationRange": "Entre {{min}}h et {{max}}h",
     "taxPreview": "Taxe totale",
     "saleDuration": "Duree retenue",

@@ -40,11 +40,14 @@ export const BLACK_MARKET_VENDORS: Record<
 
 const DEFAULT_MIN_LEVEL = 12
 const DEFAULT_ROTATION_HOURS = 12
-const DEFAULT_PLAYER_LISTING_TAX_PER_ITEM = 2500
-const DEFAULT_PLAYER_LISTING_MIN_DURATION_HOURS = 6
-const DEFAULT_PLAYER_LISTING_MAX_DURATION_HOURS = 72
 const SLOTS_PER_VENDOR = 4
 const VENDOR_ORDER = Object.keys(BLACK_MARKET_VENDORS) as VendorKey[]
+const PLAYER_LISTING_DURATION_OPTIONS = [
+  { hours: 12, taxPerItem: 2500 },
+  { hours: 24, taxPerItem: 3000 },
+  { hours: 48, taxPerItem: 4000 },
+] as const
+const DEFAULT_PLAYER_LISTING_DURATION_HOURS = 24
 
 const SPEC_LABELS: Record<string, string> = {
   hacker: 'Hacker',
@@ -75,39 +78,26 @@ export default class BlackMarketService {
     return Math.max(1, Number(value?.value || DEFAULT_ROTATION_HOURS) || DEFAULT_ROTATION_HOURS)
   }
 
-  static async getPlayerListingTaxPerItem() {
-    const value = await BlackMarketSetting.query()
-      .where('key', 'player_listing_tax_per_item')
-      .first()
-    return Math.max(
-      0,
-      Number(value?.value || DEFAULT_PLAYER_LISTING_TAX_PER_ITEM) ||
-        DEFAULT_PLAYER_LISTING_TAX_PER_ITEM
-    )
+  static getPlayerListingDurationOptions() {
+    return PLAYER_LISTING_DURATION_OPTIONS.map((option) => ({ ...option }))
   }
 
-  static async getPlayerListingMinDurationHours() {
-    const value = await BlackMarketSetting.query()
-      .where('key', 'player_listing_min_duration_hours')
-      .first()
-    return Math.max(
-      1,
-      Number(value?.value || DEFAULT_PLAYER_LISTING_MIN_DURATION_HOURS) ||
-        DEFAULT_PLAYER_LISTING_MIN_DURATION_HOURS
-    )
+  static getDefaultPlayerListingDurationHours() {
+    return DEFAULT_PLAYER_LISTING_DURATION_HOURS
   }
 
-  static async getPlayerListingMaxDurationHours() {
-    const minDuration = await this.getPlayerListingMinDurationHours()
-    const value = await BlackMarketSetting.query()
-      .where('key', 'player_listing_max_duration_hours')
-      .first()
+  private static getPlayerListingDurationOption(hours: number) {
+    return PLAYER_LISTING_DURATION_OPTIONS.find((option) => option.hours === hours) || null
+  }
 
-    return Math.max(
-      minDuration,
-      Number(value?.value || DEFAULT_PLAYER_LISTING_MAX_DURATION_HOURS) ||
-        DEFAULT_PLAYER_LISTING_MAX_DURATION_HOURS
-    )
+  private static getPlayerListingDurationOptionOrFail(hours: number) {
+    const option = this.getPlayerListingDurationOption(hours)
+
+    if (!option) {
+      throw new Error('Duree de vente invalide')
+    }
+
+    return option
   }
 
   static getVendorDefinitions() {
@@ -311,28 +301,23 @@ export default class BlackMarketService {
 
   private static async getPlayerMarketState(character: Character) {
     const now = Date.now()
-    const [taxPerItem, minDurationHours, maxDurationHours, listings, inventory] = await Promise.all(
-      [
-        this.getPlayerListingTaxPerItem(),
-        this.getPlayerListingMinDurationHours(),
-        this.getPlayerListingMaxDurationHours(),
-        BlackMarketPlayerListing.query()
-          .where('status', 'active')
-          .where('endsAt', '>', now)
-          .preload('item')
-          .preload('seller')
-          .preload('currentBidder')
-          .orderBy('endsAt', 'asc')
-          .orderBy('id', 'desc'),
-        InventoryItem.query()
-          .where('characterId', character.id)
-          .where('quantity', '>', 0)
-          .where('isEquipped', false)
-          .preload('item')
-          .orderBy('quantity', 'desc')
-          .orderBy('id', 'asc'),
-      ]
-    )
+    const [listings, inventory] = await Promise.all([
+      BlackMarketPlayerListing.query()
+        .where('status', 'active')
+        .where('endsAt', '>', now)
+        .preload('item')
+        .preload('seller')
+        .preload('currentBidder')
+        .orderBy('endsAt', 'asc')
+        .orderBy('id', 'desc'),
+      InventoryItem.query()
+        .where('characterId', character.id)
+        .where('quantity', '>', 0)
+        .where('isEquipped', false)
+        .preload('item')
+        .orderBy('quantity', 'desc')
+        .orderBy('id', 'asc'),
+    ])
 
     const serializedListings = listings.map((listing) => ({
       id: listing.id,
@@ -379,10 +364,8 @@ export default class BlackMarketService {
 
     return {
       config: {
-        taxPerItem,
-        minDurationHours,
-        maxDurationHours,
-        defaultDurationHours: Math.min(maxDurationHours, Math.max(minDurationHours, 24)),
+        durationOptions: this.getPlayerListingDurationOptions(),
+        defaultDurationHours: this.getDefaultPlayerListingDurationHours(),
       },
       listings: serializedListings,
       myListings: serializedListings.filter(
@@ -658,13 +641,11 @@ export default class BlackMarketService {
       Math.min(inventoryItem.quantity, Math.floor(requestedQuantity || 1))
     )
     const price = Math.max(1, Math.floor(requestedPrice || 1))
-    const minDurationHours = await this.getPlayerListingMinDurationHours()
-    const maxDurationHours = await this.getPlayerListingMaxDurationHours()
-    const durationHours = Math.max(
-      minDurationHours,
-      Math.min(maxDurationHours, Math.floor(requestedDurationHours || minDurationHours))
+    const durationOption = this.getPlayerListingDurationOptionOrFail(
+      Math.floor(requestedDurationHours || this.getDefaultPlayerListingDurationHours())
     )
-    const listingTax = (await this.getPlayerListingTaxPerItem()) * quantity
+    const durationHours = durationOption.hours
+    const listingTax = durationOption.taxPerItem * quantity
 
     if (character.credits < listingTax) {
       throw new Error('Credits insuffisants pour payer la taxe de mise en vente')

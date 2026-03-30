@@ -92,9 +92,10 @@ interface PlayerInventoryEntry {
 }
 
 interface PlayerMarketConfig {
-  taxPerItem: number
-  minDurationHours: number
-  maxDurationHours: number
+  durationOptions: Array<{
+    hours: number
+    taxPerItem: number
+  }>
   defaultDurationHours: number
 }
 
@@ -240,6 +241,20 @@ export default function BlackMarket({
     [listingForm.inventoryItemId, playerMarket.inventory]
   )
 
+  const selectedDurationOption = useMemo(() => {
+    const parsed = Number.parseInt(listingForm.durationHours, 10)
+    const duration =
+      Number.isFinite(parsed) && parsed > 0 ? parsed : playerMarket.config.defaultDurationHours
+
+    return (
+      playerMarket.config.durationOptions.find((option) => option.hours === duration) ||
+      playerMarket.config.durationOptions.find(
+        (option) => option.hours === playerMarket.config.defaultDurationHours
+      ) ||
+      playerMarket.config.durationOptions[0]
+    )
+  }, [listingForm.durationHours, playerMarket.config])
+
   const listingQuantity = useMemo(() => {
     const parsed = Number.parseInt(listingForm.quantity, 10)
     const quantity = Number.isFinite(parsed) && parsed > 0 ? parsed : 1
@@ -252,16 +267,10 @@ export default function BlackMarket({
   }, [listingForm.price])
 
   const listingDurationHours = useMemo(() => {
-    const parsed = Number.parseInt(listingForm.durationHours, 10)
-    const duration =
-      Number.isFinite(parsed) && parsed > 0 ? parsed : playerMarket.config.defaultDurationHours
-    return Math.max(
-      playerMarket.config.minDurationHours,
-      Math.min(playerMarket.config.maxDurationHours, duration)
-    )
-  }, [listingForm.durationHours, playerMarket.config])
+    return selectedDurationOption?.hours || playerMarket.config.defaultDurationHours
+  }, [playerMarket.config.defaultDurationHours, selectedDurationOption])
 
-  const listingTax = listingQuantity * playerMarket.config.taxPerItem
+  const listingTax = listingQuantity * (selectedDurationOption?.taxPerItem || 0)
   const canCreateListing =
     !!selectedInventoryEntry &&
     listingQuantity > 0 &&
@@ -1264,10 +1273,7 @@ export default function BlackMarket({
                         <label className="mb-1 block text-[10px] uppercase tracking-[0.22em] text-gray-500">
                           {t('shop:blackMarket.durationHours')}
                         </label>
-                        <input
-                          type="number"
-                          min={playerMarket.config.minDurationHours}
-                          max={playerMarket.config.maxDurationHours}
+                        <select
                           value={listingForm.durationHours}
                           onChange={(event) =>
                             setListingForm((current) => ({
@@ -1276,13 +1282,16 @@ export default function BlackMarket({
                             }))
                           }
                           className="w-full rounded-lg border border-gray-800 bg-cyber-black px-3 py-2 text-sm text-white focus:border-cyber-blue/40 focus:outline-none"
-                        />
-                        <div className="mt-2 text-xs text-gray-500">
-                          {t('shop:blackMarket.durationRange', {
-                            min: playerMarket.config.minDurationHours,
-                            max: playerMarket.config.maxDurationHours,
-                          })}
-                        </div>
+                        >
+                          {playerMarket.config.durationOptions.map((option) => (
+                            <option key={option.hours} value={option.hours}>
+                              {t('shop:blackMarket.durationOptionLabel', {
+                                hours: option.hours,
+                                tax: option.taxPerItem.toLocaleString(),
+                              })}
+                            </option>
+                          ))}
+                        </select>
                       </div>
 
                       <div className="rounded-xl border border-gray-800 bg-cyber-black/70 px-4 py-3">

@@ -986,24 +986,23 @@ export default class AdminController {
     const nextEffectValue =
       data.effectValue !== undefined && data.effectValue !== '' ? Number(data.effectValue) : null
     const nextBasePrice =
-      data.basePrice !== undefined && data.basePrice !== '' ? Number(data.basePrice) : item.basePrice
+      data.basePrice !== undefined && data.basePrice !== ''
+        ? Number(data.basePrice)
+        : item.basePrice
 
-    await db
-      .from('items')
-      .where('id', item.id)
-      .update({
-        name: nextName,
-        description: nextDescription,
-        name_en: nextNameEn,
-        description_en: nextDescriptionEn,
-        type: nextType,
-        rarity: nextRarity,
-        icon: nextIcon,
-        effect_type: nextEffectType,
-        effect_value: nextEffectValue,
-        base_price: nextBasePrice,
-        usable_in_combat: !!data.usableInCombat,
-      })
+    await db.from('items').where('id', item.id).update({
+      name: nextName,
+      description: nextDescription,
+      name_en: nextNameEn,
+      description_en: nextDescriptionEn,
+      type: nextType,
+      rarity: nextRarity,
+      icon: nextIcon,
+      effect_type: nextEffectType,
+      effect_value: nextEffectValue,
+      base_price: nextBasePrice,
+      usable_in_combat: !!data.usableInCombat,
+    })
 
     session.flash('success', `Item "${nextName}" mis a jour`)
     return response.redirect('/admin/items')
@@ -1651,35 +1650,32 @@ export default class AdminController {
     const nextRewardValue = rewards[0]?.value || 0
     const nextRequiredQuestKey = parentQuest?.key || null
 
-    await db
-      .from('quests')
-      .where('id', quest.id)
-      .update({
-        key: payload.key,
-        mode: payload.mode,
-        quest_type: payload.questType,
-        season_id: nextSeasonId,
-        parent_quest_id: payload.parentQuestId,
-        arc_key: payload.arcKey,
-        arc_title: payload.arcTitle,
-        quest_arc_id: payload.questArcId,
-        giver_name: payload.giverName,
-        title: payload.title,
-        summary: payload.summary,
-        narrative: payload.narrative,
-        title_en: payload.titleEn,
-        summary_en: payload.summaryEn,
-        narrative_en: payload.narrativeEn,
-        objective_type: payload.objectiveType,
-        target_value: payload.targetValue,
-        reward_type: nextRewardType,
-        reward_value: nextRewardValue,
-        rewards_json: nextRewardsJson,
-        icon: payload.icon,
-        sort_order: payload.sortOrder,
-        required_quest_key: nextRequiredQuestKey,
-        updated_at: DateTime.now().toSQL(),
-      })
+    await db.from('quests').where('id', quest.id).update({
+      key: payload.key,
+      mode: payload.mode,
+      quest_type: payload.questType,
+      season_id: nextSeasonId,
+      parent_quest_id: payload.parentQuestId,
+      arc_key: payload.arcKey,
+      arc_title: payload.arcTitle,
+      quest_arc_id: payload.questArcId,
+      giver_name: payload.giverName,
+      title: payload.title,
+      summary: payload.summary,
+      narrative: payload.narrative,
+      title_en: payload.titleEn,
+      summary_en: payload.summaryEn,
+      narrative_en: payload.narrativeEn,
+      objective_type: payload.objectiveType,
+      target_value: payload.targetValue,
+      reward_type: nextRewardType,
+      reward_value: nextRewardValue,
+      rewards_json: nextRewardsJson,
+      icon: payload.icon,
+      sort_order: payload.sortOrder,
+      required_quest_key: nextRequiredQuestKey,
+      updated_at: DateTime.now().toSQL(),
+    })
 
     // Sync flow steps from form (replace all existing)
     const rawSteps = request.input('flowSteps', null)
@@ -1949,18 +1945,6 @@ export default class AdminController {
         rotationHours: Number(
           settingsMap.get('rotation_hours') || (await BlackMarketService.getRotationHours())
         ),
-        playerListingTaxPerItem: Number(
-          settingsMap.get('player_listing_tax_per_item') ||
-            (await BlackMarketService.getPlayerListingTaxPerItem())
-        ),
-        playerListingMinDurationHours: Number(
-          settingsMap.get('player_listing_min_duration_hours') ||
-            (await BlackMarketService.getPlayerListingMinDurationHours())
-        ),
-        playerListingMaxDurationHours: Number(
-          settingsMap.get('player_listing_max_duration_hours') ||
-            (await BlackMarketService.getPlayerListingMaxDurationHours())
-        ),
       },
       vendors: Object.entries(BlackMarketService.getVendorDefinitions()).map(([key, value]) => ({
         key,
@@ -1978,35 +1962,11 @@ export default class AdminController {
   async updateBlackMarketSettings({ request, response, session }: HttpContext) {
     const minLevel = Math.max(1, Number(request.input('minLevel', 12)) || 12)
     const rotationHours = Math.max(1, Number(request.input('rotationHours', 12)) || 12)
-    const playerListingTaxPerItem = Math.max(
-      0,
-      Number(request.input('playerListingTaxPerItem', 2500)) || 2500
-    )
-    const playerListingMinDurationHours = Math.max(
-      1,
-      Number(request.input('playerListingMinDurationHours', 6)) || 6
-    )
-    const playerListingMaxDurationHours = Math.max(
-      playerListingMinDurationHours,
-      Number(request.input('playerListingMaxDurationHours', 72)) || 72
-    )
 
     await BlackMarketSetting.updateOrCreate({ key: 'min_level' }, { value: String(minLevel) })
     await BlackMarketSetting.updateOrCreate(
       { key: 'rotation_hours' },
       { value: String(rotationHours) }
-    )
-    await BlackMarketSetting.updateOrCreate(
-      { key: 'player_listing_tax_per_item' },
-      { value: String(playerListingTaxPerItem) }
-    )
-    await BlackMarketSetting.updateOrCreate(
-      { key: 'player_listing_min_duration_hours' },
-      { value: String(playerListingMinDurationHours) }
-    )
-    await BlackMarketSetting.updateOrCreate(
-      { key: 'player_listing_max_duration_hours' },
-      { value: String(playerListingMaxDurationHours) }
     )
 
     session.flash('success', 'Configuration globale du marche noir mise a jour')

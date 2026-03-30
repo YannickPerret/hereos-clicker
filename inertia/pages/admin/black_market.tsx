@@ -47,9 +47,6 @@ interface Props {
   settings: {
     minLevel: number
     rotationHours: number
-    playerListingTaxPerItem: number
-    playerListingMinDurationHours: number
-    playerListingMaxDurationHours: number
   }
   vendors: Vendor[]
   catalog: CatalogEntry[]
@@ -70,9 +67,6 @@ export default function BlackMarketAdmin({ settings, vendors, catalog, cleaners,
   const [settingsForm, setSettingsForm] = useState({
     minLevel: settings.minLevel,
     rotationHours: settings.rotationHours,
-    playerListingTaxPerItem: settings.playerListingTaxPerItem,
-    playerListingMinDurationHours: settings.playerListingMinDurationHours,
-    playerListingMaxDurationHours: settings.playerListingMaxDurationHours,
   })
   const [newEntry, setNewEntry] = useState({
     vendorKey: vendors[0]?.key || 'ghostline',
@@ -161,7 +155,7 @@ export default function BlackMarketAdmin({ settings, vendors, catalog, cleaners,
           <h2 className="text-sm uppercase tracking-widest text-cyber-red mb-3">
             Reglages globaux
           </h2>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-6">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
             <div>
               <label className="mb-1 block text-[10px] uppercase text-gray-500">
                 Niveau minimum
@@ -198,56 +192,17 @@ export default function BlackMarketAdmin({ settings, vendors, catalog, cleaners,
             </div>
             <div>
               <label className="mb-1 block text-[10px] uppercase text-gray-500">
-                Taxe par item
+                Barème ventes joueur
               </label>
-              <input
-                type="number"
-                min={0}
-                value={settingsForm.playerListingTaxPerItem}
-                onChange={(event) =>
-                  setSettingsForm((current) => ({
-                    ...current,
-                    playerListingTaxPerItem: Number(event.target.value),
-                  }))
-                }
-                className="w-full rounded border border-gray-800 bg-cyber-black px-3 py-2 text-sm text-white focus:border-cyber-red/50 focus:outline-none"
-              />
+              <div className="rounded border border-gray-800 bg-cyber-black px-3 py-2 text-sm text-gray-300">
+                12h = 2500c / item
+                <br />
+                24h = 3000c / item
+                <br />
+                48h = 4000c / item
+              </div>
             </div>
-            <div>
-              <label className="mb-1 block text-[10px] uppercase text-gray-500">
-                Duree min vente
-              </label>
-              <input
-                type="number"
-                min={1}
-                value={settingsForm.playerListingMinDurationHours}
-                onChange={(event) =>
-                  setSettingsForm((current) => ({
-                    ...current,
-                    playerListingMinDurationHours: Number(event.target.value),
-                  }))
-                }
-                className="w-full rounded border border-gray-800 bg-cyber-black px-3 py-2 text-sm text-white focus:border-cyber-red/50 focus:outline-none"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-[10px] uppercase text-gray-500">
-                Duree max vente
-              </label>
-              <input
-                type="number"
-                min={1}
-                value={settingsForm.playerListingMaxDurationHours}
-                onChange={(event) =>
-                  setSettingsForm((current) => ({
-                    ...current,
-                    playerListingMaxDurationHours: Number(event.target.value),
-                  }))
-                }
-                className="w-full rounded border border-gray-800 bg-cyber-black px-3 py-2 text-sm text-white focus:border-cyber-red/50 focus:outline-none"
-              />
-            </div>
-            <div className="flex items-end xl:col-span-2">
+            <div className="flex items-end">
               <button
                 type="button"
                 onClick={() => router.post('/admin/black-market/settings', settingsForm)}
