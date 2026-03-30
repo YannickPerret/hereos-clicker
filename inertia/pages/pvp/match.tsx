@@ -749,7 +749,7 @@ export default function PvpMatch({
                           <div className="text-center text-[9px] uppercase tracking-widest text-cyber-green">
                             {t('pvp:consumables')}
                           </div>
-                          {consumables.slice(0, 3).map((entry) => (
+                          {consumables.map((entry) => (
                             <button
                               key={entry.id}
                               type="button"

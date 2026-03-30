@@ -78,7 +78,9 @@
     "permanent_click": "CPC",
     "hp_boost": "HP",
     "temp_click_boost": "BOOST",
-    "xp_boost": "XP"
+    "xp_boost": "XP",
+    "hp_restore": "Heal",
+    "talent_respec": "Talent respec"
   },
   "buttons": {
     "close": "CLOSE",

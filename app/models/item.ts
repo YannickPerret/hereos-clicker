@@ -42,6 +42,9 @@ export default class Item extends BaseModel {
   declare effectValue: number | null
 
   @column()
+  declare usableInCombat: boolean
+
+  @column()
   declare basePrice: number
 
   @column.dateTime({ autoCreate: true })

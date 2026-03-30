@@ -23,7 +23,7 @@ export default class BossRushController {
     const consumables = await InventoryItem.query()
       .where('characterId', character.id)
       .preload('item')
-      .whereHas('item', (query) => query.where('type', 'consumable'))
+      .whereHas('item', (query) => query.where('type', 'consumable').where('usableInCombat', true))
     const skills = await BossRushService.getAvailableSkills(character)
     const cooldowns = JSON.parse(run.skillCooldowns || '{}')
     const charCooldowns = cooldowns[character.id] || {}

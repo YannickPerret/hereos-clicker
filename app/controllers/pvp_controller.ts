@@ -64,7 +64,7 @@ export default class PvpController {
     const consumables = await InventoryItem.query()
       .where('characterId', character.id)
       .preload('item')
-      .whereHas('item', (query) => query.where('type', 'consumable'))
+      .whereHas('item', (query) => query.where('type', 'consumable').where('usableInCombat', true))
 
     return {
       myId: character.id,

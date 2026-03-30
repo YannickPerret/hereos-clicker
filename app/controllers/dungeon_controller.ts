@@ -258,7 +258,7 @@ export default class DungeonController {
     const consumables = await InventoryItem.query()
       .where('characterId', character.id)
       .preload('item')
-      .whereHas('item', (q) => q.where('type', 'consumable'))
+      .whereHas('item', (q) => q.where('type', 'consumable').where('usableInCombat', true))
 
     // Get combat skills
     const skills = await CombatService.getAvailableSkills(character)

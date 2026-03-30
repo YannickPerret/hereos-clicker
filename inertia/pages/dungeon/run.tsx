@@ -863,7 +863,7 @@ export default function DungeonRun({
 
                 {consumables.length > 0 && (
                   <div className="space-y-1">
-                    {consumables.slice(0, 3).map((c) => (
+                    {consumables.map((c) => (
                       <button
                         key={c.id}
                         onClick={() =>

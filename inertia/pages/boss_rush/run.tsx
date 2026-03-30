@@ -422,7 +422,7 @@ export default function BossRushRun({
 
                 {consumables.length > 0 && (
                   <div className="space-y-1">
-                    {consumables.slice(0, 3).map((consumable) => (
+                    {consumables.map((consumable) => (
                       <button
                         key={consumable.id}
                         onClick={() =>

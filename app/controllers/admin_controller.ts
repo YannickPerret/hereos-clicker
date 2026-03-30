@@ -937,6 +937,7 @@ export default class AdminController {
       'effectType',
       'effectValue',
       'basePrice',
+      'usableInCombat',
     ])
 
     await Item.create({
@@ -950,6 +951,7 @@ export default class AdminController {
       effectType: data.effectType || null,
       effectValue: data.effectValue ? Number(data.effectValue) : null,
       basePrice: Number(data.basePrice) || 0,
+      usableInCombat: !!data.usableInCombat,
     })
 
     session.flash('success', `Item "${data.name}" cree`)
@@ -969,6 +971,7 @@ export default class AdminController {
       'effectType',
       'effectValue',
       'basePrice',
+      'usableInCombat',
     ])
 
     const nextName = data.name || item.name
@@ -999,6 +1002,7 @@ export default class AdminController {
         effect_type: nextEffectType,
         effect_value: nextEffectValue,
         base_price: nextBasePrice,
+        usable_in_combat: !!data.usableInCombat,
       })
 
     session.flash('success', `Item "${nextName}" mis a jour`)

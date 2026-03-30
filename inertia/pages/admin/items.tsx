@@ -21,6 +21,7 @@ interface ItemEntry {
   effectType: string | null
   effectValue: number | null
   basePrice: number
+  usableInCombat: boolean
   shop: ShopInfo | null
 }
 
@@ -76,6 +77,7 @@ export default function AdminItems({ items }: Props) {
     effectType: '',
     effectValue: '',
     basePrice: '100',
+    usableInCombat: false,
   })
   const [shopEditId, setShopEditId] = useState<number | null>(null)
   const [shopData, setShopData] = useState<any>({})
@@ -103,6 +105,7 @@ export default function AdminItems({ items }: Props) {
     effectType: data.effectType ?? '',
     effectValue: data.effectValue,
     basePrice: data.basePrice,
+    usableInCombat: data.usableInCombat ?? false,
   })
 
   const startShopEdit = (item: ItemEntry) => {
@@ -266,6 +269,16 @@ export default function AdminItems({ items }: Props) {
                   className="w-full bg-cyber-black border border-gray-800 rounded px-2 py-1.5 text-xs text-white focus:outline-none"
                 />
               </div>
+              <div>
+                <label className="flex items-center gap-1.5 text-[10px] text-gray-500 uppercase mt-4">
+                  <input
+                    type="checkbox"
+                    checked={newItem.usableInCombat}
+                    onChange={(e) => setNewItem({ ...newItem, usableInCombat: e.target.checked })}
+                  />
+                  Utilisable en combat
+                </label>
+              </div>
               <div className="col-span-2 md:col-span-4">
                 <button
                   type="submit"
@@ -386,6 +399,16 @@ export default function AdminItems({ items }: Props) {
                       placeholder="value"
                       className="bg-cyber-black border border-gray-800 rounded px-2 py-1 text-xs text-white focus:outline-none"
                     />
+                    <label className="flex items-center gap-1.5 text-[10px] text-gray-400">
+                      <input
+                        type="checkbox"
+                        checked={editData.usableInCombat ?? false}
+                        onChange={(e) =>
+                          setEditData({ ...editData, usableInCombat: e.target.checked })
+                        }
+                      />
+                      Combat
+                    </label>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <input
@@ -437,6 +460,11 @@ export default function AdminItems({ items }: Props) {
                         {TYPE_LABELS[item.type]}
                       </span>
                       <span className="text-[9px] text-gray-700">#{item.id}</span>
+                      {item.usableInCombat && (
+                        <span className="text-[9px] bg-cyber-red/10 px-1.5 py-0.5 rounded text-cyber-red uppercase">
+                          Combat
+                        </span>
+                      )}
                     </div>
                     <div className="text-[10px] text-gray-600 truncate">{item.description}</div>
                     <div className="flex items-center gap-3 mt-1 text-[10px]">

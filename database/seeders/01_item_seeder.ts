@@ -612,6 +612,7 @@ export default class extends BaseSeeder {
         effectType: 'hp_restore',
         effectValue: 30,
         basePrice: 25,
+        usableInCombat: true,
       },
       {
         name: 'MedGel Capsule',
@@ -624,6 +625,7 @@ export default class extends BaseSeeder {
         effectType: 'hp_restore',
         effectValue: 75,
         basePrice: 80,
+        usableInCombat: true,
       },
       {
         name: 'Phoenix Serum',
@@ -636,6 +638,7 @@ export default class extends BaseSeeder {
         effectType: 'hp_restore',
         effectValue: 999,
         basePrice: 300,
+        usableInCombat: true,
       },
       {
         name: 'CyberBoost Energy',
