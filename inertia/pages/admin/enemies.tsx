@@ -32,6 +32,8 @@ interface EnemyEntry {
   id: number
   name: string
   description: string
+  nameEn: string | null
+  descriptionEn: string | null
   hp: number
   attack: number
   defense: number
@@ -94,6 +96,8 @@ export default function AdminEnemies({ enemies, items, availablePrograms }: Prop
   const [newEnemy, setNewEnemy] = useState({
     name: '',
     description: '',
+    nameEn: '',
+    descriptionEn: '',
     hp: '50',
     attack: '10',
     defense: '5',
@@ -164,6 +168,15 @@ export default function AdminEnemies({ enemies, items, availablePrograms }: Prop
                   value={newEnemy.name}
                   onChange={(e) => setNewEnemy({ ...newEnemy, name: e.target.value })}
                   required
+                  className="w-full bg-cyber-black border border-gray-800 rounded px-2 py-1.5 text-xs text-white focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="text-[9px] text-gray-600 uppercase">Nom EN</label>
+                <input
+                  type="text"
+                  value={newEnemy.nameEn}
+                  onChange={(e) => setNewEnemy({ ...newEnemy, nameEn: e.target.value })}
                   className="w-full bg-cyber-black border border-gray-800 rounded px-2 py-1.5 text-xs text-white focus:outline-none"
                 />
               </div>
@@ -246,6 +259,15 @@ export default function AdminEnemies({ enemies, items, availablePrograms }: Prop
                 />
               </div>
               <div className="col-span-2 md:col-span-4">
+                <label className="text-[9px] text-gray-600 uppercase">Description EN</label>
+                <input
+                  type="text"
+                  value={newEnemy.descriptionEn}
+                  onChange={(e) => setNewEnemy({ ...newEnemy, descriptionEn: e.target.value })}
+                  className="w-full bg-cyber-black border border-gray-800 rounded px-2 py-1.5 text-xs text-white focus:outline-none"
+                />
+              </div>
+              <div className="col-span-2 md:col-span-4">
                 <button
                   type="submit"
                   className="text-xs px-4 py-2 rounded border border-cyber-green/30 text-cyber-green hover:bg-cyber-green/10 uppercase"
@@ -276,6 +298,15 @@ export default function AdminEnemies({ enemies, items, availablePrograms }: Prop
                         type="text"
                         value={editData.name}
                         onChange={(e) => setEditData({ ...editData, name: e.target.value })}
+                        className="w-full bg-cyber-black border border-gray-800 rounded px-2 py-1 text-xs text-white focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[9px] text-gray-600 uppercase">Nom EN</label>
+                      <input
+                        type="text"
+                        value={editData.nameEn || ''}
+                        onChange={(e) => setEditData({ ...editData, nameEn: e.target.value })}
                         className="w-full bg-cyber-black border border-gray-800 rounded px-2 py-1 text-xs text-white focus:outline-none"
                       />
                     </div>
@@ -376,6 +407,17 @@ export default function AdminEnemies({ enemies, items, availablePrograms }: Prop
                       className="w-full bg-cyber-black border border-gray-800 rounded px-2 py-1 text-xs text-white focus:outline-none"
                     />
                   </div>
+                  <div>
+                    <label className="text-[9px] text-gray-600 uppercase">Description EN</label>
+                    <input
+                      type="text"
+                      value={editData.descriptionEn || ''}
+                      onChange={(e) =>
+                        setEditData({ ...editData, descriptionEn: e.target.value })
+                      }
+                      className="w-full bg-cyber-black border border-gray-800 rounded px-2 py-1 text-xs text-white focus:outline-none"
+                    />
+                  </div>
                   <div className="flex gap-1">
                     <button
                       type="submit"
@@ -406,6 +448,14 @@ export default function AdminEnemies({ enemies, items, availablePrograms }: Prop
                         <span className="text-[9px] text-gray-700">#{enemy.id}</span>
                       </div>
                       <div className="text-[10px] text-gray-600 mb-2">{enemy.description}</div>
+                      {(enemy.nameEn || enemy.descriptionEn) && (
+                        <div className="mb-2 rounded border border-cyber-blue/15 bg-cyber-blue/5 px-2 py-1.5 text-[10px]">
+                          {enemy.nameEn && <div className="text-cyber-blue font-bold">EN: {enemy.nameEn}</div>}
+                          {enemy.descriptionEn && (
+                            <div className="text-gray-500">{enemy.descriptionEn}</div>
+                          )}
+                        </div>
+                      )}
                       <div className="flex flex-wrap gap-3 text-[10px]">
                         <span className="text-cyber-green">HP: {enemy.hp}</span>
                         <span className="text-cyber-red">ATK: {enemy.attack}</span>

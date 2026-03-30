@@ -1195,6 +1195,8 @@ export default class AdminController {
     const data = request.only([
       'name',
       'description',
+      'nameEn',
+      'descriptionEn',
       'hp',
       'attack',
       'defense',
@@ -1210,6 +1212,8 @@ export default class AdminController {
     await Enemy.create({
       name: data.name,
       description: data.description || '',
+      nameEn: data.nameEn?.trim() || null,
+      descriptionEn: data.descriptionEn?.trim() || null,
       hp: Number(data.hp) || 50,
       attack: Number(data.attack) || 10,
       defense: Number(data.defense) || 5,
@@ -1231,6 +1235,8 @@ export default class AdminController {
     const data = request.only([
       'name',
       'description',
+      'nameEn',
+      'descriptionEn',
       'hp',
       'attack',
       'defense',
@@ -1244,6 +1250,9 @@ export default class AdminController {
 
     enemy.name = data.name || enemy.name
     enemy.description = data.description ?? enemy.description
+    enemy.nameEn = data.nameEn !== undefined ? data.nameEn?.trim() || null : enemy.nameEn
+    enemy.descriptionEn =
+      data.descriptionEn !== undefined ? data.descriptionEn?.trim() || null : enemy.descriptionEn
     enemy.hp = Number(data.hp) || enemy.hp
     enemy.attack = Number(data.attack) || enemy.attack
     enemy.defense = Number(data.defense) || enemy.defense
