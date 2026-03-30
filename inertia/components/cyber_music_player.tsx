@@ -102,6 +102,7 @@ export default function CyberMusicPlayer() {
   const { t } = useTranslation('common')
   const initialState = useRef(readStoredPlayerState())
   const audioRef = useRef<HTMLAudioElement>(null)
+  const frameRef = useRef<number | null>(null)
   const [isDesktop, setIsDesktop] = useState(false)
   const [currentTrackIndex, setCurrentTrackIndex] = useState(initialState.current.currentTrackIndex)
   const [isMinimized, setIsMinimized] = useState(initialState.current.isMinimized)
@@ -113,6 +114,14 @@ export default function CyberMusicPlayer() {
   const [duration, setDuration] = useState(0)
 
   const currentTrack = TRACKS[currentTrackIndex]
+
+  const syncProgress = () => {
+    const audio = audioRef.current
+    if (!audio) return
+
+    setCurrentTime(audio.currentTime || 0)
+    setDuration(Number.isFinite(audio.duration) ? audio.duration : 0)
+  }
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -144,28 +153,71 @@ export default function CyberMusicPlayer() {
     const audio = audioRef.current
     if (!audio) return
 
-    const syncMetadata = () => {
-      setCurrentTime(audio.currentTime || 0)
-      setDuration(audio.duration || 0)
+    const cancelFrame = () => {
+      if (frameRef.current !== null) {
+        window.cancelAnimationFrame(frameRef.current)
+        frameRef.current = null
+      }
     }
 
-    const syncTime = () => setCurrentTime(audio.currentTime || 0)
+    const tickProgress = () => {
+      syncProgress()
+      if (!audio.paused && !audio.ended) {
+        frameRef.current = window.requestAnimationFrame(tickProgress)
+      } else {
+        frameRef.current = null
+      }
+    }
+
+    const startProgressLoop = () => {
+      cancelFrame()
+      frameRef.current = window.requestAnimationFrame(tickProgress)
+    }
+
+    const handlePause = () => {
+      cancelFrame()
+      syncProgress()
+      setIsPlaying(false)
+    }
+
+    const handlePlay = () => {
+      syncProgress()
+      setIsPlaying(true)
+      startProgressLoop()
+    }
+
     const handleEnded = () => {
+      cancelFrame()
+      syncProgress()
+      setIsPlaying(false)
       if (audio.loop) return
       setCurrentTrackIndex((prev) => (prev + 1) % TRACKS.length)
     }
 
-    audio.addEventListener('loadedmetadata', syncMetadata)
-    audio.addEventListener('durationchange', syncMetadata)
-    audio.addEventListener('timeupdate', syncTime)
+    audio.addEventListener('loadedmetadata', syncProgress)
+    audio.addEventListener('loadeddata', syncProgress)
+    audio.addEventListener('durationchange', syncProgress)
+    audio.addEventListener('canplay', syncProgress)
+    audio.addEventListener('seeked', syncProgress)
+    audio.addEventListener('timeupdate', syncProgress)
+    audio.addEventListener('play', handlePlay)
+    audio.addEventListener('playing', handlePlay)
+    audio.addEventListener('pause', handlePause)
     audio.addEventListener('ended', handleEnded)
 
-    syncMetadata()
+    syncProgress()
 
     return () => {
-      audio.removeEventListener('loadedmetadata', syncMetadata)
-      audio.removeEventListener('durationchange', syncMetadata)
-      audio.removeEventListener('timeupdate', syncTime)
+      cancelFrame()
+      audio.removeEventListener('loadedmetadata', syncProgress)
+      audio.removeEventListener('loadeddata', syncProgress)
+      audio.removeEventListener('durationchange', syncProgress)
+      audio.removeEventListener('canplay', syncProgress)
+      audio.removeEventListener('seeked', syncProgress)
+      audio.removeEventListener('timeupdate', syncProgress)
+      audio.removeEventListener('play', handlePlay)
+      audio.removeEventListener('playing', handlePlay)
+      audio.removeEventListener('pause', handlePause)
       audio.removeEventListener('ended', handleEnded)
     }
   }, [])
@@ -186,6 +238,7 @@ export default function CyberMusicPlayer() {
     setCurrentTime(0)
     setDuration(0)
     audio.load()
+    syncProgress()
   }, [currentTrackIndex])
 
   useEffect(() => {
