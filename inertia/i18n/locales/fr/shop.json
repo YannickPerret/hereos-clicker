@@ -90,6 +90,9 @@
     "playerRule4": "Quand une enchere se termine, le gagnant recoit les items et le vendeur empoche les credits.",
     "marketFeed": "Flux des annonces",
     "marketFeedDesc": "Toutes les offres actives visibles sur le marche noir joueur.",
+    "searchPlaceholder": "Rechercher un item, une description ou un vendeur...",
+    "allTypes": "Tous les types",
+    "allRarities": "Toutes les raretes",
     "filter": {
       "all": "Tout",
       "direct": "Direct",

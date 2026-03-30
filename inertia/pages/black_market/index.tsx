@@ -177,6 +177,13 @@ function formatCredits(value: number) {
   return `${value.toLocaleString()}c`
 }
 
+function normalizeSearchValue(value: string) {
+  return value
+    .normalize('NFD')
+    .replaceAll(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+}
+
 export default function BlackMarket({
   character,
   profile,
@@ -190,6 +197,9 @@ export default function BlackMarket({
   const [listingQuantities, setListingQuantities] = useState<Record<number, string>>({})
   const [bidAmounts, setBidAmounts] = useState<Record<number, string>>({})
   const [playerFilter, setPlayerFilter] = useState<'all' | 'direct' | 'auction'>('all')
+  const [playerSearch, setPlayerSearch] = useState('')
+  const [playerTypeFilter, setPlayerTypeFilter] = useState('all')
+  const [playerRarityFilter, setPlayerRarityFilter] = useState('all')
   const [clock, setClock] = useState(() => Date.now())
   const [isSellModalOpen, setIsSellModalOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<'fixers' | 'players'>(() => {
@@ -277,13 +287,43 @@ export default function BlackMarket({
     listingPrice > 0 &&
     character.credits >= listingTax
 
-  const filteredListings = useMemo(() => {
-    if (playerFilter === 'all') {
-      return playerMarket.listings
-    }
+  const availableListingTypes = useMemo(
+    () => [...new Set(playerMarket.listings.map((listing) => listing.item.type))].sort(),
+    [playerMarket.listings]
+  )
 
-    return playerMarket.listings.filter((listing) => listing.listingType === playerFilter)
-  }, [playerFilter, playerMarket.listings])
+  const availableListingRarities = useMemo(
+    () => [...new Set(playerMarket.listings.map((listing) => listing.item.rarity))].sort(),
+    [playerMarket.listings]
+  )
+
+  const filteredListings = useMemo(() => {
+    const normalizedSearch = normalizeSearchValue(playerSearch.trim())
+
+    return playerMarket.listings.filter((listing) => {
+      if (playerFilter !== 'all' && listing.listingType !== playerFilter) {
+        return false
+      }
+
+      if (playerTypeFilter !== 'all' && listing.item.type !== playerTypeFilter) {
+        return false
+      }
+
+      if (playerRarityFilter !== 'all' && listing.item.rarity !== playerRarityFilter) {
+        return false
+      }
+
+      if (!normalizedSearch) {
+        return true
+      }
+
+      const haystack = normalizeSearchValue(
+        `${listing.item.name} ${listing.item.description} ${listing.seller.name}`
+      )
+
+      return haystack.includes(normalizedSearch)
+    })
+  }, [playerFilter, playerMarket.listings, playerRarityFilter, playerSearch, playerTypeFilter])
 
   const getVendorQuantity = (dealId: number, stock: number) => {
     const parsed = Number.parseInt(vendorQuantities[dealId] ?? '1', 10)
@@ -787,6 +827,42 @@ export default function BlackMarket({
                   </button>
                 ))}
               </div>
+            </div>
+
+            <div className="mb-5 grid gap-3 lg:grid-cols-[1.3fr_0.85fr_0.85fr]">
+              <input
+                type="search"
+                value={playerSearch}
+                onChange={(event) => setPlayerSearch(event.target.value)}
+                placeholder={t('shop:blackMarket.searchPlaceholder')}
+                className="h-11 rounded-lg border border-gray-800 bg-cyber-black px-4 text-sm text-white placeholder:text-gray-500 focus:border-cyber-blue/40 focus:outline-none"
+              />
+
+              <select
+                value={playerTypeFilter}
+                onChange={(event) => setPlayerTypeFilter(event.target.value)}
+                className="h-11 rounded-lg border border-gray-800 bg-cyber-black px-3 text-sm text-white focus:border-cyber-blue/40 focus:outline-none"
+              >
+                <option value="all">{t('shop:blackMarket.allTypes')}</option>
+                {availableListingTypes.map((type) => (
+                  <option key={type} value={type}>
+                    {t(`common:types.${type}`)}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={playerRarityFilter}
+                onChange={(event) => setPlayerRarityFilter(event.target.value)}
+                className="h-11 rounded-lg border border-gray-800 bg-cyber-black px-3 text-sm text-white focus:border-cyber-blue/40 focus:outline-none"
+              >
+                <option value="all">{t('shop:blackMarket.allRarities')}</option>
+                {availableListingRarities.map((rarity) => (
+                  <option key={rarity} value={rarity}>
+                    {rarity.toUpperCase()}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {filteredListings.length === 0 ? (

@@ -90,6 +90,9 @@
     "playerRule4": "When an auction ends, the winner gets the items and the seller gets the credits.",
     "marketFeed": "Listing feed",
     "marketFeedDesc": "All active player listings visible on the black market.",
+    "searchPlaceholder": "Search an item, description, or seller...",
+    "allTypes": "All types",
+    "allRarities": "All rarities",
     "filter": {
       "all": "All",
       "direct": "Direct",
