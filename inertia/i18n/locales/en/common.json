@@ -41,6 +41,21 @@
   },
   "logout": "LOGOUT",
   "reportBug": "REPORT BUG",
+  "musicPlayer": {
+    "title": "AUDIO FEED",
+    "play": "PLAY",
+    "pause": "PAUSE",
+    "previous": "PREV",
+    "next": "NEXT",
+    "mute": "MUTE",
+    "unmute": "UNMUTE",
+    "volume": "VOLUME",
+    "seek": "Audio position",
+    "status": {
+      "live": "LIVE",
+      "standby": "STANDBY"
+    }
+  },
   "types": {
     "weapon": "WEAPON",
     "armor": "ARMOR",

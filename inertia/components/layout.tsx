@@ -1,6 +1,7 @@
 import { Link, router, usePage } from '@inertiajs/react'
 import { type ReactNode, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import CyberMusicPlayer from '~/components/cyber_music_player'
 import FloatingChat from '~/components/floating_chat'
 import NotificationCenter from '~/components/notification_center'
 import LanguageSwitcher from '~/components/language_switcher'
@@ -529,6 +530,8 @@ export default function GameLayout({ children }: { children: ReactNode }) {
           </aside>
         </>
       )}
+
+      <CyberMusicPlayer />
 
       <button
         type="button"
