@@ -59,6 +59,8 @@
     "playerExchangeDesc": "List inventory in direct sales or player-run auctions.",
     "listingTax": "Listing tax",
     "perItem": "per item",
+    "sellItemButton": "[ SELL AN ITEM ]",
+    "closeModal": "[ CLOSE ]",
     "sellFromInventory": "Sell from inventory",
     "saleMode": "Sale mode",
     "directSale": "Direct sale",

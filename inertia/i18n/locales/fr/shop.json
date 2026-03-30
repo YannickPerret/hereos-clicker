@@ -59,6 +59,8 @@
     "playerExchangeDesc": "Mets ton inventaire en vente en achat direct ou en enchere entre joueurs.",
     "listingTax": "Taxe de depot",
     "perItem": "par item",
+    "sellItemButton": "[ VENDRE UN ITEM ]",
+    "closeModal": "[ FERMER ]",
     "sellFromInventory": "Vendre depuis l inventaire",
     "saleMode": "Mode de vente",
     "directSale": "Achat direct",

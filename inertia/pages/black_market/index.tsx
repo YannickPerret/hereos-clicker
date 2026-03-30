@@ -190,6 +190,7 @@ export default function BlackMarket({
   const [bidAmounts, setBidAmounts] = useState<Record<number, string>>({})
   const [playerFilter, setPlayerFilter] = useState<'all' | 'direct' | 'auction'>('all')
   const [clock, setClock] = useState(() => Date.now())
+  const [isSellModalOpen, setIsSellModalOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<'fixers' | 'players'>(() => {
     if (typeof window === 'undefined') return 'fixers'
     return window.localStorage.getItem('blackMarketTab') === 'players' ? 'players' : 'fixers'
@@ -702,230 +703,9 @@ export default function BlackMarket({
         </>
       ) : (
         <div className="space-y-6">
-          <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
-            <section className="rounded-2xl border border-cyber-blue/20 bg-cyber-dark/70 p-5">
-              <div className="mb-5 flex items-start justify-between gap-4">
-                <div>
-                  <h2 className="text-lg font-bold uppercase tracking-[0.18em] text-cyber-blue">
-                    {t('shop:blackMarket.playerExchangeTitle')}
-                  </h2>
-                  <p className="mt-1 text-sm text-gray-500">
-                    {t('shop:blackMarket.playerExchangeDesc')}
-                  </p>
-                </div>
-                <div className="rounded-xl border border-cyber-red/20 bg-cyber-black/60 px-4 py-3 text-right">
-                  <div className="text-[10px] uppercase tracking-[0.28em] text-gray-500">
-                    {t('shop:blackMarket.listingTax')}
-                  </div>
-                  <div className="mt-1 text-xl font-bold text-cyber-yellow">
-                    {formatCredits(playerMarket.config.taxPerItem)}
-                  </div>
-                  <div className="text-xs text-gray-500">{t('shop:blackMarket.perItem')}</div>
-                </div>
-              </div>
-
-              {playerMarket.inventory.length > 0 ? (
-                <>
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <div>
-                      <label className="mb-1 block text-[10px] uppercase tracking-[0.22em] text-gray-500">
-                        {t('shop:blackMarket.sellFromInventory')}
-                      </label>
-                      <select
-                        value={listingForm.inventoryItemId}
-                        onChange={(event) =>
-                          setListingForm((current) => ({
-                            ...current,
-                            inventoryItemId: Number(event.target.value),
-                          }))
-                        }
-                        className="w-full rounded-lg border border-gray-800 bg-cyber-black px-3 py-2 text-sm text-white focus:border-cyber-blue/40 focus:outline-none"
-                      >
-                        {playerMarket.inventory.map((entry) => (
-                          <option key={entry.inventoryItemId} value={entry.inventoryItemId}>
-                            {entry.item.name} x{entry.quantity}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="mb-1 block text-[10px] uppercase tracking-[0.22em] text-gray-500">
-                        {t('shop:blackMarket.saleMode')}
-                      </label>
-                      <div className="grid grid-cols-2 gap-2">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setListingForm((current) => ({ ...current, listingType: 'direct' }))
-                          }
-                          className={`rounded-lg border px-3 py-2 text-xs font-bold uppercase tracking-[0.18em] ${
-                            listingForm.listingType === 'direct'
-                              ? 'border-cyber-yellow/40 bg-cyber-yellow/10 text-cyber-yellow'
-                              : 'border-gray-800 bg-cyber-black text-gray-400'
-                          }`}
-                        >
-                          {t('shop:blackMarket.directSale')}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setListingForm((current) => ({ ...current, listingType: 'auction' }))
-                          }
-                          className={`rounded-lg border px-3 py-2 text-xs font-bold uppercase tracking-[0.18em] ${
-                            listingForm.listingType === 'auction'
-                              ? 'border-cyber-red/40 bg-cyber-red/10 text-cyber-red'
-                              : 'border-gray-800 bg-cyber-black text-gray-400'
-                          }`}
-                        >
-                          {t('shop:blackMarket.auctionSale')}
-                        </button>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="mb-1 block text-[10px] uppercase tracking-[0.22em] text-gray-500">
-                        {t('shop:blackMarket.stackQuantity')}
-                      </label>
-                      <input
-                        type="number"
-                        min={1}
-                        max={selectedInventoryEntry?.quantity || 1}
-                        value={listingForm.quantity}
-                        onChange={(event) =>
-                          setListingForm((current) => ({
-                            ...current,
-                            quantity: event.target.value,
-                          }))
-                        }
-                        className="w-full rounded-lg border border-gray-800 bg-cyber-black px-3 py-2 text-sm text-white focus:border-cyber-blue/40 focus:outline-none"
-                      />
-                      <div className="mt-2 text-xs text-gray-500">
-                        {t('shop:blackMarket.availableStack', {
-                          n: selectedInventoryEntry?.quantity || 0,
-                        })}
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="mb-1 block text-[10px] uppercase tracking-[0.22em] text-gray-500">
-                        {listingForm.listingType === 'direct'
-                          ? t('shop:blackMarket.pricePerItem')
-                          : t('shop:blackMarket.startingBid')}
-                      </label>
-                      <input
-                        type="number"
-                        min={1}
-                        value={listingForm.price}
-                        onChange={(event) =>
-                          setListingForm((current) => ({ ...current, price: event.target.value }))
-                        }
-                        className="w-full rounded-lg border border-gray-800 bg-cyber-black px-3 py-2 text-sm text-white focus:border-cyber-blue/40 focus:outline-none"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="mb-1 block text-[10px] uppercase tracking-[0.22em] text-gray-500">
-                        {t('shop:blackMarket.durationHours')}
-                      </label>
-                      <input
-                        type="number"
-                        min={playerMarket.config.minDurationHours}
-                        max={playerMarket.config.maxDurationHours}
-                        value={listingForm.durationHours}
-                        onChange={(event) =>
-                          setListingForm((current) => ({
-                            ...current,
-                            durationHours: event.target.value,
-                          }))
-                        }
-                        className="w-full rounded-lg border border-gray-800 bg-cyber-black px-3 py-2 text-sm text-white focus:border-cyber-blue/40 focus:outline-none"
-                      />
-                      <div className="mt-2 text-xs text-gray-500">
-                        {t('shop:blackMarket.durationRange', {
-                          min: playerMarket.config.minDurationHours,
-                          max: playerMarket.config.maxDurationHours,
-                        })}
-                      </div>
-                    </div>
-
-                    <div className="rounded-xl border border-gray-800 bg-cyber-black/70 px-4 py-3">
-                      <div className="flex items-center justify-between text-xs text-gray-500">
-                        <span>{t('shop:blackMarket.taxPreview')}</span>
-                        <span className="font-bold text-cyber-yellow">
-                          {formatCredits(listingTax)}
-                        </span>
-                      </div>
-                      <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
-                        <span>{t('shop:blackMarket.saleDuration')}</span>
-                        <span>{t('shop:blackMarket.hoursValue', { n: listingDurationHours })}</span>
-                      </div>
-                      <div className="mt-2 text-xs text-gray-500">
-                        {listingForm.listingType === 'direct'
-                          ? t('shop:blackMarket.partialPurchaseEnabled')
-                          : t('shop:blackMarket.auctionLotNote', { n: listingQuantity })}
-                      </div>
-                    </div>
-                  </div>
-
-                  {selectedInventoryEntry && (
-                    <div className="mt-4 rounded-xl border border-gray-800 bg-cyber-black/70 p-4">
-                      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                        <div>
-                          <div className="text-[10px] uppercase tracking-[0.22em] text-gray-500">
-                            {t(`common:types.${selectedInventoryEntry.item.type}`)}
-                          </div>
-                          <div
-                            className={`mt-1 text-lg font-bold ${RARITY_TEXT[selectedInventoryEntry.item.rarity] || 'text-white'}`}
-                          >
-                            {selectedInventoryEntry.item.name}
-                          </div>
-                          <p className="mt-2 text-sm text-gray-400">
-                            {selectedInventoryEntry.item.description}
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          disabled={!canCreateListing}
-                          onClick={() =>
-                            router.post(
-                              '/black-market/listings',
-                              {
-                                inventoryItemId: listingForm.inventoryItemId,
-                                quantity: listingQuantity,
-                                listingType: listingForm.listingType,
-                                price: listingPrice,
-                                durationHours: listingDurationHours,
-                              },
-                              { preserveScroll: true }
-                            )
-                          }
-                          className={`rounded-lg border px-4 py-3 text-xs font-bold uppercase tracking-[0.18em] ${
-                            canCreateListing
-                              ? 'border-cyber-blue/40 bg-cyber-blue/10 text-cyber-blue hover:bg-cyber-blue/20'
-                              : 'cursor-not-allowed border-gray-800 bg-gray-950 text-gray-700'
-                          }`}
-                        >
-                          {canCreateListing
-                            ? t('shop:blackMarket.createListing')
-                            : t('shop:blackMarket.insufficientListingFunds')}
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div className="rounded-xl border border-gray-800 bg-cyber-black/60 p-4 text-sm text-gray-500">
-                  {t('shop:blackMarket.noSellableItems')}
-                </div>
-              )}
-            </section>
-
-            <section className="rounded-2xl border border-cyber-yellow/20 bg-cyber-dark/70 p-5">
-              <h2 className="text-lg font-bold uppercase tracking-[0.18em] text-cyber-yellow">
-                {t('shop:blackMarket.playerRulesTitle')}
-              </h2>
-              <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          <section className="rounded-2xl border border-gray-800 bg-cyber-dark/70 p-5">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex flex-wrap gap-3">
                 <div className="rounded-xl border border-gray-800 bg-cyber-black/60 px-4 py-3">
                   <div className="text-[10px] uppercase tracking-[0.22em] text-gray-500">
                     {t('shop:blackMarket.activeListingsStat')}
@@ -951,14 +731,28 @@ export default function BlackMarket({
                   </div>
                 </div>
               </div>
-              <div className="mt-4 space-y-3 text-sm text-gray-400">
-                <p>{t('shop:blackMarket.playerRule1')}</p>
-                <p>{t('shop:blackMarket.playerRule2')}</p>
-                <p>{t('shop:blackMarket.playerRule3')}</p>
-                <p>{t('shop:blackMarket.playerRule4')}</p>
+
+              <div className="flex flex-col items-start gap-2 lg:items-end">
+                <button
+                  type="button"
+                  disabled={playerMarket.inventory.length === 0}
+                  onClick={() => setIsSellModalOpen(true)}
+                  className={`rounded-lg border px-4 py-3 text-xs font-bold uppercase tracking-[0.18em] ${
+                    playerMarket.inventory.length > 0
+                      ? 'border-cyber-blue/40 bg-cyber-blue/10 text-cyber-blue hover:bg-cyber-blue/20'
+                      : 'cursor-not-allowed border-gray-800 bg-gray-950 text-gray-700'
+                  }`}
+                >
+                  {t('shop:blackMarket.sellItemButton')}
+                </button>
+                {playerMarket.inventory.length === 0 && (
+                  <div className="text-xs text-gray-500">
+                    {t('shop:blackMarket.noSellableItems')}
+                  </div>
+                )}
               </div>
-            </section>
-          </div>
+            </div>
+          </section>
 
           <section className="rounded-2xl border border-gray-800 bg-cyber-dark/70 p-5">
             <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -1338,6 +1132,234 @@ export default function BlackMarket({
               </div>
             )}
           </section>
+
+          {isSellModalOpen && (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+              onClick={() => setIsSellModalOpen(false)}
+            >
+              <div
+                className="w-full max-w-3xl rounded-2xl border border-cyber-blue/20 bg-cyber-dark p-5 shadow-[0_0_60px_rgba(0,240,255,0.12)]"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <div className="mb-5 flex items-start justify-between gap-4">
+                  <div>
+                    <h2 className="text-lg font-bold uppercase tracking-[0.18em] text-cyber-blue">
+                      {t('shop:blackMarket.playerExchangeTitle')}
+                    </h2>
+                    <p className="mt-1 text-sm text-gray-500">
+                      {t('shop:blackMarket.playerExchangeDesc')}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsSellModalOpen(false)}
+                    className="rounded-lg border border-gray-800 bg-cyber-black px-3 py-2 text-xs font-bold uppercase tracking-[0.18em] text-gray-400 hover:border-cyber-blue/30 hover:text-cyber-blue"
+                  >
+                    {t('shop:blackMarket.closeModal')}
+                  </button>
+                </div>
+
+                {playerMarket.inventory.length > 0 ? (
+                  <>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <div>
+                        <label className="mb-1 block text-[10px] uppercase tracking-[0.22em] text-gray-500">
+                          {t('shop:blackMarket.sellFromInventory')}
+                        </label>
+                        <select
+                          value={listingForm.inventoryItemId}
+                          onChange={(event) =>
+                            setListingForm((current) => ({
+                              ...current,
+                              inventoryItemId: Number(event.target.value),
+                            }))
+                          }
+                          className="w-full rounded-lg border border-gray-800 bg-cyber-black px-3 py-2 text-sm text-white focus:border-cyber-blue/40 focus:outline-none"
+                        >
+                          {playerMarket.inventory.map((entry) => (
+                            <option key={entry.inventoryItemId} value={entry.inventoryItemId}>
+                              {entry.item.name} x{entry.quantity}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="mb-1 block text-[10px] uppercase tracking-[0.22em] text-gray-500">
+                          {t('shop:blackMarket.saleMode')}
+                        </label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setListingForm((current) => ({ ...current, listingType: 'direct' }))
+                            }
+                            className={`rounded-lg border px-3 py-2 text-xs font-bold uppercase tracking-[0.18em] ${
+                              listingForm.listingType === 'direct'
+                                ? 'border-cyber-yellow/40 bg-cyber-yellow/10 text-cyber-yellow'
+                                : 'border-gray-800 bg-cyber-black text-gray-400'
+                            }`}
+                          >
+                            {t('shop:blackMarket.directSale')}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setListingForm((current) => ({ ...current, listingType: 'auction' }))
+                            }
+                            className={`rounded-lg border px-3 py-2 text-xs font-bold uppercase tracking-[0.18em] ${
+                              listingForm.listingType === 'auction'
+                                ? 'border-cyber-red/40 bg-cyber-red/10 text-cyber-red'
+                                : 'border-gray-800 bg-cyber-black text-gray-400'
+                            }`}
+                          >
+                            {t('shop:blackMarket.auctionSale')}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="mb-1 block text-[10px] uppercase tracking-[0.22em] text-gray-500">
+                          {t('shop:blackMarket.stackQuantity')}
+                        </label>
+                        <input
+                          type="number"
+                          min={1}
+                          max={selectedInventoryEntry?.quantity || 1}
+                          value={listingForm.quantity}
+                          onChange={(event) =>
+                            setListingForm((current) => ({
+                              ...current,
+                              quantity: event.target.value,
+                            }))
+                          }
+                          className="w-full rounded-lg border border-gray-800 bg-cyber-black px-3 py-2 text-sm text-white focus:border-cyber-blue/40 focus:outline-none"
+                        />
+                        <div className="mt-2 text-xs text-gray-500">
+                          {t('shop:blackMarket.availableStack', {
+                            n: selectedInventoryEntry?.quantity || 0,
+                          })}
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="mb-1 block text-[10px] uppercase tracking-[0.22em] text-gray-500">
+                          {listingForm.listingType === 'direct'
+                            ? t('shop:blackMarket.pricePerItem')
+                            : t('shop:blackMarket.startingBid')}
+                        </label>
+                        <input
+                          type="number"
+                          min={1}
+                          value={listingForm.price}
+                          onChange={(event) =>
+                            setListingForm((current) => ({ ...current, price: event.target.value }))
+                          }
+                          className="w-full rounded-lg border border-gray-800 bg-cyber-black px-3 py-2 text-sm text-white focus:border-cyber-blue/40 focus:outline-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="mb-1 block text-[10px] uppercase tracking-[0.22em] text-gray-500">
+                          {t('shop:blackMarket.durationHours')}
+                        </label>
+                        <input
+                          type="number"
+                          min={playerMarket.config.minDurationHours}
+                          max={playerMarket.config.maxDurationHours}
+                          value={listingForm.durationHours}
+                          onChange={(event) =>
+                            setListingForm((current) => ({
+                              ...current,
+                              durationHours: event.target.value,
+                            }))
+                          }
+                          className="w-full rounded-lg border border-gray-800 bg-cyber-black px-3 py-2 text-sm text-white focus:border-cyber-blue/40 focus:outline-none"
+                        />
+                        <div className="mt-2 text-xs text-gray-500">
+                          {t('shop:blackMarket.durationRange', {
+                            min: playerMarket.config.minDurationHours,
+                            max: playerMarket.config.maxDurationHours,
+                          })}
+                        </div>
+                      </div>
+
+                      <div className="rounded-xl border border-gray-800 bg-cyber-black/70 px-4 py-3">
+                        <div className="flex items-center justify-between text-xs text-gray-500">
+                          <span>{t('shop:blackMarket.taxPreview')}</span>
+                          <span className="font-bold text-cyber-yellow">
+                            {formatCredits(listingTax)}
+                          </span>
+                        </div>
+                        <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
+                          <span>{t('shop:blackMarket.saleDuration')}</span>
+                          <span>
+                            {t('shop:blackMarket.hoursValue', { n: listingDurationHours })}
+                          </span>
+                        </div>
+                        <div className="mt-2 text-xs text-gray-500">
+                          {listingForm.listingType === 'direct'
+                            ? t('shop:blackMarket.partialPurchaseEnabled')
+                            : t('shop:blackMarket.auctionLotNote', { n: listingQuantity })}
+                        </div>
+                      </div>
+                    </div>
+
+                    {selectedInventoryEntry && (
+                      <div className="mt-4 rounded-xl border border-gray-800 bg-cyber-black/70 p-4">
+                        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                          <div>
+                            <div className="text-[10px] uppercase tracking-[0.22em] text-gray-500">
+                              {t(`common:types.${selectedInventoryEntry.item.type}`)}
+                            </div>
+                            <div
+                              className={`mt-1 text-lg font-bold ${RARITY_TEXT[selectedInventoryEntry.item.rarity] || 'text-white'}`}
+                            >
+                              {selectedInventoryEntry.item.name}
+                            </div>
+                            <p className="mt-2 text-sm text-gray-400">
+                              {selectedInventoryEntry.item.description}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            disabled={!canCreateListing}
+                            onClick={() =>
+                              router.post(
+                                '/black-market/listings',
+                                {
+                                  inventoryItemId: listingForm.inventoryItemId,
+                                  quantity: listingQuantity,
+                                  listingType: listingForm.listingType,
+                                  price: listingPrice,
+                                  durationHours: listingDurationHours,
+                                },
+                                { preserveScroll: true }
+                              )
+                            }
+                            className={`rounded-lg border px-4 py-3 text-xs font-bold uppercase tracking-[0.18em] ${
+                              canCreateListing
+                                ? 'border-cyber-blue/40 bg-cyber-blue/10 text-cyber-blue hover:bg-cyber-blue/20'
+                                : 'cursor-not-allowed border-gray-800 bg-gray-950 text-gray-700'
+                            }`}
+                          >
+                            {canCreateListing
+                              ? t('shop:blackMarket.createListing')
+                              : t('shop:blackMarket.insufficientListingFunds')}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="rounded-xl border border-gray-800 bg-cyber-black/60 p-4 text-sm text-gray-500">
+                    {t('shop:blackMarket.noSellableItems')}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </GameLayout>
