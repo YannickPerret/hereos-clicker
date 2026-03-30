@@ -51,6 +51,10 @@
     "unmute": "UNMUTE",
     "volume": "VOLUME",
     "seek": "Audio position",
+    "loop": {
+      "playlist": "LOOP PLAYLIST",
+      "track": "LOOP TRACK"
+    },
     "status": {
       "live": "LIVE",
       "standby": "STANDBY"

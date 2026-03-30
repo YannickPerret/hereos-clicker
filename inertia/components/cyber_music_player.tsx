@@ -4,7 +4,19 @@ import { useTranslation } from 'react-i18next'
 const DESKTOP_MEDIA_QUERY = '(min-width: 1024px)'
 const STORAGE_KEY = 'hereos-cyber-music-player'
 
+type LoopMode = 'playlist' | 'track'
+
 const TRACKS = [
+  {
+    src: '/sounds/Chrome%20Horizons.wav',
+    title: 'CHROME HORIZONS',
+    mood: 'SKYLINE PULSE',
+  },
+  {
+    src: '/sounds/Chromedrift%20Arcade.wav',
+    title: 'CHROMEDRIFT ARCADE',
+    mood: 'ARCADE RUSH',
+  },
   {
     src: '/sounds/cyber_1.wav',
     title: 'CYBER_1.WAV',
@@ -21,6 +33,7 @@ interface StoredPlayerState {
   currentTrackIndex: number
   isMuted: boolean
   isPlaying: boolean
+  loopMode: LoopMode
   volume: number
 }
 
@@ -34,6 +47,7 @@ function readStoredPlayerState(): StoredPlayerState {
       currentTrackIndex: 0,
       isMuted: false,
       isPlaying: false,
+      loopMode: 'playlist',
       volume: 0.55,
     }
   }
@@ -45,6 +59,7 @@ function readStoredPlayerState(): StoredPlayerState {
         currentTrackIndex: 0,
         isMuted: false,
         isPlaying: false,
+        loopMode: 'playlist',
         volume: 0.55,
       }
     }
@@ -52,6 +67,7 @@ function readStoredPlayerState(): StoredPlayerState {
     const parsed = JSON.parse(raw)
     const parsedTrackIndex = Number(parsed.currentTrackIndex)
     const parsedVolume = Number(parsed.volume)
+    const parsedLoopMode: LoopMode = parsed.loopMode === 'track' ? 'track' : 'playlist'
 
     return {
       currentTrackIndex: clamp(
@@ -61,6 +77,7 @@ function readStoredPlayerState(): StoredPlayerState {
       ),
       isMuted: Boolean(parsed.isMuted),
       isPlaying: Boolean(parsed.isPlaying),
+      loopMode: parsedLoopMode,
       volume: clamp(Number.isFinite(parsedVolume) ? parsedVolume : 0.55, 0, 1),
     }
   } catch {
@@ -68,6 +85,7 @@ function readStoredPlayerState(): StoredPlayerState {
       currentTrackIndex: 0,
       isMuted: false,
       isPlaying: false,
+      loopMode: 'playlist',
       volume: 0.55,
     }
   }
@@ -89,6 +107,7 @@ export default function CyberMusicPlayer() {
   const [currentTrackIndex, setCurrentTrackIndex] = useState(initialState.current.currentTrackIndex)
   const [isMuted, setIsMuted] = useState(initialState.current.isMuted)
   const [isPlaying, setIsPlaying] = useState(initialState.current.isPlaying)
+  const [loopMode, setLoopMode] = useState<LoopMode>(initialState.current.loopMode)
   const [volume, setVolume] = useState(initialState.current.volume)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
@@ -115,10 +134,11 @@ export default function CyberMusicPlayer() {
         currentTrackIndex,
         isMuted,
         isPlaying,
+        loopMode,
         volume,
       } satisfies StoredPlayerState)
     )
-  }, [currentTrackIndex, isMuted, isPlaying, volume])
+  }, [currentTrackIndex, isMuted, isPlaying, loopMode, volume])
 
   useEffect(() => {
     const audio = audioRef.current
@@ -131,6 +151,7 @@ export default function CyberMusicPlayer() {
 
     const syncTime = () => setCurrentTime(audio.currentTime || 0)
     const handleEnded = () => {
+      if (audio.loop) return
       setCurrentTrackIndex((prev) => (prev + 1) % TRACKS.length)
     }
 
@@ -155,7 +176,8 @@ export default function CyberMusicPlayer() {
 
     audio.volume = volume
     audio.muted = isMuted
-  }, [isMuted, volume])
+    audio.loop = loopMode === 'track'
+  }, [isMuted, loopMode, volume])
 
   useEffect(() => {
     const audio = audioRef.current
@@ -186,6 +208,10 @@ export default function CyberMusicPlayer() {
 
   const goToTrack = (direction: -1 | 1) => {
     setCurrentTrackIndex((prev) => (prev + direction + TRACKS.length) % TRACKS.length)
+  }
+
+  const toggleLoopMode = () => {
+    setLoopMode((prev) => (prev === 'playlist' ? 'track' : 'playlist'))
   }
 
   const togglePlayback = async () => {
@@ -242,7 +268,10 @@ export default function CyberMusicPlayer() {
 
           <div className="mt-2 flex items-center justify-between text-[10px] uppercase tracking-[0.24em] text-gray-400">
             <span>{currentTrack.mood}</span>
-            <span>{isPlaying ? t('musicPlayer.status.live') : t('musicPlayer.status.standby')}</span>
+            <span>
+              {isPlaying ? t('musicPlayer.status.live') : t('musicPlayer.status.standby')} •{' '}
+              {t(`musicPlayer.loop.${loopMode}`)}
+            </span>
           </div>
         </div>
 
@@ -299,6 +328,18 @@ export default function CyberMusicPlayer() {
               }`}
             >
               {isMuted ? t('musicPlayer.unmute') : t('musicPlayer.mute')}
+            </button>
+
+            <button
+              type="button"
+              onClick={toggleLoopMode}
+              className={`rounded-lg border px-3 py-2 text-[10px] font-bold uppercase tracking-[0.24em] transition-all ${
+                loopMode === 'track'
+                  ? 'border-cyber-yellow/35 bg-cyber-yellow/10 text-cyber-yellow hover:bg-cyber-yellow/20'
+                  : 'border-cyber-blue/35 bg-cyber-blue/10 text-cyber-blue hover:bg-cyber-blue/20'
+              }`}
+            >
+              {t(`musicPlayer.loop.${loopMode}`)}
             </button>
 
             <div className="flex min-w-0 flex-1 items-center gap-3">

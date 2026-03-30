@@ -51,6 +51,10 @@
     "unmute": "UNMUTE",
     "volume": "VOLUME",
     "seek": "Position audio",
+    "loop": {
+      "playlist": "LOOP PLAYLIST",
+      "track": "LOOP TRACK"
+    },
     "status": {
       "live": "EN LECTURE",
       "standby": "EN ATTENTE"
