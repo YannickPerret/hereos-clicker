@@ -4,6 +4,7 @@ import axios from 'axios'
 import { createRoot } from 'react-dom/client'
 import { createInertiaApp } from '@inertiajs/react'
 import { resolvePageComponent } from '@adonisjs/inertia/helpers'
+import CyberMusicPlayer from '~/components/cyber_music_player'
 import { getCsrfToken } from '~/lib/csrf'
 
 axios.defaults.headers.common['Accept-Language'] = localStorage.getItem('hereos-lang') || 'fr'
@@ -46,6 +47,11 @@ createInertiaApp({
   },
 
   setup({ el, App, props }) {
-    createRoot(el).render(<App {...props} />)
+    createRoot(el).render(
+      <>
+        <App {...props} />
+        <CyberMusicPlayer />
+      </>
+    )
   },
 })

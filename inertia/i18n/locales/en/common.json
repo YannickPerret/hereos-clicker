@@ -47,9 +47,13 @@
     "pause": "PAUSE",
     "previous": "PREV",
     "next": "NEXT",
+    "expand": "Expand player",
+    "minimize": "Minimize player",
     "mute": "MUTE",
     "unmute": "UNMUTE",
     "volume": "VOLUME",
+    "elapsed": "TIME",
+    "duration": "DURATION",
     "seek": "Audio position",
     "loop": {
       "playlist": "LOOP PLAYLIST",

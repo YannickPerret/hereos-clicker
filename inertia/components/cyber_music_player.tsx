@@ -31,9 +31,9 @@ const TRACKS = [
 
 interface StoredPlayerState {
   currentTrackIndex: number
+  isMinimized: boolean
   isMuted: boolean
   isPlaying: boolean
-  loopMode: LoopMode
   volume: number
 }
 
@@ -45,9 +45,9 @@ function readStoredPlayerState(): StoredPlayerState {
   if (typeof window === 'undefined') {
     return {
       currentTrackIndex: 0,
+      isMinimized: false,
       isMuted: false,
       isPlaying: false,
-      loopMode: 'playlist',
       volume: 0.55,
     }
   }
@@ -57,9 +57,9 @@ function readStoredPlayerState(): StoredPlayerState {
     if (!raw) {
       return {
         currentTrackIndex: 0,
+        isMinimized: false,
         isMuted: false,
         isPlaying: false,
-        loopMode: 'playlist',
         volume: 0.55,
       }
     }
@@ -67,7 +67,6 @@ function readStoredPlayerState(): StoredPlayerState {
     const parsed = JSON.parse(raw)
     const parsedTrackIndex = Number(parsed.currentTrackIndex)
     const parsedVolume = Number(parsed.volume)
-    const parsedLoopMode: LoopMode = parsed.loopMode === 'track' ? 'track' : 'playlist'
 
     return {
       currentTrackIndex: clamp(
@@ -75,17 +74,17 @@ function readStoredPlayerState(): StoredPlayerState {
         0,
         TRACKS.length - 1
       ),
+      isMinimized: Boolean(parsed.isMinimized),
       isMuted: Boolean(parsed.isMuted),
       isPlaying: Boolean(parsed.isPlaying),
-      loopMode: parsedLoopMode,
       volume: clamp(Number.isFinite(parsedVolume) ? parsedVolume : 0.55, 0, 1),
     }
   } catch {
     return {
       currentTrackIndex: 0,
+      isMinimized: false,
       isMuted: false,
       isPlaying: false,
-      loopMode: 'playlist',
       volume: 0.55,
     }
   }
@@ -105,9 +104,10 @@ export default function CyberMusicPlayer() {
   const audioRef = useRef<HTMLAudioElement>(null)
   const [isDesktop, setIsDesktop] = useState(false)
   const [currentTrackIndex, setCurrentTrackIndex] = useState(initialState.current.currentTrackIndex)
+  const [isMinimized, setIsMinimized] = useState(initialState.current.isMinimized)
   const [isMuted, setIsMuted] = useState(initialState.current.isMuted)
   const [isPlaying, setIsPlaying] = useState(initialState.current.isPlaying)
-  const [loopMode, setLoopMode] = useState<LoopMode>(initialState.current.loopMode)
+  const [loopMode, setLoopMode] = useState<LoopMode>('playlist')
   const [volume, setVolume] = useState(initialState.current.volume)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
@@ -132,13 +132,13 @@ export default function CyberMusicPlayer() {
       STORAGE_KEY,
       JSON.stringify({
         currentTrackIndex,
+        isMinimized,
         isMuted,
         isPlaying,
-        loopMode,
         volume,
       } satisfies StoredPlayerState)
     )
-  }, [currentTrackIndex, isMuted, isPlaying, loopMode, volume])
+  }, [currentTrackIndex, isMinimized, isMuted, isPlaying, volume])
 
   useEffect(() => {
     const audio = audioRef.current
@@ -184,7 +184,8 @@ export default function CyberMusicPlayer() {
     if (!audio) return
 
     setCurrentTime(0)
-    setDuration(audio.duration || 0)
+    setDuration(0)
+    audio.load()
   }, [currentTrackIndex])
 
   useEffect(() => {
@@ -216,7 +217,7 @@ export default function CyberMusicPlayer() {
 
   const togglePlayback = async () => {
     const audio = audioRef.current
-    if (!audio) return
+    if (!audio || !isDesktop) return
 
     if (isPlaying) {
       audio.pause()
@@ -225,7 +226,6 @@ export default function CyberMusicPlayer() {
     }
 
     try {
-      if (!isDesktop) return
       await audio.play()
       setIsPlaying(true)
     } catch {
@@ -244,123 +244,155 @@ export default function CyberMusicPlayer() {
   if (!isDesktop) return null
 
   return (
-    <div className="fixed bottom-24 right-5 z-[45] hidden w-[22rem] lg:block">
-      <div className="cyber-music-player scanlines overflow-hidden rounded-2xl border border-cyber-blue/30 text-white shadow-2xl">
-        <audio ref={audioRef} src={currentTrack.src} preload="metadata" />
+    <div className="fixed bottom-24 right-5 z-[45] hidden lg:block">
+      <audio ref={audioRef} src={currentTrack.src} preload="metadata" />
 
-        <div className="relative z-[1] border-b border-cyber-blue/20 px-4 py-3">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <div className="text-[10px] uppercase tracking-[0.34em] text-cyber-blue">
-                {t('musicPlayer.title')}
-              </div>
-              <div className="mt-1 text-sm font-bold tracking-[0.24em] text-white">
-                {currentTrack.title}
-              </div>
-            </div>
-            <div className="cyber-player-bars mt-1" aria-hidden="true">
-              <span className={isPlaying ? 'is-active' : ''} />
-              <span className={isPlaying ? 'is-active' : ''} />
-              <span className={isPlaying ? 'is-active' : ''} />
-              <span className={isPlaying ? 'is-active' : ''} />
+      {isMinimized ? (
+        <button
+          type="button"
+          onClick={() => setIsMinimized(false)}
+          aria-label={t('musicPlayer.expand')}
+          className="cyber-music-player scanlines relative flex h-15 w-15 items-center justify-center overflow-hidden rounded-2xl border border-cyber-blue/30 text-cyber-blue shadow-2xl transition-all hover:border-cyber-pink/40 hover:text-cyber-pink"
+        >
+          <div className="relative z-[1] flex flex-col items-center gap-1">
+            <div className="text-lg leading-none">{isPlaying ? '◉' : '◎'}</div>
+            <div className="text-[9px] font-bold uppercase tracking-[0.28em]">
+              {isPlaying ? 'LIVE' : 'AUX'}
             </div>
           </div>
+        </button>
+      ) : (
+        <div className="cyber-music-player scanlines w-[22rem] overflow-hidden rounded-2xl border border-cyber-blue/30 text-white shadow-2xl">
+          <div className="relative z-[1] border-b border-cyber-blue/20 px-4 py-3">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="text-[10px] uppercase tracking-[0.34em] text-cyber-blue">
+                  {t('musicPlayer.title')}
+                </div>
+                <div className="mt-1 text-sm font-bold tracking-[0.24em] text-white">
+                  {currentTrack.title}
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="cyber-player-bars mt-1" aria-hidden="true">
+                  <span className={isPlaying ? 'is-active' : ''} />
+                  <span className={isPlaying ? 'is-active' : ''} />
+                  <span className={isPlaying ? 'is-active' : ''} />
+                  <span className={isPlaying ? 'is-active' : ''} />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsMinimized(true)}
+                  aria-label={t('musicPlayer.minimize')}
+                  className="rounded-lg border border-cyber-blue/25 bg-cyber-blue/8 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.24em] text-cyber-blue transition-all hover:bg-cyber-blue/18"
+                >
+                  _
+                </button>
+              </div>
+            </div>
 
-          <div className="mt-2 flex items-center justify-between text-[10px] uppercase tracking-[0.24em] text-gray-400">
-            <span>{currentTrack.mood}</span>
-            <span>
-              {isPlaying ? t('musicPlayer.status.live') : t('musicPlayer.status.standby')} •{' '}
-              {t(`musicPlayer.loop.${loopMode}`)}
-            </span>
-          </div>
-        </div>
-
-        <div className="relative z-[1] px-4 py-3">
-          <input
-            type="range"
-            min={0}
-            max={duration || 0}
-            step={0.1}
-            value={Math.min(currentTime, duration || 0)}
-            onChange={(event) => handleSeek(Number(event.target.value))}
-            className="cyber-player-range w-full"
-            aria-label={t('musicPlayer.seek')}
-            style={{ accentColor: '#00f0ff' }}
-          />
-
-          <div className="mt-2 flex items-center justify-between text-[10px] uppercase tracking-[0.24em] text-gray-500">
-            <span>{formatTime(currentTime)}</span>
-            <span>{formatTime(duration)}</span>
-          </div>
-
-          <div className="mt-4 flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => goToTrack(-1)}
-              className="rounded-lg border border-cyber-pink/30 bg-cyber-pink/10 px-3 py-2 text-[10px] font-bold uppercase tracking-[0.24em] text-cyber-pink transition-all hover:bg-cyber-pink/20"
-            >
-              {t('musicPlayer.previous')}
-            </button>
-            <button
-              type="button"
-              onClick={() => void togglePlayback()}
-              className="flex-1 rounded-lg border border-cyber-blue/40 bg-cyber-blue/10 px-3 py-2 text-[10px] font-bold uppercase tracking-[0.28em] text-cyber-blue transition-all hover:bg-cyber-blue/20"
-            >
-              {isPlaying ? t('musicPlayer.pause') : t('musicPlayer.play')}
-            </button>
-            <button
-              type="button"
-              onClick={() => goToTrack(1)}
-              className="rounded-lg border border-cyber-pink/30 bg-cyber-pink/10 px-3 py-2 text-[10px] font-bold uppercase tracking-[0.24em] text-cyber-pink transition-all hover:bg-cyber-pink/20"
-            >
-              {t('musicPlayer.next')}
-            </button>
-          </div>
-
-          <div className="mt-4 flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setIsMuted((prev) => !prev)}
-              className={`rounded-lg border px-3 py-2 text-[10px] font-bold uppercase tracking-[0.24em] transition-all ${
-                isMuted
-                  ? 'border-cyber-red/35 bg-cyber-red/10 text-cyber-red hover:bg-cyber-red/20'
-                  : 'border-cyber-green/30 bg-cyber-green/10 text-cyber-green hover:bg-cyber-green/20'
-              }`}
-            >
-              {isMuted ? t('musicPlayer.unmute') : t('musicPlayer.mute')}
-            </button>
-
-            <button
-              type="button"
-              onClick={toggleLoopMode}
-              className={`rounded-lg border px-3 py-2 text-[10px] font-bold uppercase tracking-[0.24em] transition-all ${
-                loopMode === 'track'
-                  ? 'border-cyber-yellow/35 bg-cyber-yellow/10 text-cyber-yellow hover:bg-cyber-yellow/20'
-                  : 'border-cyber-blue/35 bg-cyber-blue/10 text-cyber-blue hover:bg-cyber-blue/20'
-              }`}
-            >
-              {t(`musicPlayer.loop.${loopMode}`)}
-            </button>
-
-            <div className="flex min-w-0 flex-1 items-center gap-3">
-              <span className="text-[10px] uppercase tracking-[0.24em] text-gray-500">
-                {t('musicPlayer.volume')}
+            <div className="mt-2 flex items-center justify-between text-[10px] uppercase tracking-[0.24em] text-gray-300">
+              <span>{currentTrack.mood}</span>
+              <span>
+                {isPlaying ? t('musicPlayer.status.live') : t('musicPlayer.status.standby')} •{' '}
+                {t(`musicPlayer.loop.${loopMode}`)}
               </span>
-              <input
-                type="range"
-                min={0}
-                max={1}
-                step={0.01}
-                value={volume}
-                onChange={(event) => setVolume(Number(event.target.value))}
-                className="cyber-player-range flex-1"
-                aria-label={t('musicPlayer.volume')}
-                style={{ accentColor: '#00ff41' }}
-              />
+            </div>
+          </div>
+
+          <div className="relative z-[1] px-4 py-3">
+            <input
+              type="range"
+              min={0}
+              max={duration || 0}
+              step={0.1}
+              value={Math.min(currentTime, duration || 0)}
+              onChange={(event) => handleSeek(Number(event.target.value))}
+              className="cyber-player-range w-full"
+              aria-label={t('musicPlayer.seek')}
+              style={{ accentColor: '#00f0ff' }}
+            />
+
+            <div className="mt-2 flex items-center justify-between text-xs font-medium tracking-[0.16em] text-cyber-blue/90">
+              <span>
+                {t('musicPlayer.elapsed')} {formatTime(currentTime)}
+              </span>
+              <span>
+                {t('musicPlayer.duration')} {formatTime(duration)}
+              </span>
+            </div>
+
+            <div className="mt-4 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => goToTrack(-1)}
+                className="rounded-lg border border-cyber-pink/30 bg-cyber-pink/10 px-3 py-2 text-[10px] font-bold uppercase tracking-[0.24em] text-cyber-pink transition-all hover:bg-cyber-pink/20"
+              >
+                {t('musicPlayer.previous')}
+              </button>
+              <button
+                type="button"
+                onClick={() => void togglePlayback()}
+                className="flex-1 rounded-lg border border-cyber-blue/40 bg-cyber-blue/10 px-3 py-2 text-[10px] font-bold uppercase tracking-[0.28em] text-cyber-blue transition-all hover:bg-cyber-blue/20"
+              >
+                {isPlaying ? t('musicPlayer.pause') : t('musicPlayer.play')}
+              </button>
+              <button
+                type="button"
+                onClick={() => goToTrack(1)}
+                className="rounded-lg border border-cyber-pink/30 bg-cyber-pink/10 px-3 py-2 text-[10px] font-bold uppercase tracking-[0.24em] text-cyber-pink transition-all hover:bg-cyber-pink/20"
+              >
+                {t('musicPlayer.next')}
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-3">
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsMuted((prev) => !prev)}
+                  className={`rounded-lg border px-3 py-2 text-[10px] font-bold uppercase tracking-[0.24em] transition-all ${
+                    isMuted
+                      ? 'border-cyber-red/35 bg-cyber-red/10 text-cyber-red hover:bg-cyber-red/20'
+                      : 'border-cyber-green/30 bg-cyber-green/10 text-cyber-green hover:bg-cyber-green/20'
+                  }`}
+                >
+                  {isMuted ? t('musicPlayer.unmute') : t('musicPlayer.mute')}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={toggleLoopMode}
+                  className={`rounded-lg border px-3 py-2 text-[10px] font-bold uppercase tracking-[0.24em] transition-all ${
+                    loopMode === 'track'
+                      ? 'border-cyber-yellow/35 bg-cyber-yellow/10 text-cyber-yellow hover:bg-cyber-yellow/20'
+                      : 'border-cyber-blue/35 bg-cyber-blue/10 text-cyber-blue hover:bg-cyber-blue/20'
+                  }`}
+                >
+                  {t(`musicPlayer.loop.${loopMode}`)}
+                </button>
+              </div>
+
+              <div className="flex min-w-0 w-full items-center gap-3">
+                <span className="shrink-0 text-[10px] uppercase tracking-[0.24em] text-gray-300">
+                  {t('musicPlayer.volume')}
+                </span>
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  value={volume}
+                  onChange={(event) => setVolume(Number(event.target.value))}
+                  className="cyber-player-range min-w-0 w-full flex-1"
+                  aria-label={t('musicPlayer.volume')}
+                  style={{ accentColor: '#00ff41' }}
+                />
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }
