@@ -141,6 +141,8 @@ function ChatWidget({
   })
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
+  const isNearBottomRef = useRef(true)
   const inputRef = useRef<HTMLInputElement>(null)
   const userMenuRef = useRef<HTMLDivElement>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -436,9 +438,19 @@ function ChatWidget({
   useEffect(() => {
     if (isOpen) {
       setUnreadCount(0)
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+      if (isNearBottomRef.current) {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+      }
     }
   }, [isOpen, messages])
+
+  const handleScroll = useCallback(() => {
+    const container = messagesContainerRef.current
+    if (!container) return
+    const threshold = 60
+    isNearBottomRef.current =
+      container.scrollHeight - container.scrollTop - container.clientHeight < threshold
+  }, [])
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -877,6 +889,8 @@ function ChatWidget({
 
           {/* Messages */}
           <div
+            ref={messagesContainerRef}
+            onScroll={handleScroll}
             className="flex-1 overflow-y-auto p-3 font-mono space-y-0.5"
             style={{ fontSize: '11px' }}
           >
